@@ -18,7 +18,7 @@ class router
 			v_ = split(s, seperator);
 		}
 
-		token_parser(const std::string& s)
+		token_parser(const char* s)
 		{
 			dr_.Parse(s);
 			Document& doc = dr_.GetDocument();
@@ -44,6 +44,13 @@ class router
 		{
 			val.Accept(wr);
 			const char* js = buf.GetString();
+			const int len = strlen(js);
+			if (len == 0)
+				return;
+
+			if (len == 2&&js[0]== '"')
+				return;
+
 			v_.push_back(js);
 
 			wr.Reset(buf);
@@ -160,7 +167,7 @@ public:
 		this->map_invokers_.erase(name);
 	}
 
-	void route(std::string  & text) 
+	void route(const char* text) 
 	{
 		//token_parser parser(text, '/');
 		token_parser parser(text);
