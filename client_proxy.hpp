@@ -4,13 +4,15 @@
 class client_proxy
 {
 public:
-	client_proxy(const router& router) : router_(router) {}
+	client_proxy(router& router) : router_(router) {}
 
 	template<typename... Args>
 	void call(const char* handler_name, Args&&... args)
 	{
-		std::string json_str = make_request_json(handler_name, std::forward<Args>(args)...);
-		router_.route(json_str.c_str());
+		if(test_str_.empty())
+			test_str_ = make_request_json(handler_name, std::forward<Args>(args)...);
+
+		router_.route(test_str_.c_str());
 	}
 
 private:
@@ -33,7 +35,8 @@ private:
 		return make_request_json(handler_name, tp);
 	}
 
-	router router_;
+	router& router_;
 	Serializer sr_;
+	std::string test_str_ = "";
 };
 

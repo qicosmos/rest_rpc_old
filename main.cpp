@@ -2,7 +2,7 @@
 #include <string>
 #include <tuple>
 #include <kapok/Kapok.hpp>
-
+#include <boost/timer.hpp>
 #include "router.hpp"
 #include "client_proxy.hpp"
 
@@ -16,7 +16,7 @@ struct person
 
 void add(int a, int b)
 {
-	std::cout << a + b << std::endl;
+//	std::cout << a + b << std::endl;
 }
 void hello()
 {
@@ -35,12 +35,12 @@ void foo(std::string b, int a)
 
 void fun(const person& ps)
 {
-	std::cout << ps.name << std::endl;
+//	std::cout << ps.name << std::endl;
 }
 
 void fun1(const person& ps, int a)
 {
-	std::cout << ps.name << std::endl;
+	//std::cout << ps.name << std::endl;
 }
 
 void register_handler()
@@ -54,7 +54,7 @@ int main()
 
 	person _person = { 20, "aa" };
 
-	router r;
+	router& r = router::get();
 	//设置handler
 	r.register_handler("fun1", &fun1);
 
@@ -68,11 +68,17 @@ int main()
 	{
 		//发起请求
 		client_proxy client(r);
-		client.call("about");
-		client.call("test_one", 2);
+		//client.call("about");
+		//client.call("test_one", 2);
 		
 		person p = { 20, "aa" };
-		client.call("fun", p);
+		const int len = 1000000;
+		boost::timer timer;
+		for (size_t i = 0; i < len; i++)
+		{
+			client.call("add", 1,2);
+		}
+		cout << timer.elapsed() << endl;
 		client.call("fun1", p, 1);
 
 		client.call("foo", "test", 1);
