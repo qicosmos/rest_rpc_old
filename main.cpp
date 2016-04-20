@@ -5,6 +5,7 @@
 #include <boost/timer.hpp>
 #include "router.hpp"
 #include "client_proxy.hpp"
+#include "test_router.hpp"
 
 struct person
 {
@@ -48,10 +49,10 @@ void register_handler()
 
 }
 
-int main()
+TEST_CASE(example)
 {
 	using namespace std;
-
+	
 	person _person = { 20, "aa" };
 
 	router& r = router::get();
@@ -87,7 +88,5 @@ int main()
 	{
 		std::cerr << error.what() << std::endl;
 	}
-
-	return 0;
 }
 
