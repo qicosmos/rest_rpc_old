@@ -150,6 +150,11 @@ public:
 		return register_nonmember_func(name, f);
 	}
 
+	template<typename Function, typename Self>
+	void register_handler(std::string const & name, const Function& f, Self* self) {
+		return register_member_func(name, f, self);
+	}
+
 	void remove_handler(std::string const& name) {
 		this->map_invokers_.erase(name);
 	}
@@ -192,6 +197,13 @@ private:
 			std::placeholders::_1, std::tuple<>()), function_traits<Function>::arity };
 	}
 
+	template<typename Function, typename Self>
+	void register_member_func(const std::string& name, const Function& f, Self* self)
+	{
+		this->map_invokers_[name] = { std::bind(&invoker<Function>::template apply_member<std::tuple<>, Self>, f, self, std::placeholders::_1,
+			std::tuple<>()), function_traits<Function>::arity };
+	}
+
 	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>
 	//struct invoker;
 
@@ -213,6 +225,14 @@ private:
 				std::cout << e.what() << std::endl;
 			}
 		}
+
+		template<typename Args, typename Self>
+		static inline void apply_member(Function func, Self* self, token_parser & parser, const Args& args)
+		{
+			typedef typename function_traits<Function>::template args<N>::type arg_type;
+
+			return router::invoker<Function, N + 1, M>::apply_member(func, self, parser, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
+		}
 	};
 
 	template<typename Function, size_t M>
@@ -223,6 +243,12 @@ private:
 		{
 			//参数列表已经准备好，可以调用function了
 			call(func, args);
+		}
+
+		template<typename Args, typename Self>
+		static inline void apply_member(const Function& func, Self* self, token_parser &parser, const Args& args)
+		{
+			call_member(func, self, args);
 		}
 	};
 
@@ -261,6 +287,18 @@ private:
 	static void call(F f, const std::tuple<Args...>& tp)
 	{
 		call_helper(f, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+	}
+
+	template<typename F, typename Self, int ... Indexes, typename ... Args>
+	static void call_member_helper(const F& f, Self* self, index_sequence<Indexes...>, const std::tuple<Args...>& tup)
+	{
+		(*self.*f)(std::get<Indexes>(tup)...);
+	}
+
+	template<typename F, typename Self, typename ... Args>
+	static void call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+	{
+		call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
 	}
 };
 

@@ -44,10 +44,13 @@ void fun1(const person& ps, int a)
 	//std::cout << ps.name << std::endl;
 }
 
-void register_handler()
+struct messager
 {
-
-}
+	void fun(int a)
+	{
+		std::cout << a << std::endl;
+	}
+};
 
 TEST_CASE(example)
 {
@@ -64,6 +67,10 @@ TEST_CASE(example)
 	r.register_handler("about", &hello);
 	r.register_handler("foo", &foo);
 	r.register_handler("test_one", &test_one);
+
+	messager m;
+	r.register_handler("msg", &messager::fun, &m);
+	
 	
 	try
 	{
@@ -71,7 +78,7 @@ TEST_CASE(example)
 		client_proxy client(r);
 		//client.call("about");
 		//client.call("test_one", 2);
-		
+		client.call("msg", 1);
 		person p = { 20, "aa" };
 		const int len = 1000000;
 		boost::timer timer;
