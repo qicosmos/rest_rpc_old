@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(rest_rpc)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14")
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_DEBUG")
@@ -12,7 +12,7 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
     #)
 endif ()
 
-find_package(Boost REQUIRED)
+find_package(Boost COMPONENTS coroutine context system thread chrono REQUIRED)
 include_directories(
 		${Boost_INCLUDE_DIRS}
 		"../Kapok"
