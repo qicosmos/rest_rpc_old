@@ -1,4 +1,5 @@
 #pragma once
+#include <thread>
 #include "connection.hpp"
 #include "io_service_pool.hpp"
 
