@@ -80,7 +80,7 @@ TEST_CASE(example)
 		//client.call("test_one", 2);
 		client.call("msg", 1);
 		person p = { 20, "aa" };
-		const int len = 1000000;
+		const int len = 1;// 1000000;
 		boost::timer timer;
 		for (size_t i = 0; i < len; i++)
 		{

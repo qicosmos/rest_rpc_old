@@ -73,18 +73,22 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -156,8 +160,11 @@
   <ItemGroup>
     <ClInclude Include="client_proxy.hpp" />
     <ClInclude Include="function_traits.hpp" />
+    <ClInclude Include="noncopyable.h" />
     <ClInclude Include="router.hpp" />
+    <ClInclude Include="server.hpp" />
     <ClInclude Include="test_router.hpp" />
+    <ClInclude Include="token_parser.hpp" />
     <ClInclude Include="unit_test.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
