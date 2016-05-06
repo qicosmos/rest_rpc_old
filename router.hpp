@@ -34,54 +34,6 @@ private:
 
 namespace detail
 {
-	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>
-	//struct invoker;
-
-	//遍历function的实参类型，将字符串参数转换为实参并添加到tuple中
-	template<typename Function, size_t N = 0, size_t M = function_traits<Function>::arity>
-	struct invoker
-	{
-		template<typename Args>
-		static inline void apply(const Function& func, token_parser & parser, Args const & args)
-		{
-			typedef typename function_traits<Function>::template args<N>::type arg_type;
-			try
-			{
-				invoker<Function, N + 1, M>::apply(func, parser,
-					std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
-			}
-			catch (std::exception& e)
-			{
-				std::cout << e.what() << std::endl;
-			}
-		}
-
-		template<typename Args, typename Self>
-		static inline void apply_member(Function func, Self* self, token_parser & parser, const Args& args)
-		{
-			typedef typename function_traits<Function>::template args<N>::type arg_type;
-
-			return invoker<Function, N + 1, M>::apply_member(func, self, parser, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
-		}
-	};
-
-	template<typename Function, size_t M>
-	struct invoker<Function, M, M>
-	{
-		template<typename Args>
-		static inline void apply(const Function& func, token_parser &, Args const & args)
-		{
-			//参数列表已经准备好，可以调用function了
-			call(func, args);
-		}
-
-		template<typename Args, typename Self>
-		static inline void apply_member(const Function& func, Self* self, token_parser &parser, const Args& args)
-		{
-			call_member(func, self, args);
-		}
-	};
-
 	template<int...>
 	struct index_sequence {};
 
@@ -130,6 +82,54 @@ namespace detail
 	{
 		call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
 	}
+
+	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>
+	//struct invoker;
+
+	//遍历function的实参类型，将字符串参数转换为实参并添加到tuple中
+	template<typename Function, size_t N = 0, size_t M = function_traits<Function>::arity>
+	struct invoker
+	{
+		template<typename Args>
+		static inline void apply(const Function& func, token_parser & parser, Args const & args)
+		{
+			typedef typename function_traits<Function>::template args<N>::type arg_type;
+			try
+			{
+				invoker<Function, N + 1, M>::apply(func, parser,
+					std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
+			}
+			catch (std::exception& e)
+			{
+				std::cout << e.what() << std::endl;
+			}
+		}
+
+		template<typename Args, typename Self>
+		static inline void apply_member(Function func, Self* self, token_parser & parser, const Args& args)
+		{
+			typedef typename function_traits<Function>::template args<N>::type arg_type;
+
+			return invoker<Function, N + 1, M>::apply_member(func, self, parser, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
+		}
+	};
+
+	template<typename Function, size_t M>
+	struct invoker<Function, M, M>
+	{
+		template<typename Args>
+		static inline void apply(const Function& func, token_parser &, Args const & args)
+		{
+			//参数列表已经准备好，可以调用function了
+			call(func, args);
+		}
+
+		template<typename Args, typename Self>
+		static inline void apply_member(const Function& func, Self* self, token_parser &parser, const Args& args)
+		{
+			call_member(func, self, args);
+		}
+	};
 }
 
 class router : noncopyable
