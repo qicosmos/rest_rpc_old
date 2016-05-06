@@ -6,6 +6,7 @@
 #include "router.hpp"
 #include "client_proxy.hpp"
 #include "test_router.hpp"
+#include "server.hpp"
 
 struct person
 {
@@ -51,6 +52,13 @@ struct messager
 		std::cout << a << std::endl;
 	}
 };
+
+TEST_CASE(asio)
+{
+	server s(8090, std::thread::hardware_concurrency());
+	s.run();
+	getchar();
+}
 
 TEST_CASE(example)
 {

@@ -4,9 +4,9 @@
 #include <string>
 #include <mutex>
 #include <boost/lexical_cast.hpp>
+#include <boost/noncopyable.hpp>
 #include "token_parser.hpp"
 #include "function_traits.hpp"
-#include "noncopyable.h"
 
 class invoker_function
 {
@@ -132,7 +132,7 @@ namespace detail
 	};
 }
 
-class router : noncopyable
+class router : boost::noncopyable
 {
 	std::map<std::string, invoker_function> map_invokers_;
 	std::mutex mtx_;

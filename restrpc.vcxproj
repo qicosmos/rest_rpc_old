@@ -159,8 +159,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="client_proxy.hpp" />
+    <ClInclude Include="connection.hpp" />
     <ClInclude Include="function_traits.hpp" />
-    <ClInclude Include="noncopyable.h" />
+    <ClInclude Include="io_service_pool.hpp" />
     <ClInclude Include="router.hpp" />
     <ClInclude Include="server.hpp" />
     <ClInclude Include="test_router.hpp" />
