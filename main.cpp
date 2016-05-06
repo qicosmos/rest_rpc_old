@@ -55,7 +55,7 @@ struct messager
 
 TEST_CASE(asio)
 {
-	server s(8090, std::thread::hardware_concurrency());
+	server s(9000, std::thread::hardware_concurrency());
 	s.run();
 	getchar();
 }
