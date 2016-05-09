@@ -4,7 +4,6 @@
 #include <kapok/Kapok.hpp>
 #include <boost/timer.hpp>
 #include "router.hpp"
-#include "client_proxy.hpp"
 #include "test_router.hpp"
 #include "server.hpp"
 
@@ -37,12 +36,12 @@ void foo(std::string b, int a)
 
 void fun(const person& ps)
 {
-//	std::cout << ps.name << std::endl;
+	std::cout << ps.name << std::endl;
 }
 
 void fun1(const person& ps, int a)
 {
-	//std::cout << ps.name << std::endl;
+	std::cout << ps.name <<" "<<a<< std::endl;
 }
 
 struct messager
@@ -53,14 +52,28 @@ struct messager
 	}
 };
 
-TEST_CASE(asio)
+TEST_CASE(asio_test_server)
+{
+	server s(9000, std::thread::hardware_concurrency());
+	s.register_handler("fun1", &fun1);
+	s.register_handler("fun", &fun);
+	s.register_handler("add", &add);
+	s.register_handler("about", &hello);
+	s.register_handler("foo", &foo);
+	s.register_handler("test_one", &test_one);
+
+	s.run();
+	getchar();
+}
+
+TEST_CASE(asio_test)
 {
 	server s(9000, std::thread::hardware_concurrency());
 	s.run();
 	getchar();
 }
 
-TEST_CASE(example)
+TEST_CASE(example, false)
 {
 	using namespace std;
 	
@@ -83,21 +96,21 @@ TEST_CASE(example)
 	try
 	{
 		//·¢ÆðÇëÇó
-		client_proxy client(r);
-		//client.call("about");
-		//client.call("test_one", 2);
-		client.call("msg", 1);
-		person p = { 20, "aa" };
-		const int len = 1;// 1000000;
-		boost::timer timer;
-		for (size_t i = 0; i < len; i++)
-		{
-			client.call("add", 1,2);
-		}
-		cout << timer.elapsed() << endl;
-		client.call("fun1", p, 1);
+		//client_proxy client(r);
+		////client.call("about");
+		////client.call("test_one", 2);
+		//client.call("msg", 1);
+		//person p = { 20, "aa" };
+		//const int len = 1;// 1000000;
+		//boost::timer timer;
+		//for (size_t i = 0; i < len; i++)
+		//{
+		//	client.call("add", 1,2);
+		//}
+		//cout << timer.elapsed() << endl;
+		//client.call("fun1", p, 1);
 
-		client.call("foo", "test", 1);
+		//client.call("foo", "test", 1);
 	}
 	catch (std::runtime_error &error)
 	{

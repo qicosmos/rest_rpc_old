@@ -134,9 +134,6 @@ namespace detail
 
 class router : boost::noncopyable
 {
-	std::map<std::string, invoker_function> map_invokers_;
-	std::mutex mtx_;
-
 public:
 	static router& get()
 	{
@@ -145,24 +142,27 @@ public:
 	}
 
 	template<typename Function>
-	void register_handler(std::string const & name, const Function& f) {
+	void register_handler(std::string const & name, const Function& f) 
+	{
 		return register_nonmember_func(name, f);
 	}
 
 	template<typename Function, typename Self>
-	void register_handler(std::string const & name, const Function& f, Self* self) {
+	void register_handler(std::string const & name, const Function& f, Self* self) 
+	{
 		return register_member_func(name, f, self);
 	}
 
-	void remove_handler(std::string const& name) {
+	void remove_handler(std::string const& name) 
+	{
 		this->map_invokers_.erase(name);
 	}
 
-	void route(const char* text)
+	void route(const char* text, std::size_t length)
 	{
 		token_parser& parser = token_parser::get();
 		std::unique_lock<std::mutex> unique_lock(mtx_);
-		parser.parse(text);
+		parser.parse(text, length);
 
 		while (!parser.empty())
 		{
@@ -201,4 +201,7 @@ private:
 		this->map_invokers_[name] = { std::bind(&detail::invoker<Function>::template apply_member<std::tuple<>, Self>, f, self, std::placeholders::_1,
 			std::tuple<>()), function_traits<Function>::arity };
 	}
+
+	std::map<std::string, invoker_function> map_invokers_;
+	std::mutex mtx_;
 };

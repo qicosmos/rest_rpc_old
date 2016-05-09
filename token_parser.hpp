@@ -9,10 +9,10 @@ public:
 		return instance;
 	}
 
-	void parse(const char* s)
+	void parse(const char* s, std::size_t length)
 	{
 		v_.clear();
-		dr_.Parse(s);
+		dr_.Parse(s, length);
 		Document& doc = dr_.GetDocument();
 		auto it = doc.MemberBegin();
 		v_.push_back(it->name.GetString());

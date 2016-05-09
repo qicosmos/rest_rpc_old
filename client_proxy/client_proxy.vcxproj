@@ -19,11 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{6A7E90F1-0BE6-4F36-AE44-FC96D3FE0337}</ProjectGuid>
+    <ProjectGuid>{D63140F0-34AD-46B0-86A7-D526D32F41C8}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>restrpc</RootNamespace>
+    <RootNamespace>client_proxy</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
-    <ProjectName>restrpc</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -72,22 +71,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Boost160x86\include\boost-1_60;E:\code\Kapok;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Boost160x86\include\boost-1_60;E:\code\Kapok;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Boost160x86\include\boost-1_60;E:\code\Kapok;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>D:\boost_1_60_0;..\Kapok;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Boost160x86\include\boost-1_60;E:\code\Kapok;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -98,9 +97,6 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalOptions>
-      </AdditionalOptions>
-      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -115,9 +111,6 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalOptions>
-      </AdditionalOptions>
-      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -134,9 +127,6 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalOptions>
-      </AdditionalOptions>
-      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,9 +145,6 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalOptions>
-      </AdditionalOptions>
-      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -167,17 +154,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClInclude Include="client_proxy.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="connection.hpp" />
-    <ClInclude Include="function_traits.hpp" />
-    <ClInclude Include="io_service_pool.hpp" />
-    <ClInclude Include="router.hpp" />
-    <ClInclude Include="server.hpp" />
-    <ClInclude Include="test_router.hpp" />
-    <ClInclude Include="token_parser.hpp" />
-    <ClInclude Include="unit_test.hpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
