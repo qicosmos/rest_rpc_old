@@ -1,0 +1,3 @@
+[submodule "Kapok"]
+	path = Kapok
+	url = https://github.com/qicosmos/Kapok.git
