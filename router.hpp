@@ -34,41 +34,29 @@ private:
 
 namespace detail
 {
-	template<int...>
-	struct index_sequence {};
+	//template<int...>
+	//struct index_sequence {};
 
-	template<int N, int... Indexes>
-	struct make_index_sequence : make_index_sequence<N - 1, N - 1, Indexes...> {};
+	//template<int N, int... Indexes>
+	//struct make_index_sequence : make_index_sequence<N - 1, N - 1, Indexes...> {};
 
-	template<int... indexes>
-	struct make_index_sequence<0, indexes...>
-	{
-		typedef index_sequence<indexes...> type;
-	};
+	//template<int... indexes>
+	//struct make_index_sequence<0, indexes...>
+	//{
+	//	typedef index_sequence<indexes...> type;
+	//};
 
 	//C++14µÄÊµÏÖ
-	//template<typename F, size_t... I, typename ... Args>
-	//static void call_helper(F f, std::index_sequence<I...>, const std::tuple<Args...>& tup)
-	//{
-	//	f(std::get<I>(tup)...);
-	//}
-
-	//template<typename F, typename ... Args>
-	//static void call(F f, const std::tuple<Args...>& tp)
-	//{
-	//	call_helper(f, std::make_index_sequence<sizeof... (Args)>(), tp);
-	//}
-
-	template<typename F, int ... Indexes, typename ... Args>
-	static void call_helper(F f, index_sequence<Indexes...>, const std::tuple<Args...>& tup)
+	template<typename F, size_t... I, typename ... Args>
+	static void call_helper(F f, std::index_sequence<I...>&, const std::tuple<Args...>& tup)
 	{
-		f(std::get<Indexes>(tup)...);
+		f(std::get<I>(tup)...);
 	}
 
 	template<typename F, typename ... Args>
 	static void call(F f, const std::tuple<Args...>& tp)
 	{
-		call_helper(f, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+		call_helper(f, std::make_index_sequence<sizeof... (Args)>(), tp);
 	}
 
 	//template<typename F, typename Self, int ... Indexes, typename ... Args>
@@ -83,7 +71,7 @@ namespace detail
 	//	call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
 	//}
 	template<typename F, typename Self, size_t... Indexes, typename ... Args>
-	static auto call_member_helper(const F& f, Self* self, index_sequence<Indexes...>&, const std::tuple<Args...>& tup)
+	static auto call_member_helper(const F& f, Self* self, std::index_sequence<Indexes...>&, const std::tuple<Args...>& tup)
 	{
 		return (*self.*f)(std::get<Indexes>(tup)...);
 	}
@@ -92,14 +80,14 @@ namespace detail
 	static typename std::enable_if<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
 		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
 	{
-		call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+		call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>(), tp);
 	}
 
 	template<typename F, typename Self, typename ... Args>
 	static typename std::enable_if<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
 		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
 	{
-		auto r = call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>(), tp);
 		std::cout << r << std::endl;
 	}
 
