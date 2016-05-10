@@ -56,7 +56,7 @@ namespace detail
 	template<typename F, typename ... Args>
 	static void call(F f, const std::tuple<Args...>& tp)
 	{
-		call_helper(f, std::make_index_sequence<sizeof... (Args)>(), tp);
+		call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
 	}
 
 	//template<typename F, typename Self, int ... Indexes, typename ... Args>
@@ -80,14 +80,14 @@ namespace detail
 	static typename std::enable_if<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
 		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
 	{
-		call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>(), tp);
+		call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
 	}
 
 	template<typename F, typename Self, typename ... Args>
 	static typename std::enable_if<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
 		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
 	{
-		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>(), tp);
+		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
 		std::cout << r << std::endl;
 	}
 
