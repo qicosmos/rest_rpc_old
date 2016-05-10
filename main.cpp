@@ -64,26 +64,6 @@ TEST_CASE(asio_test, false)
 	s.run();
 	getchar();
 }
-//
-//template<typename F, typename Self, int ... Indexes, typename ... Args>
-//static auto call_member_helper(const F& f, Self* self, index_sequence<Indexes...>, const std::tuple<Args...>& tup)
-//{
-//	return (*self.*f)(std::get<Indexes>(tup)...);
-//}
-//
-//template<typename F, typename Self, typename ... Args>
-//static typename std::enable_if<is_void<decltype(&Self::declval<F>())>>::value>::type call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
-//{
-//	call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
-//}
-//
-////std::result_of<decltype(&C::Func)(C, char, int&)>::type
-//template<typename F, typename Self, typename ... Args>
-//static typename std::enable_if<!is_void<decltype(&Self::declval<F>())>::value>::type call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
-//{
-//	auto r = call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
-//	std::cout << r << std::endl;
-//}
 
 struct messager
 {
@@ -98,7 +78,12 @@ struct messager
 	}
 };
 
-TEST_CASE(test_traits, false)
+TEST_CASE(test_traits)
 {
+	using namespace detail;
+	messager m;
 
+	call_member(&messager::foo, &m, std::make_tuple(1));
+	call_member(&messager::fun, &m, std::make_tuple(2, 3));
+	
 }

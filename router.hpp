@@ -77,10 +77,30 @@ namespace detail
 		(*self.*f)(std::get<Indexes>(tup)...);
 	}
 
-	template<typename F, typename Self, typename ... Args>
-	static void call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+	//template<typename F, typename Self, typename ... Args>
+	//static void call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+	//{
+	//	call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+	//}
+	template<typename F, typename Self, size_t... Indexes, typename ... Args>
+	static auto call_member_helper(const F& f, Self* self, std::index_sequence<Indexes...>, const std::tuple<Args...>& tup)
 	{
-		call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+		return (*self.*f)(std::get<Indexes>(tup)...);
+	}
+
+	template<typename F, typename Self, typename ... Args>
+	static typename std::enable_if<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
+		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+	{
+		call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>::type(), tp);
+	}
+
+	template<typename F, typename Self, typename ... Args>
+	static typename std::enable_if<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
+		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+	{
+		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>::type(), tp);
+		std::cout << r << std::endl;
 	}
 
 	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>

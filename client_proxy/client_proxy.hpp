@@ -27,7 +27,7 @@ public:
 		int len = json_str.length();
 
 		message_.push_back(boost::asio::buffer(&len, 4));
-		message_.push_back(boost::asio::buffer(json_str.c_str(), json_str.length()));
+		message_.push_back(boost::asio::buffer(json_str));
 		socket_.send(message_);
 		message_.clear();
 	}
