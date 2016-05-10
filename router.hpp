@@ -104,13 +104,13 @@ namespace detail
 	}
 
 	template<typename F, typename ... Args>
-	static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(F f, const std::tuple<Args...>& tp)
+	static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, const std::tuple<Args...>& tp)
 	{
 		call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
 	}
 
 	template<typename F, typename ... Args>
-	static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(F f, const std::tuple<Args...>& tp)
+	static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, const std::tuple<Args...>& tp)
 	{
 		auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
 		callback_ok(r);
@@ -155,7 +155,7 @@ namespace detail
 			}
 			catch (std::exception& e)
 			{
-				//callback_exception(e.what());
+				callback_exception(e.what());
 			}
 		}
 
@@ -170,7 +170,7 @@ namespace detail
 			}
 			catch (const std::exception& e)
 			{
-				//callback_exception(e.what());
+				callback_exception(e.what());
 			}			
 		}
 	};
