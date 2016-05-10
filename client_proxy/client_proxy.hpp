@@ -8,11 +8,13 @@ using boost::asio::ip::tcp;
 class client_proxy : public std::enable_shared_from_this<client_proxy>, private boost::noncopyable
 {
 public:
-	client_proxy(boost::asio::io_service& io_service,
-		tcp::resolver::iterator endpoint_iterator)
+	client_proxy(boost::asio::io_service& io_service,const std::string& addr, const std::string& port)
 		: io_service_(io_service),
 		socket_(io_service)
 	{
+		tcp::resolver resolver(io_service);
+		tcp::resolver::query query(tcp::v4(), addr, port);
+		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 		do_connect(endpoint_iterator);
 	}
 
