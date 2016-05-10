@@ -15,9 +15,7 @@ void test_client()
 	{
 		boost::asio::io_service io_service;
 
-		tcp::resolver resolver(io_service);
-		auto endpoint_iterator = resolver.resolve({ "127.0.0.1", "9000" });
-		client_proxy client(io_service, endpoint_iterator);
+		client_proxy client(io_service, "127.0.0.1", "9000");
 		person p = { 20, "aa" };
 		auto str = client.make_json("fun1", p, 1);
 		client.call(str);
