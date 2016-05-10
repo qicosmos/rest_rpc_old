@@ -48,7 +48,7 @@ namespace detail
 
 	//C++14µÄÊµÏÖ
 	template<typename F, size_t... I, typename ... Args>
-	static void call_helper(F f, std::index_sequence<I...>&, const std::tuple<Args...>& tup)
+	static void call_helper(const F& f, const std::index_sequence<I...>&, const std::tuple<Args...>& tup)
 	{
 		f(std::get<I>(tup)...);
 	}
@@ -71,7 +71,7 @@ namespace detail
 	//	call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
 	//}
 	template<typename F, typename Self, size_t... Indexes, typename ... Args>
-	static auto call_member_helper(const F& f, Self* self, std::index_sequence<Indexes...>&, const std::tuple<Args...>& tup)
+	static auto call_member_helper(const F& f, Self* self, const std::index_sequence<Indexes...>&, const std::tuple<Args...>& tup)
 	{
 		return (*self.*f)(std::get<Indexes>(tup)...);
 	}
