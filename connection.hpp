@@ -10,6 +10,7 @@ class connection : public std::enable_shared_from_this<connection>, private boos
 public:
 	connection(boost::asio::io_service& io_service) : socket_(io_service), message_{ boost::asio::buffer(head_), boost::asio::buffer(data_) }
 	{
+		callback_messager::get().set_callback(std::bind(&connection::response, this, std::placeholders::_1));
 	}
 
 	void start()
@@ -58,6 +59,16 @@ private:
 		});
 	}
 
+	void response(const char* json_str)
+	{
+		int len = strlen(json_str);
+
+		message_[0] = boost::asio::buffer(&len, 4);
+		message_[1] = boost::asio::buffer((char*)json_str, len);
+		boost::system::error_code ec;
+		socket_.send(message_, 0, ec);
+	}
+
 	void do_write()
 	{
 		auto self(this->shared_from_this());
@@ -77,7 +88,7 @@ private:
 	}
 
 	tcp::socket socket_;
-	enum { max_length = 35 };
+	enum { max_length = 8192 };
 	char data_[max_length];
 	char head_[4];
 	std::array<boost::asio::mutable_buffer, 2> message_;

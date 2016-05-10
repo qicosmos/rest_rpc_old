@@ -7,6 +7,41 @@
 #include <boost/noncopyable.hpp>
 #include "token_parser.hpp"
 #include "function_traits.hpp"
+#include "common.h"
+
+//only for connection
+struct callback_messager
+{
+public:
+	static callback_messager& get()
+	{
+		static callback_messager instance;
+		return instance;
+	}
+
+	void set_callback(const std::function<void(const char*)>& callback)
+	{
+		call_back_ = callback;
+	}
+
+	template<typename T>
+	void call_back(const T& t)
+	{
+		assert(call_back_);
+		sr_.Serialize(t);
+		const char* str = sr_.GetString();
+		assert(str);
+		call_back_(str);
+	}
+
+private:
+	callback_messager() = default;
+	callback_messager(const callback_messager&) = delete;
+	callback_messager(callback_messager&&) = delete;
+
+	std::function<void(const char*)> call_back_ = nullptr;
+	Serializer sr_;
+};
 
 class invoker_function
 {
@@ -46,6 +81,21 @@ namespace detail
 	//	typedef index_sequence<indexes...> type;
 	//};
 
+	template<typename T>
+	static void callback_ok(const T& r)
+	{
+		response_msg<T> msg = { result_code::OK, r };
+
+		callback_messager::get().call_back(msg);
+	}
+
+	static void callback_exception(const char* r)
+	{
+		response_msg<std::string> msg = { result_code::OK, r };
+
+		callback_messager::get().call_back(msg);
+	}
+
 	//C++14µÄÊµÏÖ
 	template<typename F, size_t... I, typename ... Args>
 	static auto call_helper(const F& f, const std::index_sequence<I...>&, const std::tuple<Args...>& tup)
@@ -63,7 +113,7 @@ namespace detail
 	static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(F f, const std::tuple<Args...>& tp)
 	{
 		auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-		std::cout << r << std::endl;
+		callback_ok(r);
 	}
 
 	template<typename F, typename Self, size_t... Indexes, typename ... Args>
@@ -84,7 +134,7 @@ namespace detail
 		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
 	{
 		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
-		std::cout << r << std::endl;
+		callback_ok(r);
 	}
 
 	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>
@@ -105,7 +155,7 @@ namespace detail
 			}
 			catch (std::exception& e)
 			{
-				std::cout << e.what() << std::endl;
+				//callback_exception(e.what());
 			}
 		}
 
@@ -114,7 +164,14 @@ namespace detail
 		{
 			typedef typename function_traits<Function>::template args<N>::type arg_type;
 
-			return invoker<Function, N + 1, M>::apply_member(func, self, parser, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
+			try
+			{
+				invoker<Function, N + 1, M>::apply_member(func, self, parser, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
+			}
+			catch (const std::exception& e)
+			{
+				//callback_exception(e.what());
+			}			
 		}
 	};
 

@@ -39,12 +39,13 @@ void fun(const person& ps)
 	std::cout << ps.name << std::endl;
 }
 
-void fun1(const person& ps, int a)
+int fun1(const person& ps, int a)
 {
 	std::cout << ps.name <<" "<<a<< std::endl;
+	return a;
 }
 
-TEST_CASE(asio_test_server, false)
+TEST_CASE(asio_test_server, true)
 {
 	server s(9000, std::thread::hardware_concurrency());
 	s.register_handler("fun1", &fun1);
@@ -78,7 +79,7 @@ struct messager
 	}
 };
 
-TEST_CASE(test_traits)
+TEST_CASE(test_traits, false)
 {
 	using namespace detail;
 	messager m;
