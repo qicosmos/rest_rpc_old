@@ -15,9 +15,9 @@ struct person
 	META(age, name);
 };
 
-void add(int a, int b)
+int add(int a, int b)
 {
-//	std::cout << a + b << std::endl;
+	return a + b;
 }
 void hello()
 {
@@ -44,15 +44,7 @@ void fun1(const person& ps, int a)
 	std::cout << ps.name <<" "<<a<< std::endl;
 }
 
-struct messager
-{
-	void fun(int a)
-	{
-		std::cout << a << std::endl;
-	}
-};
-
-TEST_CASE(asio_test_server)
+TEST_CASE(asio_test_server, false)
 {
 	server s(9000, std::thread::hardware_concurrency());
 	s.register_handler("fun1", &fun1);
@@ -66,55 +58,47 @@ TEST_CASE(asio_test_server)
 	getchar();
 }
 
-TEST_CASE(asio_test)
+TEST_CASE(asio_test, false)
 {
 	server s(9000, std::thread::hardware_concurrency());
 	s.run();
 	getchar();
 }
+//
+//template<typename F, typename Self, int ... Indexes, typename ... Args>
+//static auto call_member_helper(const F& f, Self* self, index_sequence<Indexes...>, const std::tuple<Args...>& tup)
+//{
+//	return (*self.*f)(std::get<Indexes>(tup)...);
+//}
+//
+//template<typename F, typename Self, typename ... Args>
+//static typename std::enable_if<is_void<decltype(&Self::declval<F>())>>::value>::type call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+//{
+//	call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+//}
+//
+////std::result_of<decltype(&C::Func)(C, char, int&)>::type
+//template<typename F, typename Self, typename ... Args>
+//static typename std::enable_if<!is_void<decltype(&Self::declval<F>())>::value>::type call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+//{
+//	auto r = call_member_helper(f, self, typename make_index_sequence<sizeof... (Args)>::type(), tp);
+//	std::cout << r << std::endl;
+//}
 
-TEST_CASE(example, false)
+struct messager
 {
-	using namespace std;
-	
-	person _person = { 20, "aa" };
-
-	router& r = router::get();
-	//设置handler
-	r.register_handler("fun1", &fun1);
-
-	r.register_handler("fun", &fun);
-	r.register_handler("add", &add);
-	r.register_handler("about", &hello);
-	r.register_handler("foo", &foo);
-	r.register_handler("test_one", &test_one);
-
-	messager m;
-	r.register_handler("msg", &messager::fun, &m);
-	
-	
-	try
+	void foo(int a)
 	{
-		//发起请求
-		//client_proxy client(r);
-		////client.call("about");
-		////client.call("test_one", 2);
-		//client.call("msg", 1);
-		//person p = { 20, "aa" };
-		//const int len = 1;// 1000000;
-		//boost::timer timer;
-		//for (size_t i = 0; i < len; i++)
-		//{
-		//	client.call("add", 1,2);
-		//}
-		//cout << timer.elapsed() << endl;
-		//client.call("fun1", p, 1);
+		std::cout << a << std::endl;
+	}
 
-		//client.call("foo", "test", 1);
-	}
-	catch (std::runtime_error &error)
+	int fun(int a, int b)
 	{
-		std::cerr << error.what() << std::endl;
+		return a + b;
 	}
+};
+
+TEST_CASE(test_traits, false)
+{
+
 }
-

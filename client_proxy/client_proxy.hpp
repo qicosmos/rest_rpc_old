@@ -17,12 +17,26 @@ public:
 	}
 
 	template<typename... Args>
+	std::string make_json(const char* handler_name, Args&&... args)
+	{
+		return make_request_json(handler_name, std::forward<Args>(args)...);
+	}
+
+	void call(const std::string& json_str)
+	{
+		int len = json_str.length();
+
+		message_.push_back(boost::asio::buffer(&len, 4));
+		message_.push_back(boost::asio::buffer(json_str.c_str(), json_str.length()));
+		socket_.send(message_);
+		message_.clear();
+	}
+
+	template<typename... Args>
 	void call(const char* handler_name, Args&&... args)
 	{
-		if(test_str_.empty())
-			test_str_ = make_request_json(handler_name, std::forward<Args>(args)...);
-
-		boost::asio::write(socket_, boost::asio::buffer(test_str_.c_str(), test_str_.length()));
+		auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
+		call(json_str);
 	}
 
 private:
@@ -73,10 +87,10 @@ private:
 
 private:
 	Serializer sr_;
-	std::string test_str_ = "";
 
 	boost::asio::io_service& io_service_;
 	tcp::socket socket_;
+	std::vector<boost::asio::const_buffer> message_;
 	enum { max_length = 8192 };
 	char data_[max_length];
 };

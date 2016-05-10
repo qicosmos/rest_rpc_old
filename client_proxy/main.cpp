@@ -19,7 +19,9 @@ void test_client()
 		auto endpoint_iterator = resolver.resolve({ "127.0.0.1", "9000" });
 		client_proxy client(io_service, endpoint_iterator);
 		person p = { 20, "aa" };
-		client.call("fun1", p, 1);
+		auto str = client.make_json("fun1", p, 1);
+		client.call(str);
+		//client.call("fun1", p, 1);
 		io_service.run();
 	}
 	catch (const std::exception& e)

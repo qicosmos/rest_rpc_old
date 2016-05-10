@@ -8,13 +8,13 @@ using boost::asio::ip::tcp;
 class connection : public std::enable_shared_from_this<connection>, private boost::noncopyable
 {
 public:
-	connection(boost::asio::io_service& io_service) : socket_(io_service)
+	connection(boost::asio::io_service& io_service) : socket_(io_service), message_{ boost::asio::buffer(head_), boost::asio::buffer(data_) }
 	{
 	}
 
 	void start()
 	{
-		do_read();
+		read_head();
 	}
 
 	tcp::socket& socket()
@@ -23,14 +23,32 @@ public:
 	}
 
 private:
-	void do_read()
+	void read_head()
 	{
 		auto self(this->shared_from_this());
-		boost::asio::async_read(socket_, boost::asio::buffer(data_, 35), [this, self](boost::system::error_code ec, std::size_t length)
+		boost::asio::async_read(socket_, boost::asio::buffer(head_), [this, self](boost::system::error_code ec, std::size_t length)
+		{
+			if (!ec)
+			{
+				read_body(*(int*)head_);
+			}
+			else
+			{
+				//log
+				return;
+			}
+		});
+	}
+
+	void read_body(std::size_t size)
+	{
+		auto self(this->shared_from_this());
+		boost::asio::async_read(socket_, boost::asio::buffer(data_, size), [this, self](boost::system::error_code ec, std::size_t length)
 		{
 			if (!ec)
 			{
 				router::get().route(data_, length);
+				read_head();
 			}
 			else
 			{
@@ -48,7 +66,7 @@ private:
 		{
 			if (!ec)
 			{
-				do_read();
+				//do_read();
 			}
 			else
 			{
@@ -59,7 +77,9 @@ private:
 	}
 
 	tcp::socket socket_;
-	enum { max_length = 8192 };
+	enum { max_length = 35 };
 	char data_[max_length];
+	char head_[4];
+	std::array<boost::asio::mutable_buffer, 2> message_;
 };
 
