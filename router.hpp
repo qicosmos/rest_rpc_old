@@ -106,19 +106,19 @@ public:
 		}
 	}
 
+private:
+	router() = default;
+	router(const router&) = delete;
+	router(router&&) = delete;
+
 	template<typename T>
-	std::string get_json(result_code code, const T& r)
+	static std::string get_json(result_code code, const T& r)
 	{
 		response_msg<T> msg = { code, r };
 
 		sr_.Serialize(msg);
 		return sr_.GetString();
 	}
-
-private:
-	router() = default;
-	router(const router&) = delete;
-	router(router&&) = delete;
 
 	template<typename F, size_t... I, typename ... Args>
 	static auto call_helper(const F& f, const std::index_sequence<I...>&, const std::tuple<Args...>& tup)
@@ -136,7 +136,7 @@ private:
 	static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, std::string& result, const std::tuple<Args...>& tp)
 	{
 		auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-		result = router::get().get_json(result_code::OK, r);
+		result = get_json(result_code::OK, r);
 	}
 
 	template<typename F, typename Self, size_t... Indexes, typename ... Args>
@@ -157,7 +157,7 @@ private:
 		call_member(const F& f, Self* self, std::string& result, const std::tuple<Args...>& tp)
 	{
 		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
-		result = router::get().get_json(result_code::OK, r);
+		result = get_json(result_code::OK, r);
 	}
 
 	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>
@@ -178,7 +178,7 @@ private:
 			}
 			catch (std::exception& e)
 			{
-				result = router::get().get_json(result_code::EXCEPTION, e.what());
+				result = get_json(result_code::EXCEPTION, e.what());
 			}
 		}
 
@@ -193,7 +193,7 @@ private:
 			}
 			catch (const std::exception& e)
 			{
-				result = router::get().get_json(result_code::EXCEPTION, e.what());
+				result = get_json(result_code::EXCEPTION, e.what());
 			}
 		}
 	};
@@ -232,5 +232,6 @@ private:
 
 	std::map<std::string, invoker_function> map_invokers_;
 	std::mutex mtx_;
-	Serializer sr_;
+	static Serializer sr_;
 };
+Serializer router::sr_;
