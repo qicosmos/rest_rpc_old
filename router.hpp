@@ -32,7 +32,7 @@ private:
 	std::function<void(token_parser &, std::string& result)> function_;
 	std::size_t param_size_;
 };
-
+class router;
 namespace detail
 {
 	//template<int...>
@@ -46,16 +46,7 @@ namespace detail
 	//{
 	//	typedef index_sequence<indexes...> type;
 	//};
-
-	template<typename T>
-	static std::string get_json(result_code code, const T& r)
-	{
-		response_msg<T> msg = { code, r };
-		Serializer sr;
-		sr.Serialize(msg);
-		return sr.GetString();
-	}
-
+	
 	//C++14的实现
 	template<typename F, size_t... I, typename ... Args>
 	static auto call_helper(const F& f, const std::index_sequence<I...>&, const std::tuple<Args...>& tup)
@@ -73,7 +64,7 @@ namespace detail
 	static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, std::string& result, const std::tuple<Args...>& tp)
 	{
 		auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-		result = get_json(result_code::OK, r);
+		result = router::get().get_json(result_code::OK, r);
 	}
 
 	template<typename F, typename Self, size_t... Indexes, typename ... Args>
@@ -94,7 +85,7 @@ namespace detail
 		call_member(const F& f, Self* self, std::string& result, const std::tuple<Args...>& tp)
 	{
 		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
-		result = get_json(result_code::OK, r);
+		result = router::get().get_json(result_code::OK, r);
 	}
 
 	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>
@@ -115,7 +106,7 @@ namespace detail
 			}
 			catch (std::exception& e)
 			{
-				result = get_json(result_code::EXCEPTION, e.what());
+				result = router::get().get_json(result_code::EXCEPTION, e.what());
 			}
 		}
 
@@ -130,7 +121,7 @@ namespace detail
 			}
 			catch (const std::exception& e)
 			{
-				result = get_json(result_code::EXCEPTION, e.what());
+				result = router::get().get_json(result_code::EXCEPTION, e.what());
 			}			
 		}
 	};
@@ -193,20 +184,28 @@ public:
 			if (it == map_invokers_.end())
 				throw std::runtime_error("unknown function: " + func_name);
 
-			if (it->second.param_size() != parser.param_size()) //参数个数不匹配
+			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
 			{
 				break;
 			}
 
-			//找到的function中，开始将字符串转换为函数实参并调用
+			//找到的function中，开始将字符串转换为函数实参并调用 
 			std::string result = "";
 			it->second(parser, result);
 			if (callback != nullptr)
 			{
-				std::cout << result << std::endl;
 				callback(result.c_str());
 			}
 		}
+	}
+
+	template<typename T>
+	std::string get_json(result_code code, const T& r)
+	{
+		response_msg<T> msg = { code, r };
+
+		sr_.Serialize(msg);
+		return sr_.GetString();
 	}
 
 private:
@@ -231,4 +230,5 @@ private:
 
 	std::map<std::string, invoker_function> map_invokers_;
 	std::mutex mtx_;
+	Serializer sr_;
 };
