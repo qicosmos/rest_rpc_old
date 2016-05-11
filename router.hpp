@@ -32,7 +32,7 @@ private:
 	std::function<void(token_parser &, std::string& result)> function_;
 	std::size_t param_size_;
 };
-class router;
+
 namespace detail
 {
 	//template<int...>
@@ -48,6 +48,78 @@ namespace detail
 	//};
 	
 	//C++14的实现
+	
+}
+
+class router : boost::noncopyable
+{
+public:
+	static router& get()
+	{
+		static router instance;
+		return instance;
+	}
+
+	template<typename Function>
+	void register_handler(std::string const & name, const Function& f) 
+	{
+		return register_nonmember_func(name, f);
+	}
+
+	template<typename Function, typename Self>
+	void register_handler(std::string const & name, const Function& f, Self* self) 
+	{
+		return register_member_func(name, f, self);
+	}
+
+	void remove_handler(std::string const& name) 
+	{
+		this->map_invokers_.erase(name);
+	}
+
+	void route(const char* text, std::size_t length, const std::function<void(const char*)>& callback = nullptr)
+	{
+		token_parser& parser = token_parser::get();
+		std::unique_lock<std::mutex> unique_lock(mtx_);
+		parser.parse(text, length);
+
+		while (!parser.empty())
+		{
+			std::string func_name = parser.get<std::string>();
+
+			auto it = map_invokers_.find(func_name);
+			if (it == map_invokers_.end())
+				throw std::runtime_error("unknown function: " + func_name);
+
+			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
+			{
+				break;
+			}
+
+			//找到的function中，开始将字符串转换为函数实参并调用 
+			std::string result = "";
+			it->second(parser, result);
+			if (callback != nullptr)
+			{
+				callback(result.c_str());
+			}
+		}
+	}
+
+	template<typename T>
+	std::string get_json(result_code code, const T& r)
+	{
+		response_msg<T> msg = { code, r };
+
+		sr_.Serialize(msg);
+		return sr_.GetString();
+	}
+
+private:
+	router() = default;
+	router(const router&) = delete;
+	router(router&&) = delete;
+
 	template<typename F, size_t... I, typename ... Args>
 	static auto call_helper(const F& f, const std::index_sequence<I...>&, const std::tuple<Args...>& tup)
 	{
@@ -122,7 +194,7 @@ namespace detail
 			catch (const std::exception& e)
 			{
 				result = router::get().get_json(result_code::EXCEPTION, e.what());
-			}			
+			}
 		}
 	};
 
@@ -142,89 +214,19 @@ namespace detail
 			call_member(func, self, result, args);
 		}
 	};
-}
-
-class router : boost::noncopyable
-{
-public:
-	static router& get()
-	{
-		static router instance;
-		return instance;
-	}
-
-	template<typename Function>
-	void register_handler(std::string const & name, const Function& f) 
-	{
-		return register_nonmember_func(name, f);
-	}
-
-	template<typename Function, typename Self>
-	void register_handler(std::string const & name, const Function& f, Self* self) 
-	{
-		return register_member_func(name, f, self);
-	}
-
-	void remove_handler(std::string const& name) 
-	{
-		this->map_invokers_.erase(name);
-	}
-
-	void route(const char* text, std::size_t length, const std::function<void(const char*)>& callback = nullptr)
-	{
-		token_parser& parser = token_parser::get();
-		std::unique_lock<std::mutex> unique_lock(mtx_);
-		parser.parse(text, length);
-
-		while (!parser.empty())
-		{
-			std::string func_name = parser.get<std::string>();
-
-			auto it = map_invokers_.find(func_name);
-			if (it == map_invokers_.end())
-				throw std::runtime_error("unknown function: " + func_name);
-
-			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
-			{
-				break;
-			}
-
-			//找到的function中，开始将字符串转换为函数实参并调用 
-			std::string result = "";
-			it->second(parser, result);
-			if (callback != nullptr)
-			{
-				callback(result.c_str());
-			}
-		}
-	}
-
-	template<typename T>
-	std::string get_json(result_code code, const T& r)
-	{
-		response_msg<T> msg = { code, r };
-
-		sr_.Serialize(msg);
-		return sr_.GetString();
-	}
-
-private:
-	router() = default;
-	router(const router&) = delete;
-	router(router&&) = delete;
 
 	//将注册的handler保存在map中
 	template<typename Function>
 	void register_nonmember_func(std::string const & name, const Function& f)
 	{
-		this->map_invokers_[name] = { std::bind(&detail::invoker<Function>::template apply<std::tuple<>>, f,
+		this->map_invokers_[name] = { std::bind(&invoker<Function>::template apply<std::tuple<>>, f,
 			std::placeholders::_1, std::placeholders::_2, std::tuple<>()), function_traits<Function>::arity };
 	}
 
 	template<typename Function, typename Self>
 	void register_member_func(const std::string& name, const Function& f, Self* self)
 	{
-		this->map_invokers_[name] = { std::bind(&detail::invoker<Function>::template apply_member<std::tuple<>, Self>, f, self, std::placeholders::_1,
+		this->map_invokers_[name] = { std::bind(&invoker<Function>::template apply_member<std::tuple<>, Self>, f, self, std::placeholders::_1,
 			std::placeholders::_2, std::tuple<>()), function_traits<Function>::arity };
 	}
 
