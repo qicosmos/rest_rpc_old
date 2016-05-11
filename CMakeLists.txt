@@ -15,7 +15,7 @@ endif ()
 find_package(Boost COMPONENTS coroutine context system thread chrono REQUIRED)
 include_directories(
 		${Boost_INCLUDE_DIRS}
-		"${CMAKE_SOURCE_DIR}/Kapok"
+		"Kapok"
 		)
 SET(EXTRA_LIBS ${EXTRA_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
