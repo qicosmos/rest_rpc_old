@@ -31,6 +31,10 @@ public:
 		message_[1] = boost::asio::buffer((char*)json_str, len);
 		boost::system::error_code ec;
 		socket_.send(message_, 0, ec);
+		if (!ec)
+		{
+			g_succeed_count++;
+		}
 	}
 
 private:

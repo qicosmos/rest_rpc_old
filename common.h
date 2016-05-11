@@ -1,4 +1,6 @@
 #pragma once
+#include <atomic>
+#include <cstdint>
 #include <kapok/Kapok.hpp>
 
 //result要么是基本类型，要么是结构体；当请求成功时，code为0, 如果请求是无返回类型的，则result为空; 
@@ -19,3 +21,5 @@ enum result_code
 	EXCEPTION = 2,
 
 };
+
+static std::atomic<std::uint64_t> g_succeed_count(0);

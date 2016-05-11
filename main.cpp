@@ -45,7 +45,7 @@ int fun1(const person& ps, int a)
 	return a;
 }
 
-TEST_CASE(asio_test_server, true)
+TEST_CASE(asio_test_server, false)
 {
 	server s(9000, std::thread::hardware_concurrency());
 	s.register_handler("fun1", &fun1);
@@ -78,3 +78,21 @@ struct messager
 		return a + b;
 	}
 };
+
+TEST_CASE(rpc_qps, true)
+{
+	server s(9000, std::thread::hardware_concurrency());
+	s.register_handler("add", &add);;
+	s.run();
+	getchar();
+
+	std::uint64_t last_succeed_count = 0;
+
+	while (true)
+	{
+		auto curr_succeed_count = (std::uint64_t)g_succeed_count;
+		std::cout << curr_succeed_count - last_succeed_count << std::endl;
+		last_succeed_count = curr_succeed_count;
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	}
+}
