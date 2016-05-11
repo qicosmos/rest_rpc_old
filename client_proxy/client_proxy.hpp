@@ -32,6 +32,11 @@ public:
 		message_.push_back(boost::asio::buffer(json_str));
 		socket_.send(message_);
 		message_.clear();
+		socket_.receive(boost::asio::buffer(&len, 4));
+		std::string recv_json;
+		recv_json.resize(len);
+		socket_.receive(boost::asio::buffer(&recv_json[0], len));
+		std::cout << recv_json << std::endl;
 	}
 
 	template<typename... Args>
@@ -49,7 +54,9 @@ private:
 		if (ec)
 			std::cout << ec.message() << std::endl;
 		else
-			do_read();
+		{
+			//do_read();
+		}
 	}
 
 	void do_read()
