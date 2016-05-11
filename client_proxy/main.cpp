@@ -1,6 +1,9 @@
 #include <iostream>
+#include <thread>
+#include <chrono>
 #include <kapok/Kapok.hpp>
 #include "client_proxy.hpp"
+
 
 //result要么是基本类型，要么是结构体；当请求成功时，code为0, 如果请求是无返回类型的，则result为空; 
 //如果是有返回值的，则result为返回值。response_msg会序列化为一个标准的json串，回发给客户端。 
@@ -57,8 +60,31 @@ void test_client()
 	}
 }
 
+void test_performance()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		
+		client_proxy client(io_service, "192.168.2.154", "9000");
+
+		auto str = client.make_json("add", 1, 2);
+		std::thread thd([&io_service] {io_service.run(); });
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		while (true)
+		{
+			client.call(str);
+		}
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main()
 {
-	test_client();
+	test_performance();
+	//test_client();
 	return 0;
 }
