@@ -83,8 +83,8 @@ TEST_CASE(test_traits, false)
 {
 	using namespace detail;
 	messager m;
-
-	call_member(&messager::foo, &m, std::make_tuple(1));
-	call_member(&messager::fun, &m, std::make_tuple(2, 3));
+	std::string result = "";
+	call_member(&messager::foo, &m, result, std::make_tuple(1));
+	call_member(&messager::fun, &m, result, std::make_tuple(2, 3));
 	
 }

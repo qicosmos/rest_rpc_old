@@ -9,52 +9,18 @@
 #include "function_traits.hpp"
 #include "common.h"
 
-//only for connection
-struct callback_messager
-{
-public:
-	static callback_messager& get()
-	{
-		static callback_messager instance;
-		return instance;
-	}
-
-	void set_callback(const std::function<void(const char*)>& callback)
-	{
-		call_back_ = callback;
-	}
-
-	template<typename T>
-	void call_back(const T& t)
-	{
-		assert(call_back_);
-		sr_.Serialize(t);
-		const char* str = sr_.GetString();
-		assert(str);
-		call_back_(str);
-	}
-
-private:
-	callback_messager() = default;
-	callback_messager(const callback_messager&) = delete;
-	callback_messager(callback_messager&&) = delete;
-
-	std::function<void(const char*)> call_back_ = nullptr;
-	Serializer sr_;
-};
-
 class invoker_function
 {
 public:
 	invoker_function() = default;
-	invoker_function(const std::function<void(token_parser &)>& function, std::size_t size) : function_(function), param_size_(size)
+	invoker_function(const std::function<void(token_parser &, std::string&)>& function, std::size_t size) : function_(function), param_size_(size)
 	{
 
 	}
 
-	void operator()(token_parser &parser)
+	void operator()(token_parser &parser, std::string& result)
 	{
-		function_(parser);
+		function_(parser, result);
 	}
 
 	const std::size_t param_size() const
@@ -63,7 +29,7 @@ public:
 	}
 
 private:
-	std::function<void(token_parser &)> function_;
+	std::function<void(token_parser &, std::string& result)> function_;
 	std::size_t param_size_;
 };
 
@@ -82,18 +48,12 @@ namespace detail
 	//};
 
 	template<typename T>
-	static void callback_ok(const T& r)
+	static std::string get_json(result_code code, const T& r)
 	{
-		response_msg<T> msg = { result_code::OK, r };
-
-		callback_messager::get().call_back(msg);
-	}
-
-	static void callback_exception(const char* r)
-	{
-		response_msg<std::string> msg = { result_code::OK, r };
-
-		callback_messager::get().call_back(msg);
+		response_msg<T> msg = { code, r };
+		Serializer sr;
+		sr.Serialize(msg);
+		return sr.GetString();
 	}
 
 	//C++14的实现
@@ -104,16 +64,16 @@ namespace detail
 	}
 
 	template<typename F, typename ... Args>
-	static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, const std::tuple<Args...>& tp)
+	static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, std::string&, const std::tuple<Args...>& tp)
 	{
 		call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
 	}
 
 	template<typename F, typename ... Args>
-	static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, const std::tuple<Args...>& tp)
+	static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, std::string& result, const std::tuple<Args...>& tp)
 	{
 		auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-		callback_ok(r);
+		result = get_json(result_code::OK, r);
 	}
 
 	template<typename F, typename Self, size_t... Indexes, typename ... Args>
@@ -124,17 +84,17 @@ namespace detail
 
 	template<typename F, typename Self, typename ... Args>
 	static typename std::enable_if<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
-		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+		call_member(const F& f, Self* self, std::string&, const std::tuple<Args...>& tp)
 	{
 		call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
 	}
 
 	template<typename F, typename Self, typename ... Args>
 	static typename std::enable_if<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
-		call_member(const F& f, Self* self, const std::tuple<Args...>& tp)
+		call_member(const F& f, Self* self, std::string& result, const std::tuple<Args...>& tp)
 	{
 		auto r = call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
-		callback_ok(r);
+		result = get_json(result_code::OK, r);
 	}
 
 	//template<typename Function, class Signature = Function, size_t N = 0, size_t M = function_traits<Signature>::arity>
@@ -145,32 +105,32 @@ namespace detail
 	struct invoker
 	{
 		template<typename Args>
-		static inline void apply(const Function& func, token_parser & parser, Args const & args)
+		static inline void apply(const Function& func, token_parser & parser, std::string& result, Args const & args)
 		{
 			typedef typename function_traits<Function>::template args<N>::type arg_type;
 			try
 			{
-				invoker<Function, N + 1, M>::apply(func, parser,
+				invoker<Function, N + 1, M>::apply(func, parser, result,
 					std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
 			}
 			catch (std::exception& e)
 			{
-				callback_exception(e.what());
+				result = get_json(result_code::EXCEPTION, e.what());
 			}
 		}
 
 		template<typename Args, typename Self>
-		static inline void apply_member(Function func, Self* self, token_parser & parser, const Args& args)
+		static inline void apply_member(Function func, Self* self, token_parser & parser, std::string& result, const Args& args)
 		{
 			typedef typename function_traits<Function>::template args<N>::type arg_type;
 
 			try
 			{
-				invoker<Function, N + 1, M>::apply_member(func, self, parser, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
+				invoker<Function, N + 1, M>::apply_member(func, self, parser, result, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
 			}
 			catch (const std::exception& e)
 			{
-				callback_exception(e.what());
+				result = get_json(result_code::EXCEPTION, e.what());
 			}			
 		}
 	};
@@ -179,16 +139,16 @@ namespace detail
 	struct invoker<Function, M, M>
 	{
 		template<typename Args>
-		static inline void apply(const Function& func, token_parser &, Args const & args)
+		static inline void apply(const Function& func, token_parser &, std::string& result, Args const & args)
 		{
 			//参数列表已经准备好，可以调用function了
-			call(func, args);
+			call(func, result, args);
 		}
 
 		template<typename Args, typename Self>
-		static inline void apply_member(const Function& func, Self* self, token_parser &parser, const Args& args)
+		static inline void apply_member(const Function& func, Self* self, token_parser &parser, std::string& result, const Args& args)
 		{
-			call_member(func, self, args);
+			call_member(func, self, result, args);
 		}
 	};
 }
@@ -219,7 +179,7 @@ public:
 		this->map_invokers_.erase(name);
 	}
 
-	void route(const char* text, std::size_t length)
+	void route(const char* text, std::size_t length, const std::function<void(const char*)>& callback = nullptr)
 	{
 		token_parser& parser = token_parser::get();
 		std::unique_lock<std::mutex> unique_lock(mtx_);
@@ -239,7 +199,13 @@ public:
 			}
 
 			//找到的function中，开始将字符串转换为函数实参并调用
-			it->second(parser);
+			std::string result = "";
+			it->second(parser, result);
+			if (callback != nullptr)
+			{
+				std::cout << result << std::endl;
+				callback(result.c_str());
+			}
 		}
 	}
 
@@ -253,14 +219,14 @@ private:
 	void register_nonmember_func(std::string const & name, const Function& f)
 	{
 		this->map_invokers_[name] = { std::bind(&detail::invoker<Function>::template apply<std::tuple<>>, f,
-			std::placeholders::_1, std::tuple<>()), function_traits<Function>::arity };
+			std::placeholders::_1, std::placeholders::_2, std::tuple<>()), function_traits<Function>::arity };
 	}
 
 	template<typename Function, typename Self>
 	void register_member_func(const std::string& name, const Function& f, Self* self)
 	{
 		this->map_invokers_[name] = { std::bind(&detail::invoker<Function>::template apply_member<std::tuple<>, Self>, f, self, std::placeholders::_1,
-			std::tuple<>()), function_traits<Function>::arity };
+			std::placeholders::_2, std::tuple<>()), function_traits<Function>::arity };
 	}
 
 	std::map<std::string, invoker_function> map_invokers_;
