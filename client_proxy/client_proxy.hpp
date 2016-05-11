@@ -24,7 +24,7 @@ public:
 		return make_request_json(handler_name, std::forward<Args>(args)...);
 	}
 
-	void call(const std::string& json_str)
+	std::string call(const std::string& json_str)
 	{
 		int len = json_str.length();
 
@@ -36,14 +36,14 @@ public:
 		std::string recv_json;
 		recv_json.resize(len);
 		socket_.receive(boost::asio::buffer(&recv_json[0], len));
-		std::cout << recv_json << std::endl;
+		return recv_json;
 	}
 
 	template<typename... Args>
-	void call(const char* handler_name, Args&&... args)
+	std::string call(const char* handler_name, Args&&... args)
 	{
 		auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
-		call(json_str);
+		return call(json_str);
 	}
 
 private:
