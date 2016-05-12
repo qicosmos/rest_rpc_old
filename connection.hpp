@@ -62,7 +62,8 @@ private:
 		{
 			if (!ec)
 			{
-				router::get().route(data_, length, [this](const char* json) { response(json); });
+				router& _router = router::get();
+				_router.route(data_, length, [this](const char* json) { response(json); });
 				read_head();
 			}
 			else
