@@ -80,7 +80,7 @@ public:
 	void route(const char* text, std::size_t length, const std::function<void(const char*)>& callback = nullptr)
 	{
 		token_parser& parser = token_parser::get();
-		std::unique_lock<std::mutex> unique_lock(mtx_);
+		//std::unique_lock<std::mutex> unique_lock(mtx_);
 		parser.parse(text, length);
 
 		while (!parser.empty())
