@@ -38,7 +38,8 @@ void test_client()
 	{
 		boost::asio::io_service io_service;
 		DeSerializer dr;
-		client_proxy client(io_service, "127.0.0.1", "9000");
+		client_proxy client(io_service);
+		client.connect("192.168.2.154", "9000");
 		person p = { 20, "aa" };
 		//auto str = client.make_json("fun1", p, 1);
 		//client.call(str);
@@ -60,13 +61,59 @@ void test_client()
 	}
 }
 
+void test_async_client()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.async_connect("127.0.0.1", "9000", [&client] (boost::system::error_code& ec)
+		{
+			if (ec)
+			{
+				std::cout << "connect error." << std::endl;
+				return;
+			}
+
+			client.async_call("add", [&client](std::string result, boost::system::error_code ec)
+			{
+				if (ec)
+				{
+					std::cout << "call error." << std::endl;
+					return;
+				}
+
+				DeSerializer dr;
+				dr.Parse(result);
+
+				response_msg<int> response = {};
+				dr.Deserialize(response);
+				if (response.code == result_code::OK)
+				{
+					std::cout << response.result << std::endl;
+				}
+
+			},
+				1, 2);
+
+		});
+
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 void test_performance()
 {
 	try
 	{
 		boost::asio::io_service io_service;
 		
-		client_proxy client(io_service, "192.168.2.154", "9000");
+		client_proxy client(io_service);
+		client.connect("192.168.2.154", "9000");
 
 		auto str = client.make_json("add", 1, 2);
 		std::thread thd([&io_service] {io_service.run(); });
@@ -84,7 +131,8 @@ void test_performance()
 
 int main()
 {
-	test_performance();
+	//test_performance();
 	//test_client();
+	test_async_client();
 	return 0;
 }
