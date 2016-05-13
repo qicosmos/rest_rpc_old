@@ -79,7 +79,7 @@ public:
 
 	void route(const char* text, std::size_t length, const std::function<void(const char*)>& callback = nullptr)
 	{
-		token_parser& parser = token_parser::get();
+		token_parser parser;// = token_parser::get();
 		//std::unique_lock<std::mutex> unique_lock(mtx_);
 		parser.parse(text, length);
 
@@ -106,8 +106,9 @@ public:
 		}
 	}
 
-private:
 	router() = default;
+private:
+	
 	router(const router&) = delete;
 	router(router&&) = delete;
 
@@ -116,8 +117,9 @@ private:
 	{
 		response_msg<T> msg = { code, r };
 
-		sr_.Serialize(msg);
-		return sr_.GetString();
+		Serializer sr;
+		sr.Serialize(msg);
+		return sr.GetString();
 	}
 
 	template<typename F, size_t... I, typename ... Args>
@@ -232,6 +234,5 @@ private:
 
 	std::map<std::string, invoker_function> map_invokers_;
 	std::mutex mtx_;
-	static Serializer sr_;
 };
-Serializer router::sr_;
+

@@ -3,12 +3,6 @@
 class token_parser
 {
 public:
-	static token_parser& get()
-	{
-		static token_parser instance;
-		return instance;
-	}
-
 	void parse(const char* s, std::size_t length)
 	{
 		v_.clear();
@@ -61,8 +55,9 @@ public:
 		return v_.size();
 	}
 
-private:
 	token_parser() = default;
+private:
+	
 	token_parser(const token_parser&) = delete;
 	token_parser(token_parser&&) = delete;
 

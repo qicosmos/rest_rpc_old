@@ -81,7 +81,7 @@ struct messager
 
 TEST_CASE(rpc_qps, true)
 {
-	server s(9000, 1/*std::thread::hardware_concurrency()*/);
+	server s(9000, std::thread::hardware_concurrency());
 	s.register_handler("add", &add);;
 	s.run();
 	getchar();
