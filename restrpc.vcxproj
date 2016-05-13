@@ -185,6 +185,7 @@
     <ClInclude Include="test_router.hpp" />
     <ClInclude Include="token_parser.hpp" />
     <ClInclude Include="unit_test.hpp" />
+    <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

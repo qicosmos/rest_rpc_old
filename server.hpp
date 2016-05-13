@@ -49,7 +49,11 @@ private:
 		conn_.reset(new connection(io_service_pool_.get_io_service()));
 		acceptor_.async_accept(conn_->socket(), [this](boost::system::error_code ec)
 		{
-			if (!ec)
+			if (ec)
+			{
+				//todo log
+			}
+			else
 			{
 				conn_->start();
 			}

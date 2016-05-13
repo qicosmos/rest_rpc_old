@@ -22,4 +22,6 @@ enum result_code
 
 };
 
-static std::atomic<std::uint64_t> g_succeed_count(0);
+static std::atomic<std::uint64_t> g_succeed_count(0); //for test qps
+
+const int MAX_BUF_LEN = 8192;
