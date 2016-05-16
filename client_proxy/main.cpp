@@ -75,7 +75,7 @@ void test_async_client()
 				return;
 			}
 
-			client.async_call("add", [&client](std::string result, boost::system::error_code ec)
+			client.async_call("add", [&client](boost::system::error_code ec, std::string result)
 			{
 				if (ec)
 				{
@@ -98,6 +98,37 @@ void test_async_client()
 
 		});
 
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+void test_spawn_client()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		boost::asio::spawn(io_service, [&io_service] (boost::asio::yield_context yield)
+		{
+			DeSerializer dr;
+			client_proxy client(io_service);
+			client.async_connect("127.0.0.1", "9000", yield);
+			//auto str = client.make_json("fun1", p, 1);
+			//client.call(str);
+
+			std::string result = client.async_call("add", yield, 1,2);
+			dr.Parse(result);
+
+			response_msg<int> response = {};
+			dr.Deserialize(response);
+			if (response.code == result_code::OK)
+			{
+				std::cout << response.result << std::endl;
+			}
+		});
 		io_service.run();
 	}
 	catch (const std::exception& e)
@@ -134,5 +165,6 @@ int main()
 	//test_performance();
 	//test_client();
 	test_async_client();
+	test_spawn_client();
 	return 0;
 }
