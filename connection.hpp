@@ -33,7 +33,7 @@ private:
 			if (!ec)
 			{
 				const int body_len = *(int*)head_;
-				if (body_len > MAX_BUF_LEN)
+				if (body_len > 65536)
 				{
 					//log outof range
 

@@ -79,17 +79,23 @@ public:
 
 	void route(const char* text, std::size_t length, const std::function<void(const char*)>& callback = nullptr)
 	{
+		assert(callback);
 		token_parser parser;// = token_parser::get();
 		//std::unique_lock<std::mutex> unique_lock(mtx_);
 		parser.parse(text, length);
 
 		while (!parser.empty())
 		{
+			std::string result = "";
 			std::string func_name = parser.get<std::string>();
 
 			auto it = map_invokers_.find(func_name);
 			if (it == map_invokers_.end())
-				throw std::runtime_error("unknown function: " + func_name);
+			{
+				result = get_json(result_code::EXCEPTION, "unknown function: " + func_name);
+				callback(result.c_str());
+				return;
+			}
 
 			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
 			{
@@ -97,12 +103,8 @@ public:
 			}
 
 			//找到的function中，开始将字符串转换为函数实参并调用 
-			std::string result = "";
 			it->second(parser, result);
-			if (callback != nullptr)
-			{
-				callback(result.c_str());
-			}
+			callback(result.c_str());
 		}
 	}
 
