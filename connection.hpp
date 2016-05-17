@@ -59,9 +59,9 @@ private:
 			{
 				router& _router = router::get();
 				bool is_send_ok = false;
-				_router.route(data_, length, [this,&is_send_ok](const char* json) { is_send_ok = response(json); });
-				if(is_send_ok)
-					read_head();
+				_router.route(data_, length, [this,&is_send_ok](const char* json) { response(json); });
+				//if(is_send_ok)
+				//	read_head();
 			}
 			else
 			{
@@ -72,25 +72,24 @@ private:
 	}
 
 	//will be improved to async send in future.
-	bool response(const char* json_str)
+	void response(const char* json_str)
 	{
+		auto self(this->shared_from_this());
 		int len = strlen(json_str);
-
 		message_[0] = boost::asio::buffer(&len, 4);
 		message_[1] = boost::asio::buffer((char*)json_str, len);
-		boost::system::error_code ec;
-		boost::asio::write(socket_, message_, ec);
+		boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
+		{
+			if (!ec)
+			{
+				read_head();
+			}
+			else
+			{
+				//log
 
-		if (!ec)
-		{
-			//log
-			g_succeed_count++;
-			return true;
-		}
-		else
-		{
-			return false;
-		}
+			}
+		});
 	}
 
 	tcp::socket socket_;
