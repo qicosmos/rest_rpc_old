@@ -68,21 +68,22 @@ TEST_CASE(asio_test, false)
 
 struct messager
 {
-	void foo(int a)
+	std::string translate(const std::string& orignal)
 	{
-		std::cout << a << std::endl;
-	}
-
-	int fun(int a, int b)
-	{
-		return a + b;
+		std::string temp = orignal;
+		for (auto & c : temp) c = toupper(c);
+		return temp;
 	}
 };
 
 TEST_CASE(rpc_qps, true)
 {
+	messager m;
+
 	server s(9000, std::thread::hardware_concurrency());
 	s.register_handler("add", &add);;
+	s.register_handler("translate", &messager::translate, &m);;
+
 	s.run();
 	getchar();
 

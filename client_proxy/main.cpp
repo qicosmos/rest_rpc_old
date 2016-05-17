@@ -61,6 +61,7 @@ void test_client()
 	}
 }
 
+template<typename T>
 void handle_result(const char* result)
 {
 	DeSerializer dr;
@@ -69,7 +70,7 @@ void handle_result(const char* result)
 	doc.Parse(result);
 	if (doc["code"].GetInt() == result_code::OK)
 	{
-		response_msg<int> response = {};
+		response_msg<T> response = {};
 		dr.Deserialize(response);
 		std::cout << response.result << std::endl;
 	}
@@ -102,7 +103,7 @@ void test_async_client()
 					return;
 				}
 
-				handle_result(result.c_str());
+				handle_result<int>(result.c_str());
 			},1, 2);
 
 		});
@@ -128,7 +129,7 @@ void test_spawn_client()
 			//client.call(str);
 
 			std::string result = client.async_call("add", yield, 1,2);
-			handle_result(result.c_str());
+			handle_result<int>(result.c_str());
 		});
 		io_service.run();
 	}
@@ -161,10 +162,29 @@ void test_performance()
 	}
 }
 
+void test_translate()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.connect("127.0.0.1", "9000");
+		
+		std::string result = client.call("translate", "test");
+		handle_result<std::string>(result.c_str());
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main()
 {
 	//test_performance();
 	//test_client();
+	test_translate();
 	test_async_client();
 	test_spawn_client();
 	return 0;
