@@ -61,6 +61,25 @@ void test_client()
 	}
 }
 
+void handle_result(const char* result)
+{
+	DeSerializer dr;
+	dr.Parse(result);
+	Document& doc = dr.GetDocument();
+	doc.Parse(result);
+	if (doc["code"].GetInt() == result_code::OK)
+	{
+		response_msg<int> response = {};
+		dr.Deserialize(response);
+		std::cout << response.result << std::endl;
+	}
+	else
+	{
+		//maybe exception, output the exception message.
+		std::cout << doc["result"].GetString() << std::endl;
+	}
+}
+
 void test_async_client()
 {
 	try
@@ -83,18 +102,8 @@ void test_async_client()
 					return;
 				}
 
-				DeSerializer dr;
-				dr.Parse(result);
-
-				response_msg<int> response = {};
-				dr.Deserialize(response);
-				if (response.code == result_code::OK)
-				{
-					std::cout << response.result << std::endl;
-				}
-
-			},
-				1, 2);
+				handle_result(result.c_str());
+			},1, 2);
 
 		});
 
@@ -113,21 +122,13 @@ void test_spawn_client()
 		boost::asio::io_service io_service;
 		boost::asio::spawn(io_service, [&io_service] (boost::asio::yield_context yield)
 		{
-			DeSerializer dr;
 			client_proxy client(io_service);
 			client.async_connect("127.0.0.1", "9000", yield);
 			//auto str = client.make_json("fun1", p, 1);
 			//client.call(str);
 
 			std::string result = client.async_call("add", yield, 1,2);
-			dr.Parse(result);
-
-			response_msg<int> response = {};
-			dr.Deserialize(response);
-			if (response.code == result_code::OK)
-			{
-				std::cout << response.result << std::endl;
-			}
+			handle_result(result.c_str());
 		});
 		io_service.run();
 	}
