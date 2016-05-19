@@ -172,6 +172,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="base64.hpp" />
     <ClInclude Include="client_proxy.hpp" />
   </ItemGroup>
   <ItemGroup>

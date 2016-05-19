@@ -20,10 +20,6 @@ public:
 				put_str(it->value[i], wr, buf);
 			}
 		}
-		else if (it->value.IsString())
-		{
-			v_.push_back(it->value.GetString());
-		}
 		else
 		{
 			put_str(it->value, wr, buf);
@@ -82,6 +78,12 @@ private:
 
 	void put_str(Value& val, rapidjson::Writer<StringBuffer>& wr, StringBuffer& buf)
 	{
+		if (val.IsString())
+		{
+			v_.push_back(val.GetString());
+			return;
+		}
+
 		val.Accept(wr);
 		const char* js = buf.GetString();
 		const int len = strlen(js);

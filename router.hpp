@@ -99,6 +99,8 @@ public:
 
 			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
 			{
+				result = get_json(result_code::EXCEPTION, std::string("parameter number is not match"));
+				callback(result.c_str());
 				break;
 			}
 

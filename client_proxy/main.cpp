@@ -1,8 +1,11 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 #include <kapok/Kapok.hpp>
 #include "client_proxy.hpp"
+#include "base64.hpp"
 
 
 //result要么是基本类型，要么是结构体；当请求成功时，code为0, 如果请求是无返回类型的，则result为空; 
@@ -180,10 +183,36 @@ void test_translate()
 	}
 }
 
+void test_upload()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.connect("127.0.0.1", "9000");
+
+		std::ifstream file("client_proxy.sln", ios::binary);
+		if (!file.is_open())
+			return;
+
+		std::stringstream ss;
+		ss << file.rdbuf();
+		auto content = base64_encode(ss.str().c_str(), ss.str().length());
+		std::string result = client.call("upload", "test", content);
+		handle_result<bool>(result.c_str());
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main()
 {
 	//test_performance();
 	//test_client();
+	test_upload();
 	test_translate();
 	test_async_client();
 	test_spawn_client();

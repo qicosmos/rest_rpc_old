@@ -1,11 +1,13 @@
 #include <iostream>
 #include <string>
 #include <tuple>
+#include <fstream>
 #include <kapok/Kapok.hpp>
 #include <boost/timer.hpp>
 #include "router.hpp"
 #include "test_router.hpp"
 #include "server.hpp"
+#include "base64.hpp"
 
 struct person
 {
@@ -74,6 +76,18 @@ struct messager
 		for (auto & c : temp) c = toupper(c);
 		return temp;
 	}
+
+	bool upload(const std::string& filename, const std::string& content)
+	{
+		std::ofstream file(filename, ios::binary);
+		if (!file.is_open())
+			return false;
+
+		auto decode_str = base64_decode(content);
+		file << decode_str;
+		file.close();
+		return true;
+	}
 };
 
 TEST_CASE(rpc_qps, true)
@@ -82,7 +96,8 @@ TEST_CASE(rpc_qps, true)
 
 	server s(9000, std::thread::hardware_concurrency());
 	s.register_handler("add", &add);;
-	s.register_handler("translate", &messager::translate, &m);;
+	s.register_handler("translate", &messager::translate, &m);
+	s.register_handler("upload", &messager::upload, &m);
 
 	s.run();
 	getchar();
