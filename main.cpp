@@ -8,6 +8,7 @@
 #include "test_router.hpp"
 #include "server.hpp"
 #include "base64.hpp"
+#include "client_proxy/client_proxy.hpp"
 
 struct person
 {
@@ -100,6 +101,12 @@ TEST_CASE(rpc_qps, true)
 	s.register_handler("upload", &messager::upload, &m);
 
 	s.run();
+
+	//client
+	//boost::asio::io_service ios;
+	//client_proxy client(ios);
+	//client.connect("xxx.xxx...", "9000");
+	//client.call(...);
 	getchar();
 
 	std::uint64_t last_succeed_count = 0;
