@@ -2,8 +2,10 @@
 #include <functional>
 #include <chrono>
 #include <thread>
+#include "common.h"
+#include <kapok/Kapok.hpp>
 
-bool retry(const std::function<bool()>& func, size_t max_attempts, size_t retry_interval = 0) 
+static bool retry(const std::function<bool()>& func, size_t max_attempts, size_t retry_interval = 0) 
 {
 	for (size_t i = 0; i < max_attempts; i++)
 	{
@@ -15,5 +17,15 @@ bool retry(const std::function<bool()>& func, size_t max_attempts, size_t retry_
 	}
 	
 	return false;
+}
+
+template<typename T>
+static std::string get_json(result_code code, const T& r)
+{
+	response_msg<T> msg = { code, r };
+
+	Serializer sr;
+	sr.Serialize(msg);
+	return sr.GetString();
 }
 

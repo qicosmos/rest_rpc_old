@@ -8,6 +8,7 @@
 #include "token_parser.hpp"
 #include "function_traits.hpp"
 #include "common.h"
+#include "utils.hpp"
 
 class invoker_function
 {
@@ -115,16 +116,6 @@ private:
 	
 	router(const router&) = delete;
 	router(router&&) = delete;
-
-	template<typename T>
-	static std::string get_json(result_code code, const T& r)
-	{
-		response_msg<T> msg = { code, r };
-
-		Serializer sr;
-		sr.Serialize(msg);
-		return sr.GetString();
-	}
 
 	template<typename F, size_t... I, typename ... Args>
 	static auto call_helper(const F& f, const std::index_sequence<I...>&, const std::tuple<Args...>& tup)
