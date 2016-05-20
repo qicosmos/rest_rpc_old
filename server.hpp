@@ -9,7 +9,7 @@ using boost::asio::ip::tcp;
 class server : private boost::noncopyable
 {
 public:
-	server(short port, size_t timeout_milli, size_t size) : io_service_pool_(size), timeout_milli_(timeout_milli),
+	server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 		acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 	{
 		do_accept();

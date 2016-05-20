@@ -102,6 +102,9 @@ public:
 
 	void reset_timer()
 	{
+		if (timeout_milli_ == 0)
+			return;
+
 		auto self(this->shared_from_this());
 		timer_.expires_from_now(boost::posix_time::milliseconds(timeout_milli_));
 		timer_.async_wait([this, self](const boost::system::error_code& ec)
@@ -123,15 +126,18 @@ public:
 		});
 	}
 
+	void cancel_timer()
+	{
+		if (timeout_milli_ == 0)
+			return;
+
+		timer_.cancel();
+	}
+
 	void close()
 	{
 		boost::system::error_code ignored_ec;
 		socket_.close(ignored_ec);
-	}
-
-	void cancel_timer()
-	{
-		timer_.cancel();
 	}
 
 	tcp::socket socket_;

@@ -50,7 +50,7 @@ int fun1(const person& ps, int a)
 
 TEST_CASE(asio_test_server, false)
 {
-	server s(9000, 15000, std::thread::hardware_concurrency());
+	server s(9000, std::thread::hardware_concurrency());
 	s.register_handler("fun1", &fun1);
 	s.register_handler("fun", &fun);
 	s.register_handler("add", &add);
@@ -64,7 +64,7 @@ TEST_CASE(asio_test_server, false)
 
 TEST_CASE(asio_test, false)
 {
-	server s(9000, 15000, std::thread::hardware_concurrency());
+	server s(9000, std::thread::hardware_concurrency());
 	s.run();
 	getchar();
 }
@@ -95,7 +95,7 @@ TEST_CASE(rpc_qps, true)
 {
 	messager m;
 
-	server s(9000, 15000, std::thread::hardware_concurrency());
+	server s(9000, std::thread::hardware_concurrency(), 15000); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &add);;
 	s.register_handler("translate", &messager::translate, &m);
 	s.register_handler("upload", &messager::upload, &m);
