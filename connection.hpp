@@ -2,6 +2,7 @@
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include "common.h"
 
 using boost::asio::ip::tcp;
@@ -9,9 +10,9 @@ using boost::asio::ip::tcp;
 class connection : public std::enable_shared_from_this<connection>, private boost::noncopyable
 {
 public:
-	connection(boost::asio::io_service& io_service) : socket_(io_service), message_{ boost::asio::buffer(head_), boost::asio::buffer(data_) }
+	connection(boost::asio::io_service& io_service, std::size_t timeout_milli) : socket_(io_service), message_{ boost::asio::buffer(head_),
+		boost::asio::buffer(data_) }, timer_(io_service), timeout_milli_(timeout_milli)
 	{
-		
 	}
 
 	void start()
@@ -24,12 +25,18 @@ public:
 		return socket_;
 	}
 
-private:
 	void read_head()
 	{
+		reset_timer();
 		auto self(this->shared_from_this());
 		boost::asio::async_read(socket_, boost::asio::buffer(head_), [this, self](boost::system::error_code ec, std::size_t length)
 		{
+			if (!socket_.is_open())
+			{
+				cancel_timer();
+				return;
+			}
+
 			if (!ec)
 			{
 				const int body_len = *(int*)head_;
@@ -46,6 +53,7 @@ private:
 			else
 			{
 				//log
+				cancel_timer();
 			}
 		});
 	}
@@ -55,23 +63,23 @@ private:
 		auto self(this->shared_from_this());
 		boost::asio::async_read(socket_, boost::asio::buffer(data_, size), [this, self](boost::system::error_code ec, std::size_t length)
 		{
+			cancel_timer();
+
+			if (!socket_.is_open())
+				return;
+
 			if (!ec)
 			{
 				router& _router = router::get();
-				bool is_send_ok = false;
-				_router.route(data_, length, [this,&is_send_ok](const char* json) { response(json); });
-				//if(is_send_ok)
-				//	read_head();
+				_router.route(data_, length, [this](const char* json) { response(json); });
 			}
 			else
 			{
 				//log
-				
 			}
 		});
 	}
 
-	//will be improved to async send in future.
 	void response(const char* json_str)
 	{
 		auto self(this->shared_from_this());
@@ -92,10 +100,45 @@ private:
 		});
 	}
 
+	void reset_timer()
+	{
+		auto self(this->shared_from_this());
+		timer_.expires_from_now(boost::posix_time::milliseconds(timeout_milli_));
+		timer_.async_wait([this, self](const boost::system::error_code& ec)
+		{
+			if (!socket_.is_open())
+			{
+				return;
+			}
+
+			if (ec)
+			{
+				//log
+				return;
+			}
+
+			std::cout << "timeout" << std::endl;
+
+			close();
+		});
+	}
+
+	void close()
+	{
+		boost::system::error_code ignored_ec;
+		socket_.close(ignored_ec);
+	}
+
+	void cancel_timer()
+	{
+		timer_.cancel();
+	}
+
 	tcp::socket socket_;
 	char head_[4];
 	char data_[MAX_BUF_LEN];
 	std::array<boost::asio::mutable_buffer, 2> message_;
-	bool is_send_ok_ = false;
+	boost::asio::deadline_timer timer_;
+	std::size_t timeout_milli_;
 };
 

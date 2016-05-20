@@ -9,7 +9,7 @@ using boost::asio::ip::tcp;
 class server : private boost::noncopyable
 {
 public:
-	server(short port, size_t size) : io_service_pool_(size),
+	server(short port, size_t timeout_milli, size_t size) : io_service_pool_(size), timeout_milli_(timeout_milli),
 		acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 	{
 		do_accept();
@@ -46,7 +46,7 @@ public:
 private:
 	void do_accept()
 	{
-		conn_.reset(new connection(io_service_pool_.get_io_service()));
+		conn_.reset(new connection(io_service_pool_.get_io_service(), timeout_milli_));
 		acceptor_.async_accept(conn_->socket(), [this](boost::system::error_code ec)
 		{
 			if (ec)
@@ -66,5 +66,6 @@ private:
 	tcp::acceptor acceptor_;
 	std::shared_ptr<connection> conn_;
 	std::shared_ptr<std::thread> thd_;
+	std::size_t timeout_milli_;
 };
 
