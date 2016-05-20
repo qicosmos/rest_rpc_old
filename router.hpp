@@ -34,24 +34,6 @@ private:
 	std::size_t param_size_;
 };
 
-namespace detail
-{
-	//template<int...>
-	//struct index_sequence {};
-
-	//template<int N, int... Indexes>
-	//struct make_index_sequence : make_index_sequence<N - 1, N - 1, Indexes...> {};
-
-	//template<int... indexes>
-	//struct make_index_sequence<0, indexes...>
-	//{
-	//	typedef index_sequence<indexes...> type;
-	//};
-	
-	//C++14µÄÊµÏÖ
-	
-}
-
 class router : boost::noncopyable
 {
 public:

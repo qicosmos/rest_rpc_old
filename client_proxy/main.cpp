@@ -175,6 +175,7 @@ void test_translate()
 		
 		std::string result = client.call("translate", "test");
 		handle_result<std::string>(result.c_str());
+		//std::this_thread::sleep_for(std::chrono::seconds(20));
 		io_service.run();
 	}
 	catch (const std::exception& e)
@@ -212,7 +213,7 @@ int main()
 {
 	//test_performance();
 	//test_client();
-	test_upload();
+	//test_upload();
 	test_translate();
 	test_async_client();
 	test_spawn_client();
