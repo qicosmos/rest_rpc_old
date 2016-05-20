@@ -168,26 +168,6 @@ public:
 	}
 
 	template<typename HandlerT>
-	void async_connect_impl(const std::string& addr, const std::string& port, HandlerT handler)
-	{
-		tcp::resolver resolver(io_service_);
-		tcp::resolver::query query(tcp::v4(), addr, port);
-		boost::system::error_code ec;
-		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
-		if (ec)
-		{
-			handler(ec);
-			return;
-		}
-
-		boost::asio::async_connect(socket_, endpoint_iterator,
-			[handler](boost::system::error_code ec, tcp::resolver::iterator) mutable
-		{
-			handler(ec);
-		});
-	}
-
-	template<typename HandlerT>
 	inline BOOST_ASIO_INITFN_RESULT_TYPE(HandlerT, void(boost::system::error_code))
 		async_connect(const std::string& addr, const std::string& port, int timeout, HandlerT handler)
 	{
@@ -244,6 +224,25 @@ private:
 		});
 	}
 
+	template<typename HandlerT>
+	void async_connect_impl(const std::string& addr, const std::string& port, HandlerT handler)
+	{
+		tcp::resolver resolver(io_service_);
+		tcp::resolver::query query(tcp::v4(), addr, port);
+		boost::system::error_code ec;
+		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+		if (ec)
+		{
+			handler(ec);
+			return;
+		}
+
+		boost::asio::async_connect(socket_, endpoint_iterator,
+			[handler](boost::system::error_code ec, tcp::resolver::iterator) mutable
+		{
+			handler(ec);
+		});
+	}
 
 	template<typename T>
 	std::string make_request_json(const char* handler_name, T&& t)
