@@ -177,10 +177,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base64.hpp" />
+    <ClInclude Include="bin_escape.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="connection.hpp" />
     <ClInclude Include="function_traits.hpp" />
     <ClInclude Include="io_service_pool.hpp" />
+    <ClInclude Include="json_hex16.h" />
     <ClInclude Include="router.hpp" />
     <ClInclude Include="server.hpp" />
     <ClInclude Include="test_router.hpp" />
