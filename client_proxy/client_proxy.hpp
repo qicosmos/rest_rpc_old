@@ -113,13 +113,6 @@ public:
 		return init.result.get();
 	}
 
-	template<typename HandlerT, typename... Args>
-	void async_call_impl(const char* handler_name, HandlerT handler, Args&&... args)
-	{
-		auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
-		async_call(json_str, handler);
-	}
-
 	void connect(const std::string& addr, const std::string& port)
 	{
 		tcp::resolver resolver(io_service_);
@@ -209,6 +202,14 @@ public:
 		return init.result.get();
 	}
 
+private:
+	template<typename HandlerT, typename... Args>
+	void async_call_impl(const char* handler_name, HandlerT handler, Args&&... args)
+	{
+		auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
+		async_call(json_str, handler);
+	}
+
 	template<typename HandlerT>
 	void async_connect_impl(const std::string& addr, const std::string& port, int timeout, HandlerT handler)
 	{
@@ -235,14 +236,14 @@ public:
 		});
 
 		boost::asio::async_connect(socket_, endpoint_iterator,
-			[handler,timer](boost::system::error_code ec, tcp::resolver::iterator) mutable
+			[handler, timer](boost::system::error_code ec, tcp::resolver::iterator) mutable
 		{
 			boost::system::error_code ignored_ec;
 			timer->cancel(ignored_ec);
 			handler(ec);
 		});
 	}
-private:
+
 
 	template<typename T>
 	std::string make_request_json(const char* handler_name, T&& t)
