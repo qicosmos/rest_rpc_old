@@ -90,7 +90,7 @@ void test_async_client()
 	{
 		boost::asio::io_service io_service;
 		client_proxy client(io_service);
-		client.async_connect("127.0.0.1", "9000", [&client] (boost::system::error_code& ec)
+		client.async_connect("baidu.com", "9000", 5*1000, [&client] (boost::system::error_code& ec)
 		{
 			if (ec)
 			{
@@ -189,8 +189,8 @@ void test_upload()
 	{
 		boost::asio::io_service io_service;
 		client_proxy client(io_service);
-		//client.connect("127.0.0.1", "9000");
-		client.connect("baidu.com", "12345", 5*1000);
+		client.connect("127.0.0.1", "9000");
+		//client.connect("baidu.com", "12345", 5*1000);
 
 		std::ifstream file("client_proxy.sln", ios::binary);
 		if (!file.is_open())
@@ -213,9 +213,9 @@ int main()
 {
 	//test_performance();
 	//test_client();
-	test_upload();
+// 	test_upload();
 // 	test_translate();
-// 	test_async_client();
+ 	test_async_client();
 // 	test_spawn_client();
 	return 0;
 }

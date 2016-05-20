@@ -193,6 +193,55 @@ public:
 			handler(ec);
 		});
 	}
+
+	template<typename HandlerT>
+	inline BOOST_ASIO_INITFN_RESULT_TYPE(HandlerT, void(boost::system::error_code))
+		async_connect(const std::string& addr, const std::string& port, int timeout, HandlerT handler)
+	{
+		boost::asio::detail::async_result_init<
+			HandlerT, void(boost::system::error_code)> init(
+				BOOST_ASIO_MOVE_CAST(HandlerT)(handler));
+
+		using namespace boost::asio;
+		async_connect_impl<
+			BOOST_ASIO_HANDLER_TYPE(HandlerT, void(boost::system::error_code))
+		>(addr, port, timeout, init.handler);
+		return init.result.get();
+	}
+
+	template<typename HandlerT>
+	void async_connect_impl(const std::string& addr, const std::string& port, int timeout, HandlerT handler)
+	{
+		tcp::resolver resolver(io_service_);
+		tcp::resolver::query query(tcp::v4(), addr, port);
+		boost::system::error_code ec;
+		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+		if (ec)
+		{
+			handler(ec);
+			return;
+		}
+
+		auto timer = boost::make_shared<boost::asio::deadline_timer>(io_service_);
+		timer->expires_from_now(boost::posix_time::millisec(timeout));
+		timer->async_wait([this](boost::system::error_code ec)
+		{
+			if (ec)
+			{
+				//TODO: log
+				return;
+			}
+			socket_.close(ec);
+		});
+
+		boost::asio::async_connect(socket_, endpoint_iterator,
+			[handler,timer](boost::system::error_code ec, tcp::resolver::iterator) mutable
+		{
+			boost::system::error_code ignored_ec;
+			timer->cancel(ignored_ec);
+			handler(ec);
+		});
+	}
 private:
 
 	template<typename T>
