@@ -51,6 +51,8 @@ private:
 };
 #include <boost/asio/unyield.hpp>
 
+#include <boost/lambda/bind.hpp>
+#include <boost/lambda/lambda.hpp>
 
 class client_proxy : private boost::noncopyable
 {
@@ -125,6 +127,36 @@ public:
 		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 
 		boost::asio::connect(socket_, endpoint_iterator);
+	}
+
+	void connect(const std::string& addr, const std::string& port, int timeout)
+	{
+		tcp::resolver::query query(addr, port);
+		tcp::resolver::iterator iter = tcp::resolver(io_service_).resolve(query);
+
+		boost::system::error_code ec = boost::asio::error::would_block;
+		socket_.async_connect(iter->endpoint(), boost::lambda::var(ec) = boost::lambda::_1);
+
+		boost::asio::deadline_timer timer(io_service_);
+
+		timer.expires_from_now(boost::posix_time::millisec(timeout));
+		timer.async_wait([this](boost::system::error_code ec)
+		{
+			if (ec)
+			{
+				//TODO: log
+				return;
+			}
+			socket_.close(ec);
+		});
+
+		// Block until the asynchronous operation has completed.
+		do io_service_.run_one(); while (ec == boost::asio::error::would_block);
+
+		if (ec || !socket_.is_open())
+			throw boost::system::system_error(ec ? ec : boost::asio::error::operation_aborted);
+
+		timer.cancel(ec);
 	}
 
 	template<typename HandlerT>
