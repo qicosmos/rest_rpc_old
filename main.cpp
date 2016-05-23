@@ -95,7 +95,7 @@ TEST_CASE(rpc_qps, true)
 {
 	messager m;
 
-	server s(9000, std::thread::hardware_concurrency(), 15000); //if you fill the last param, the server will remove timeout connections. default never timeout.
+	server s(9000, std::thread::hardware_concurrency()); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &add);;
 	s.register_handler("translate", &messager::translate, &m);
 	s.register_handler("upload", &messager::upload, &m);

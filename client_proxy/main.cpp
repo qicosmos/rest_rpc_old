@@ -210,11 +210,48 @@ void test_upload()
 	}
 }
 
+void test_read()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.connect("127.0.0.1", "9000");
+		auto str = client.call("translate", "test");
+		std::cout << str << std::endl;
+		std::thread thd([&io_service] {io_service.run(); });
+
+		//wait for message from server.
+		bool ok = true;
+		while (ok)
+		{
+			client.recieve([&ok](char* data, size_t len)
+			{
+				if (data == nullptr)
+				{
+					ok = false;
+					return;
+				}
+
+				std::cout << data << std::endl;
+			});
+		}
+
+		thd.join();
+//		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main()
 {
 	//test_performance();
 	//test_client();
 	//test_upload();
+	test_read();
 	test_translate();
 	test_async_client();
 	test_spawn_client();
