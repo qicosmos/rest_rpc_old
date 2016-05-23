@@ -182,18 +182,19 @@ public:
 		return init.result.get();
 	}
 
-	void recieve(const std::function<void(char*, size_t)>& callback)
+	template<typename Buffer>
+	size_t recieve(Buffer& buf)
 	{
 		boost::system::error_code ec;
-		size_t length = boost::asio::read(socket_, boost::asio::buffer(recv_data_, 12), ec);
+		size_t length = boost::asio::read(socket_, boost::asio::buffer(buf), ec);
 		if (ec)
 		{
 			//log
-			callback(nullptr, 0);
+			return 0;
 		}
 		else
 		{
-			callback(recv_data_, length);
+			return length;
 		}
 	}
 

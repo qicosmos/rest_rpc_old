@@ -222,19 +222,14 @@ void test_read()
 		std::thread thd([&io_service] {io_service.run(); });
 
 		//wait for message from server.
+		char buf[13] = {};
 		bool ok = true;
 		while (ok)
 		{
-			client.recieve([&ok](char* data, size_t len)
-			{
-				if (data == nullptr)
-				{
-					ok = false;
-					return;
-				}
-
-				std::cout << data << std::endl;
-			});
+			size_t length = client.recieve(buf);
+			
+			if (length != 0)
+				std::cout << buf << std::endl;
 		}
 
 		thd.join();
