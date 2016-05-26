@@ -106,9 +106,10 @@ private:
 	}
 
 	template<typename F, typename ... Args>
-	static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, std::string&, const std::tuple<Args...>& tp)
+	static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type call(const F& f, std::string& result, const std::tuple<Args...>& tp)
 	{
 		call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
+		result = get_json(result_code::OK, 0);
 	}
 
 	template<typename F, typename ... Args>
@@ -126,9 +127,10 @@ private:
 
 	template<typename F, typename Self, typename ... Args>
 	static typename std::enable_if<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>::type
-		call_member(const F& f, Self* self, std::string&, const std::tuple<Args...>& tp)
+		call_member(const F& f, Self* self, std::string& result, const std::tuple<Args...>& tp)
 	{
 		call_member_helper(f, self, typename std::make_index_sequence<sizeof... (Args)>{}, tp);
+		result = get_json(result_code::OK, 0);
 	}
 
 	template<typename F, typename Self, typename ... Args>
