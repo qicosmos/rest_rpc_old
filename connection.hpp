@@ -40,14 +40,20 @@ public:
 			if (!ec)
 			{
 				const int body_len = *(int*)head_;
-				if (body_len > 65536)
+				if (body_len > 0 && body_len< 65536)
 				{
-					//log outof range
+					read_body(body_len);
+					return;
+				}
 
+				if (body_len == 0) //nobody, just head.
+				{
+					read_head();
 				}
 				else
 				{
-					read_body(body_len);
+					//log //invalid body len
+					cancel_timer();
 				}
 			}
 			else
