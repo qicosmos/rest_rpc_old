@@ -40,7 +40,7 @@ public:
 			if (!ec)
 			{
 				const int body_len = *(int*)head_;
-				if (body_len > 0 && body_len< 65536)
+				if (body_len > 0 && body_len< MAX_BUF_LEN)
 				{
 					read_body(body_len);
 					return;
