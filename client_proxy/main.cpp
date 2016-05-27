@@ -222,18 +222,77 @@ void test_read()
 		std::thread thd([&io_service] {io_service.run(); });
 
 		//wait for message from server.
-		char buf[13] = {};
+
 		bool ok = true;
 		while (ok)
 		{
-			size_t length = client.recieve(buf);
+			size_t length = client.recieve();
 			
 			if (length != 0)
-				std::cout << buf << std::endl;
+				std::cout << client.recieve_data() << std::endl;
 		}
 
 		thd.join();
 //		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+void test_sub()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.connect("127.0.0.1", "9000");
+		auto json_str = client.sub("translate");
+		std::cout << json_str << std::endl;
+		std::thread thd([&io_service] {io_service.run(); });
+
+		//wait for message from server.
+		bool ok = true;
+		while (ok)
+		{
+			size_t length = client.recieve();
+			
+			ok = length > 0;
+			if (ok)
+				std::cout << client.recieve_data() << std::endl;
+		}
+
+		thd.join();
+		std::string str;
+		std::cin >> str;
+		/*std::cout << str << std::endl;
+		io_service.run();*/
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+void test_pub()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.connect("127.0.0.1", "9000");
+		std::thread thd([&io_service] {io_service.run(); });
+		while (true)
+		{
+			client.pub("translate", "test");
+			std::string str;
+			std::cin >> str;
+			if (str != "pub")
+				break;
+		}
+
+		//io_service.run();
 	}
 	catch (const std::exception& e)
 	{
@@ -246,9 +305,22 @@ int main()
 	//test_performance();
 	//test_client();
 	//test_upload();
-	test_read();
+	//while (true)
+	//{
+	//	std::string str;
+	//	std::cin >> str;
+	//	if (str == "pub")
+	//		test_pub();
+	//	else if (str == "sub")
+	//		test_sub();
+	//	else
+	//		break;
+	//}
+	
+	//test_sub();
+	//test_read();
 	test_translate();
-	test_async_client();
-	test_spawn_client();
+	//test_async_client();
+	//test_spawn_client();
 	return 0;
 }

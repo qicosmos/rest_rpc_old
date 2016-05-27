@@ -71,12 +71,10 @@ public:
 	std::string call(const std::string& json_str)
 	{
 		int len = json_str.length();
-
-		std::vector<boost::asio::const_buffer> message;
-		message.push_back(boost::asio::buffer(&len, 4));
-		message.push_back(boost::asio::buffer(json_str));
-		socket_.send(message);
-		message.clear();
+		bool r = send(json_str);
+		if (!r)
+			throw std::runtime_error("call failed");
+		
 		socket_.receive(boost::asio::buffer(&len, 4));
 		std::string recv_json;
 		recv_json.resize(len);
@@ -96,6 +94,18 @@ public:
 	{
 		auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
 		return call(json_str);
+	}
+
+	std::string sub(const std::string& topic)
+	{
+		return call("sub_timax", topic);
+	}
+
+	template<typename... Args>
+	void pub(const char* handler_name, Args&&... args)
+	{
+		auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
+		send(json_str);
 	}
 
 	template<typename HandlerT, typename... Args>
@@ -182,20 +192,34 @@ public:
 		return init.result.get();
 	}
 
-	template<typename Buffer>
-	size_t recieve(Buffer& buf)
+	size_t recieve()
 	{
 		boost::system::error_code ec;
-		size_t length = boost::asio::read(socket_, boost::asio::buffer(buf), ec);
+		boost::asio::read(socket_, boost::asio::buffer(head_), ec);
 		if (ec)
 		{
 			//log
 			return 0;
 		}
-		else
+		
+		const int body_len = *(int*)head_;
+		if (body_len <= 0 || body_len>max_length)
+			return 0;
+
+		boost::asio::read(socket_, boost::asio::buffer(recv_data_, body_len), ec);
+		if (ec)
 		{
-			return length;
+			//log
+			return 0;
 		}
+
+
+		return body_len;
+	}
+
+	const char* recieve_data() const
+	{
+		return recv_data_;
 	}
 
 private:
@@ -279,13 +303,33 @@ private:
 		return make_request_json(handler_name, tp);
 	}
 
+	bool send(const std::string& json_str)
+	{
+		int len = json_str.length();
+
+		std::vector<boost::asio::const_buffer> message;
+		message.push_back(boost::asio::buffer(&len, 4));
+		message.push_back(boost::asio::buffer(json_str));
+		boost::system::error_code ec;
+		boost::asio::write(socket_, message, ec);
+		if (ec)
+		{
+			//log
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
 private:
 	Serializer sr_;
 
 	boost::asio::io_service& io_service_;
 	tcp::socket socket_;
 	enum { max_length = 8192 };
-	char data_[max_length];
+	char head_[4];
 	char recv_data_[max_length];
 };
 

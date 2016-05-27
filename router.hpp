@@ -3,12 +3,15 @@
 #include <map>
 #include <string>
 #include <mutex>
+#include <memory>
 #include <boost/lexical_cast.hpp>
 #include <boost/noncopyable.hpp>
 #include "token_parser.hpp"
 #include "function_traits.hpp"
 #include "common.h"
 #include "utils.hpp"
+
+class connection;
 
 class invoker_function
 {
@@ -60,11 +63,15 @@ public:
 		this->map_invokers_.erase(name);
 	}
 
-	void route(const char* text, std::size_t length, const std::function<void(const char*)>& callback = nullptr)
+	void set_callback(const std::function<void(const std::string&, const char*, std::shared_ptr<connection>, bool)>& callback)
 	{
-		assert(callback);
-		token_parser parser;// = token_parser::get();
-		//std::unique_lock<std::mutex> unique_lock(mtx_);
+		callback_to_server_ = callback;
+	}
+
+	template<typename T>
+	void route(const char* text, std::size_t length, T conn)
+	{
+		token_parser parser;
 		parser.parse(text, length);
 
 		while (!parser.empty())
@@ -76,20 +83,22 @@ public:
 			if (it == map_invokers_.end())
 			{
 				result = get_json(result_code::EXCEPTION, "unknown function: " + func_name);
-				callback(result.c_str());
+				callback_to_server_(func_name, result.c_str(), conn, true);
 				return;
 			}
 
 			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
 			{
 				result = get_json(result_code::EXCEPTION, std::string("parameter number is not match"));
-				callback(result.c_str());
+				callback_to_server_(func_name, result.c_str(), conn, true);
 				break;
 			}
 
 			//找到的function中，开始将字符串转换为函数实参并调用 
 			it->second(parser, result);
-			callback(result.c_str());
+			//response(result.c_str()); //callback to connection
+			if(callback_to_server_)
+				callback_to_server_(func_name, result.c_str(), conn, false);
 		}
 	}
 
@@ -157,6 +166,10 @@ private:
 				invoker<Function, N + 1, M>::apply(func, parser, result,
 					std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
 			}
+			catch (std::invalid_argument& e)
+			{
+				result = get_json(result_code::ARGUMENT_EXCEPTION, e.what());
+			}
 			catch (std::exception& e)
 			{
 				result = get_json(result_code::EXCEPTION, e.what());
@@ -171,6 +184,10 @@ private:
 			try
 			{
 				invoker<Function, N + 1, M>::apply_member(func, self, parser, result, std::tuple_cat(args, std::make_tuple(parser.get<arg_type>())));
+			}
+			catch (std::invalid_argument& e)
+			{
+				result = get_json(result_code::ARGUMENT_EXCEPTION, e.what());
 			}
 			catch (const std::exception& e)
 			{
@@ -212,6 +229,6 @@ private:
 	}
 
 	std::map<std::string, invoker_function> map_invokers_;
-	std::mutex mtx_;
+	std::function<void(const std::string&, const char*, std::shared_ptr<connection>, bool)> callback_to_server_;
 };
 

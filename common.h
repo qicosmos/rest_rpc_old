@@ -19,7 +19,7 @@ enum result_code
 	OK = 0,
 	FAIL = 1,
 	EXCEPTION = 2,
-
+	ARGUMENT_EXCEPTION = 3
 };
 
 static std::atomic<std::uint64_t> g_succeed_count(0); //for test qps

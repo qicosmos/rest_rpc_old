@@ -77,7 +77,7 @@ public:
 			if (!ec)
 			{
 				router& _router = router::get();
-				_router.route(data_, length, [this](const char* json) { response(json); });
+				_router.route(data_, length, self);
 			}
 			else
 			{
@@ -86,6 +86,7 @@ public:
 		});
 	}
 
+	//add timeout later
 	void response(const char* json_str)
 	{
 		auto self(this->shared_from_this());
