@@ -82,14 +82,14 @@ public:
 			auto it = map_invokers_.find(func_name);
 			if (it == map_invokers_.end())
 			{
-				result = get_json(result_code::EXCEPTION, "unknown function: " + func_name);
+				result = get_json(result_code::ARGUMENT_EXCEPTION, "unknown function: " + func_name);
 				callback_to_server_(func_name, result.c_str(), conn, true);
 				return;
 			}
 
 			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
 			{
-				result = get_json(result_code::EXCEPTION, std::string("parameter number is not match"));
+				result = get_json(result_code::ARGUMENT_EXCEPTION, std::string("parameter number is not match"));
 				callback_to_server_(func_name, result.c_str(), conn, true);
 				break;
 			}
