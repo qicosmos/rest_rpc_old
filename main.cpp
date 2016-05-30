@@ -9,6 +9,7 @@
 #include "server.hpp"
 #include "base64.hpp"
 #include "client_proxy/client_proxy.hpp"
+#include "log.hpp"
 
 struct person
 {

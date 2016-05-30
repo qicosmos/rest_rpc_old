@@ -1,3 +1,6 @@
 [submodule "Kapok"]
 	path = Kapok
 	url = https://github.com/qicosmos/Kapok.git
+[submodule "spdlog"]
+	path = spdlog
+	url = https://github.com/gabime/spdlog.git
