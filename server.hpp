@@ -15,7 +15,7 @@ public:
 		acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 	{
 #ifdef PUB_SUB
-		register_handler("sub_timax", &server::sub, this);
+		register_handler(SUB_TOPIC, &server::sub, this);
 #endif
 		router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 		do_accept();
@@ -123,11 +123,11 @@ private:
 			return;
 		}
 
-		if (topic == "sub_timax")
+		if (topic == SUB_TOPIC)
 		{
 			rapidjson::Document doc;
 			doc.Parse(result);
-			auto handler_name = doc["result"].GetString();
+			auto handler_name = doc[RESULT].GetString();
 			std::weak_ptr<connection> wp(conn);
 			conn_map_.emplace(handler_name, wp);
 			conn->response(result);

@@ -91,7 +91,7 @@ public:
 	{
 		auto self(this->shared_from_this());
 		int len = strlen(json_str);
-		message_[0] = boost::asio::buffer(&len, 4);
+		message_[0] = boost::asio::buffer(&len, HEAD_LEN);
 		message_[1] = boost::asio::buffer((char*)json_str, len);
 		boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
 		{
@@ -147,7 +147,7 @@ public:
 	}
 
 	tcp::socket socket_;
-	char head_[4];
+	char head_[HEAD_LEN];
 	char data_[MAX_BUF_LEN];
 	std::array<boost::asio::mutable_buffer, 2> message_;
 	boost::asio::deadline_timer timer_;
