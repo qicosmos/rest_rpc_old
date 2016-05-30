@@ -52,13 +52,13 @@ public:
 				}
 				else
 				{
-					//log //invalid body len
+					SPD_LOG_ERROR("invalid body len {}", body_len);
 					cancel_timer();
 				}
 			}
 			else
 			{
-				//log
+				SPD_LOG_INFO(ec.message().c_str());
 				cancel_timer();
 			}
 		});
@@ -81,7 +81,7 @@ public:
 			}
 			else
 			{
-				//log
+				SPD_LOG_INFO(ec.message().c_str());
 			}
 		});
 	}
@@ -101,8 +101,7 @@ public:
 			}
 			else
 			{
-				//log
-
+				SPD_LOG_INFO(ec.message().c_str());
 			}
 		});
 	}
@@ -123,11 +122,11 @@ public:
 
 			if (ec)
 			{
-				//log
+				SPD_LOG_INFO(ec.message().c_str());
 				return;
 			}
 
-			std::cout << "timeout" << std::endl;
+			SPD_LOG_INFO("connection timeout");
 
 			close();
 		});

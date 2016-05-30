@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cstdint>
 #include <kapok/Kapok.hpp>
+#include "log.hpp"
 
 //result要么是基本类型，要么是结构体；当请求成功时，code为0, 如果请求是无返回类型的，则result为空; 
 //如果是有返回值的，则result为返回值。response_msg会序列化为一个标准的json串，回发给客户端。 

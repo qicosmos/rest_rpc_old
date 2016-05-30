@@ -6,6 +6,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/smart_ptr.hpp>
+#include "../log.hpp"
 
 
 using boost::asio::ip::tcp;
@@ -147,7 +148,7 @@ public:
 		{
 			if (ec)
 			{
-				//TODO: log
+				SPD_LOG_INFO(ec.message().c_str());
 				return;
 			}
 			socket_.close(ec);
@@ -198,7 +199,7 @@ public:
 		boost::asio::read(socket_, boost::asio::buffer(head_), ec);
 		if (ec)
 		{
-			//log
+			SPD_LOG_INFO(ec.message().c_str());
 			return 0;
 		}
 		
@@ -209,7 +210,7 @@ public:
 		boost::asio::read(socket_, boost::asio::buffer(recv_data_, body_len), ec);
 		if (ec)
 		{
-			//log
+			SPD_LOG_INFO(ec.message().c_str());
 			return 0;
 		}
 
@@ -249,7 +250,7 @@ private:
 		{
 			if (ec)
 			{
-				//TODO: log
+				SPD_LOG_INFO(ec.message().c_str());
 				return;
 			}
 			socket_.close(ec);
@@ -314,7 +315,7 @@ private:
 		boost::asio::write(socket_, message, ec);
 		if (ec)
 		{
-			//log
+			SPD_LOG_INFO(ec.message().c_str());
 			return false;
 		}
 		else

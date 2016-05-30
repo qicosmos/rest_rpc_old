@@ -119,7 +119,7 @@ private:
 #ifdef PUB_SUB
 		if (!has_error)
 		{
-			//log 
+			SPD_LOG_ERROR(result);
 			return;
 		}
 
