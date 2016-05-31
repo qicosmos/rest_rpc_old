@@ -77,8 +77,9 @@ private:
 	void pub(const std::string& topic, const std::string& result)
 	{
 		decltype(conn_map_.equal_range(topic)) temp;
-
+#ifdef PUB_SUB
 		std::unique_lock<std::mutex> lock(mtx_);
+
 		auto range = conn_map_.equal_range(topic);
 		if (range.first == range.second)
 			return;
@@ -99,6 +100,7 @@ private:
 		}
 
 		lock.lock(); //clear invalid connection
+#endif
 		for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
 		{
 			auto ptr = it->second.lock();
@@ -151,6 +153,8 @@ private:
 	std::shared_ptr<connection> conn_;
 	std::shared_ptr<std::thread> thd_;
 	std::size_t timeout_milli_;
+#ifdef PUB_SUB
 	std::mutex mtx_;
+#endif
 };
 

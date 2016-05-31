@@ -7,6 +7,7 @@
 #include <boost/bind.hpp>
 #include <boost/smart_ptr.hpp>
 #include "../log.hpp"
+#include "../consts.h"
 
 
 using boost::asio::ip::tcp;
@@ -20,7 +21,7 @@ struct call_detail :
 	call_detail(const std::string& json_str, tcp::socket& socket, HandlerT handler)
 		:json_str_(json_str), len_(json_str.size()), socket_(socket), handler_(handler)
 	{
-		message_.push_back(boost::asio::buffer(&len_, 4));
+		message_.push_back(boost::asio::buffer(&len_, HEAD_LEN));
 		message_.push_back(boost::asio::buffer(json_str_));
 	}
 	void do_call(boost::system::error_code const& ec)
@@ -32,7 +33,7 @@ struct call_detail :
 			yield socket_.async_send(message_, boost::bind(&call_detail<HandlerT>::do_call, this->shared_from_this(), boost::asio::placeholders::error));
 			__CHECK_RETURN();
 			message_.clear();
-			yield socket_.async_receive(boost::asio::buffer(&len_, 4), boost::bind(&call_detail<HandlerT>::do_call, this->shared_from_this(), boost::asio::placeholders::error));
+			yield socket_.async_receive(boost::asio::buffer(&len_, HEAD_LEN), boost::bind(&call_detail<HandlerT>::do_call, this->shared_from_this(), boost::asio::placeholders::error));
 			__CHECK_RETURN();
 			recv_json_.resize(len_);
 			yield socket_.async_receive(boost::asio::buffer(&recv_json_[0], len_), boost::bind(&call_detail<HandlerT>::do_call, this->shared_from_this(), boost::asio::placeholders::error));
@@ -76,7 +77,7 @@ public:
 		if (!r)
 			throw std::runtime_error("call failed");
 		
-		socket_.receive(boost::asio::buffer(&len, 4));
+		socket_.receive(boost::asio::buffer(&len, HEAD_LEN));
 		std::string recv_json;
 		recv_json.resize(len);
 		socket_.receive(boost::asio::buffer(&recv_json[0], len));
@@ -99,7 +100,7 @@ public:
 
 	std::string sub(const std::string& topic)
 	{
-		return call("sub_timax", topic);
+		return call(SUB_TOPIC, topic);
 	}
 
 	template<typename... Args>
@@ -204,7 +205,7 @@ public:
 		}
 		
 		const int body_len = *(int*)head_;
-		if (body_len <= 0 || body_len>max_length)
+		if (body_len <= 0 || body_len>MAX_BUF_LEN)
 			return 0;
 
 		boost::asio::read(socket_, boost::asio::buffer(recv_data_, body_len), ec);
@@ -309,7 +310,7 @@ private:
 		int len = json_str.length();
 
 		std::vector<boost::asio::const_buffer> message;
-		message.push_back(boost::asio::buffer(&len, 4));
+		message.push_back(boost::asio::buffer(&len, HEAD_LEN));
 		message.push_back(boost::asio::buffer(json_str));
 		boost::system::error_code ec;
 		boost::asio::write(socket_, message, ec);
@@ -329,8 +330,8 @@ private:
 
 	boost::asio::io_service& io_service_;
 	tcp::socket socket_;
-	enum { max_length = 8192 };
-	char head_[4];
-	char recv_data_[max_length];
+
+	char head_[HEAD_LEN];
+	char recv_data_[MAX_BUF_LEN];
 };
 
