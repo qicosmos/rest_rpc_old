@@ -283,6 +283,7 @@ void test_pub()
 
 int main()
 {
+	log::get().init("rest_rpc_client.lg");
 	//test_performance();
 	//test_client();
 	//test_upload();
