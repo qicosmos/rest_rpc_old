@@ -199,3 +199,6 @@ rest rpc目前定义了2种异常类型，参数异常和业务逻辑异常，�
 
     目前还不支持分布式，不过这已经在我们的计划中了，很快就可以实现分布式了。
 
+##Contributer
+
+[江南（qicosmos）](https://github.com/qicosmos)，[网事如风（avdbg）](https://github.com/avdbg)，[IndignantAngel](https://github.com/IndignantAngel)
