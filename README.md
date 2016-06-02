@@ -16,7 +16,8 @@ modern, simple, easy to use rpc framework.
 - 不需要使用代码生成器
 - 能快速响应API升级的需求
 - 彻底消除了繁琐重复的model定义工作
-- modern(c++14), 跨平台
+- modern(c++14)
+- 跨平台
 
 ##Getting started
 
