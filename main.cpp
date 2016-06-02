@@ -1,15 +1,6 @@
-#include <iostream>
 #include <string>
-#include <tuple>
-#include <fstream>
-#include <kapok/Kapok.hpp>
-#include <boost/timer.hpp>
-#include "router.hpp"
-#include "test_router.hpp"
 #include "server.hpp"
-#include "base64.hpp"
-#include "client_proxy/client_proxy.hpp"
-#include "log.hpp"
+
 
 int add(int a, int b)
 {
@@ -26,7 +17,7 @@ struct messager
 	}
 };
 
-TEST_CASE(rpc_qps, true)
+int main()
 {
 	messager m;
 	log::get().init("rest_rpc_server.lg");
@@ -35,4 +26,7 @@ TEST_CASE(rpc_qps, true)
 	s.register_handler("translate", &messager::translate, &m);
 
 	s.run();
+
+	getchar();
+	return 0;
 }
