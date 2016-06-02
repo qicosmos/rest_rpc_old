@@ -107,7 +107,7 @@ client调用同步接口返回的字符串是标准的json格式，对应的结�
     	int code;
     	T result; //json格式字符串，基本类型或者是结构体.
     };
-你可以将标准的json字符串反序列化为对应的对象。比如这个例子中我们调用translate RPC服务，返回的结果是一个字符串，我们可以通过Kapok很方便地反序列化。
+你可以将标准的json字符串反序列化为对应的对象。比如这个例子中我们调用translate RPC服务，返回的结果是一个字符串，我们可以通过[Kapok](https://github.com/qicosmos/Kapok)很方便地反序列化。
 
     DeSerializer dr;
     dr.Parse(result);
