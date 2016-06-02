@@ -141,7 +141,6 @@ rest rpc目前定义了2种异常类型，参数异常和业务逻辑异常，�
 	    	DeSerializer dr;
 	    	dr.Parse(result);
 	    	Document& doc = dr.GetDocument();
-	    	doc.Parse(result);
 
 	    	if (doc[CODE].GetInt() == result_code::OK)
 	    	{

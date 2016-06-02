@@ -22,7 +22,7 @@ void handle_result(const char* result)
 	DeSerializer dr;
 	dr.Parse(result);
 	Document& doc = dr.GetDocument();
-	doc.Parse(result);
+
 	if (doc[CODE].GetInt() == result_code::OK)
 	{
 		response_msg<T> response = {};
