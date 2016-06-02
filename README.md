@@ -24,7 +24,7 @@ modern, simple, easy to use rpc framework.
 
     git clone https://github.com/topcpporg/rest_rpc.git
 
-- **下载子库**[Kapok](https://github.com/qicosmos/Kapok)和[spdlog](https://github.com/gabime/spdlog)
+- **下载依赖的库**[Kapok](https://github.com/qicosmos/Kapok)和[spdlog](https://github.com/gabime/spdlog)
 
     git submodule update --init
 - **下载boost库，需要boost1.55以上版本**
