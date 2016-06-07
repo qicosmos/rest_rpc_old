@@ -6,7 +6,7 @@ modern, simple, easy to use rpc framework.
 - 使用麻烦。使用时需要先写一个DSL描述文件，然后用代码生成器来生成代码，如果model类很多的时候，工作就很繁琐，工作量也比较大。
 - 维护性差。当某些model类需要修改时，必须重新定义和编译，做一些繁琐而重复的工作。
 - 学习成本高。使用它们之前先要学习代码生成器如何使用，还要学习复杂的DSL语法定义规则，而这些语法规则并不是通用的，一段时间不用之后又要重新去学习。
-- 不能快速响应API升级的需求。当API或者协议演进的时候，就不得不让客户更新SDK。比如，当多语言的客户端较多时，每加一个接口时都要更新一堆不同语言的SDK，这是升级维护的噩梦。
+- 不能快速响应增加新API的需求。当多语言的客户端较多时，服务端增加新接口时，客户端升级比较繁琐。
 
 面对这些问题，[rest_rpc](https://github.com/topcpporg/rest_rpc)就应运而生了，她就是来解决这些问题的，[rest_rpc](https://github.com/topcpporg/rest_rpc)的主要特性：
 
@@ -187,7 +187,7 @@ rest rpc目前定义了2种异常类型，参数异常和业务逻辑异常，�
     是的，c++的RPC库确实是有不少了，几乎都是基于thrift或是protobuf开发的，这些库都存在一个问题，我需要学习DSL和IDL工具的使用，重复而繁琐。我希望有一个非常简单易用的RPC，除了业务逻辑，其他的都不让我操心，这就是我重新开发一个RPC库的动机。希望大家用用rest rpc，感受一下她的魅力，如果觉得好用的话请不要吝惜给star。
 - **这个RPC库的性能如何？**
 
-	rest rpc底层是用的asio，性能比较好，所以rest rpc的性能也是出色的(保守估计，qps可达10w以上)，性能测试的数据稍后会给出。
+	rest rpc底层是用的asio，性能比较好，所以rest rpc的性能也是出色的，4核8线程32G内存的工作站上测试，在cpu占用42%时，qps达到14w+。
 - **rest rpc的学习成本高吗？**
 
     学习成本很低，因为我们是以用户使用的便利性作为首要的设计理念，让用户仅仅需要关注业务逻辑。
@@ -201,4 +201,4 @@ rest rpc目前定义了2种异常类型，参数异常和业务逻辑异常，�
 
 ##Contributer
 
-[江南（qicosmos）](https://github.com/qicosmos)，[网事如风（avdbg）](https://github.com/avdbg)，[IndignantAngel](https://github.com/IndignantAngel)
+[江南（qicosmos）](https://github.com/qicosmos)，[网事如风（avdbg）](https://github.com/avdbg)，[IndignantAngel](https://github.com/IndignantAngel)，[shines77](https://github.com/shines77)
