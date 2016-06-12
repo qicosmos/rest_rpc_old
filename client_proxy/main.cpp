@@ -98,7 +98,7 @@ void test_translate()
 	{
 		boost::asio::io_service io_service;
 		client_proxy client(io_service);
-		client.connect("127.0.0.1", "9000");
+		client.connect("192.168.2.169", "9000");
 		
 		std::string result = client.call("translate", "test");
 		handle_result<std::string>(result.c_str());
@@ -111,9 +111,34 @@ void test_translate()
 	}
 }
 
+void test_performance()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.connect("192.168.2.169", "9000");
+		std::thread thd([&io_service] {io_service.run(); });
+
+		auto str = client.make_json("translate", "test");
+		while (true)
+		{
+			//client.call(str);
+			client.call("translate", "test");
+		}
+
+		getchar();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main()
 {
 	log::get().init("rest_rpc_client.lg");
+	//test_performance();
 	test_translate();
 
 	return 0;
