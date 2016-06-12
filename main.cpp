@@ -28,5 +28,17 @@ int main()
 	s.run();
 
 	getchar();
+
+	//for test performance.
+	//std::uint64_t last_succeed_count = 0;
+
+	//while (true)
+	//{
+	//	auto curr_succeed_count = (std::uint64_t)g_succeed_count;
+	//	std::cout << curr_succeed_count - last_succeed_count << std::endl;
+	//	last_succeed_count = curr_succeed_count;
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	//}
+
 	return 0;
 }
