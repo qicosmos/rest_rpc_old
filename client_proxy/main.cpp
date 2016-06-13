@@ -98,7 +98,7 @@ void test_translate()
 	{
 		boost::asio::io_service io_service;
 		client_proxy client(io_service);
-		client.connect("192.168.2.169", "9000");
+		client.connect("127.0.0.1", "9000");
 		
 		std::string result = client.call("translate", "test");
 		handle_result<std::string>(result.c_str());
@@ -128,6 +128,25 @@ void test_performance()
 		}
 
 		getchar();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+void test_binary()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		client_proxy client(io_service);
+		client.connect("127.0.0.1", "9000");
+
+		std::string result = client.call("translate", "test");
+		handle_result<std::string>(result.c_str());
+
+		io_service.run();
 	}
 	catch (const std::exception& e)
 	{

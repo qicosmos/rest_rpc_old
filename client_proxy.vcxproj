@@ -73,6 +73,8 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>D:\Boost160x86\include\boost-1_60;E:\code\Kapok;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Boost160x86\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)client_proxy\$(Configuration)\</OutDir>
+    <IntDir>client_proxy\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -83,6 +85,8 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)client_proxy\$(Configuration)\</OutDir>
+    <IntDir>client_proxy\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

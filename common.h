@@ -24,4 +24,15 @@ enum result_code
 	ARGUMENT_EXCEPTION = 3
 };
 
+//
+enum framework_type
+{
+	ROUNDTRIP = 1,
+};
+
+enum data_type
+{
+	BINARY = 1,
+};
+
 static std::atomic<std::uint64_t> g_succeed_count(0); //for test qps

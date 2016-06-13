@@ -40,10 +40,12 @@ public:
 
 			if (!ec)
 			{
-				const int body_len = *(int*)head_;
+				const int64_t i = *(int64_t*)(head_);
+				const int body_len = i & 0xffff;
+				const int type = i >> 32;
 				if (body_len > 0 && body_len< MAX_BUF_LEN)
 				{
-					read_body(body_len);
+					read_body(body_len, type);
 					return;
 				}
 
@@ -65,10 +67,10 @@ public:
 		});
 	}
 
-	void read_body(std::size_t size)
+	void read_body(std::size_t size, int type)
 	{
 		auto self(this->shared_from_this());
-		boost::asio::async_read(socket_, boost::asio::buffer(data_, size), [this, self](boost::system::error_code ec, std::size_t length)
+		boost::asio::async_read(socket_, boost::asio::buffer(data_, size), [this, type, self](boost::system::error_code ec, std::size_t length)
 		{
 			cancel_timer();
 
@@ -78,7 +80,19 @@ public:
 			if (!ec)
 			{
 				router& _router = router::get();
-				_router.route(data_, length, self);
+				//if type is tag, need callback to client the tag
+				bool round_trip = ((type & 0x0f) == framework_type::ROUNDTRIP);
+				
+				//if tag is binary, route_binary
+				bool binary_type = ((type >>4) == data_type::BINARY);
+				if (!binary_type)
+				{
+					_router.route(data_, length, self, round_trip);
+				}
+				else
+				{
+					//_router.route_binary(data_, length, self, round_trip);
+				}				
 			}
 			else
 			{

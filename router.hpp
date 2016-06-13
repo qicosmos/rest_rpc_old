@@ -69,7 +69,7 @@ public:
 	}
 
 	template<typename T>
-	void route(const char* text, std::size_t length, T conn)
+	void route(const char* text, std::size_t length, T conn, bool round_trip)
 	{
 		token_parser parser;
 		parser.parse(text, length);
