@@ -91,7 +91,7 @@ public:
 				}
 				else
 				{
-					//_router.route_binary(data_, length, self, round_trip);
+					_router.route_binary(data_, length, self, round_trip);
 				}				
 			}
 			else

@@ -44,6 +44,18 @@ public:
 		router::get().register_handler(name, f, self);
 	}
 
+	template<typename Function>
+	void register_binary_handler(std::string const & name, const Function& f)
+	{
+		router::get().register_binary_handler(name, f);
+	}
+
+	template<typename Function, typename Self>
+	void register_binary_handler(std::string const & name, const Function& f, Self* self)
+	{
+		router::get().register_binary_handler(name, f, self);
+	}
+
 	void remove_handler(std::string const& name) 
 	{
 		router::get().remove_handler(name);

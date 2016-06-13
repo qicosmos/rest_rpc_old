@@ -58,9 +58,22 @@ public:
 		return register_member_func(name, f, self);
 	}
 
+	template<typename Function>
+	void register_binary_handler(std::string const & name, const Function& f)
+	{
+		this->map_binary_[name] = f;
+	}
+
+	template<typename Function, typename Self>
+	void register_binary_handler(std::string const & name, const Function& f, Self* self)
+	{
+		this->map_binary_[name] = [f, self](const char* data, size_t len, std::string& result) { (*self.*f)(data, len, result); };
+	}
+
 	void remove_handler(std::string const& name) 
 	{
 		this->map_invokers_.erase(name);
+		this->map_binary_.erase(name);
 	}
 
 	void set_callback(const std::function<void(const std::string&, const char*, std::shared_ptr<connection>, bool)>& callback)
@@ -83,14 +96,14 @@ public:
 			if (it == map_invokers_.end())
 			{
 				result = get_json(result_code::ARGUMENT_EXCEPTION, "unknown function: " + func_name);
-				callback_to_server_(func_name, result.c_str(), conn, true);
+				callback_to_server_(func_name, result.c_str(), conn, true); //has error
 				return;
 			}
 
 			if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
 			{
 				result = get_json(result_code::ARGUMENT_EXCEPTION, std::string("parameter number is not match"));
-				callback_to_server_(func_name, result.c_str(), conn, true);
+				callback_to_server_(func_name, result.c_str(), conn, true); //has error
 				break;
 			}
 
@@ -102,9 +115,28 @@ public:
 		}
 	}
 
-	router() = default;
+	template<typename T>
+	void route_binary(const char* data, std::size_t length, T conn, bool round_trip)
+	{
+		std::string result = "";
+		std::string func_name = data;
+		
+		auto it = map_binary_.find(func_name);
+		if (it == map_binary_.end())
+		{
+			result = get_json(result_code::ARGUMENT_EXCEPTION, "unknown function: " + func_name);
+			callback_to_server_(func_name, result.c_str(), conn, true);
+			return;
+		}
+
+		const int offset = func_name.length() + 1;
+		it->second(data + offset, length - offset, result);
+		result = get_json(result_code::OK, result);
+		callback_to_server_(func_name, result.c_str(), conn, false);
+	}
+
 private:
-	
+	router() = default;
 	router(const router&) = delete;
 	router(router&&) = delete;
 
@@ -230,5 +262,6 @@ private:
 
 	std::map<std::string, invoker_function> map_invokers_;
 	std::function<void(const std::string&, const char*, std::shared_ptr<connection>, bool)> callback_to_server_;
+	std::map<std::string, std::function<void(const char*, size_t, std::string& result)>> map_binary_;
 };
 

@@ -15,6 +15,13 @@ struct messager
 		for (auto & c : temp) c = toupper(c);
 		return temp;
 	}
+
+	void func(const char* data, int len, std::string& result)
+	{
+		std::string s = data;
+		std::cout << s << std::endl;
+		result = "ok";
+	}
 };
 
 int main()
@@ -24,6 +31,8 @@ int main()
 	server s(9000, std::thread::hardware_concurrency()); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &add);;
 	s.register_handler("translate", &messager::translate, &m);
+
+	s.register_binary_handler("binary_func", &messager::func, &m);//note:the function type is fixed, only recieve binary data.
 
 	s.run();
 

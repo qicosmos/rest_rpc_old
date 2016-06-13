@@ -100,7 +100,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalOptions>
       </AdditionalOptions>
-      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4819;4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(ProjectDir)Kapok;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
