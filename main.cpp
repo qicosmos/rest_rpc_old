@@ -1,4 +1,6 @@
 #include <string>
+#include <fstream>
+#include <sstream>
 #include "server.hpp"
 
 
@@ -24,11 +26,60 @@ struct messager
 	}
 };
 
+struct congfigure
+{
+	int port;
+	size_t thread_num;
+	bool nodelay;
+
+	META(port, thread_num, nodelay);
+};
+
+congfigure get_config()
+{
+	//congfigure cfg = { 9000, std::thread::hardware_concurrency(), false };
+	//Serializer sr;
+	//sr.Serialize(cfg);
+
+	//const char* buf = sr.GetString();
+	//std::ofstream myfile("server.cfg");
+	//myfile << buf;
+	//myfile.close();
+
+	std::ifstream in("server.cfg");
+	std::stringstream ss;
+	ss << in.rdbuf();
+
+	congfigure cfg = {};
+
+	DeSerializer dr;
+	try
+	{
+		dr.Parse(ss.str());
+		dr.Deserialize(cfg);
+	}
+	catch (const std::exception& e)
+	{
+		SPD_LOG_ERROR(e.what());
+	}
+	
+	return cfg;
+}
+
 int main()
 {
 	messager m;
 	log::get().init("rest_rpc_server.lg");
-	server s(9000, std::thread::hardware_concurrency()); //if you fill the last param, the server will remove timeout connections. default never timeout.
+	congfigure cfg = get_config();
+	int port = 9000; 
+	int thread_num = std::thread::hardware_concurrency();
+	if (cfg.port != 0)
+	{
+		port = cfg.port;
+		thread_num = cfg.thread_num;
+	}
+
+	server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &add);;
 	s.register_handler("translate", &messager::translate, &m);
 
