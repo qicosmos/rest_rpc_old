@@ -22,7 +22,7 @@ static bool retry(const std::function<bool()>& func, size_t max_attempts, size_t
 template<typename T>
 static std::string get_json(result_code code, const T& r)
 {
-	response_msg<T> msg = { code, r };
+	response_msg<T> msg = { static_cast<int>(code), r };
 
 	Serializer sr;
 	sr.Serialize(msg);

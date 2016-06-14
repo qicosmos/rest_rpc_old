@@ -81,10 +81,10 @@ public:
 			{
 				router& _router = router::get();
 				//if type is tag, need callback to client the tag
-				bool round_trip = ((type & 0x0f) == framework_type::ROUNDTRIP);
+				bool round_trip = ((type & 0x0f) == static_cast<int>(framework_type::ROUNDTRIP));
 				
 				//if tag is binary, route_binary
-				bool binary_type = ((type >>4) == data_type::BINARY);
+				bool binary_type = ((type >>4) == static_cast<int>(data_type::BINARY));
 				if (!binary_type)
 				{
 					_router.route(data_, length, self, round_trip);
@@ -105,9 +105,11 @@ public:
 	void response(const char* json_str)
 	{
 		auto self(this->shared_from_this());
-		int len = strlen(json_str);
+		//int64_t len = static_cast<int16_t>(framework_type::DEFAULT) | static_cast<int16_t>(data_type::JSON) << 16;
+		//len = len << 32 | static_cast<int>(strlen(json_str));
+		int64_t len = strlen(json_str);
 		message_[0] = boost::asio::buffer(&len, HEAD_LEN);
-		message_[1] = boost::asio::buffer((char*)json_str, len);
+		message_[1] = boost::asio::buffer((char*)json_str, strlen(json_str));
 		boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
 		{
 			if (!ec)

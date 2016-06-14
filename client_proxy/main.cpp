@@ -5,6 +5,7 @@
 #include <sstream>
 #include <kapok/Kapok.hpp>
 #include "client_proxy.hpp"
+#include "../client_base.hpp"
 #include "base64.hpp"
 #include "../common.h"
 
@@ -16,7 +17,55 @@ struct person
 	META(age, name);
 };
 
-template<typename T>
+namespace client
+{
+	TIMAX_DEFINE_PROTOCOL(translate, std::string(std::string const&));
+	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
+}
+
+void test_translate()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		timax::client_proxy client{ io_service };
+		client.connect("127.0.0.1", "9000");
+
+		std::string result = client.call(client::translate, "test");
+		
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+void test_add()
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		timax::client_proxy client{ io_service };
+		client.connect("127.0.0.1", "9000");
+
+		auto result = client.call(client::add, 1, 2);
+
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+int main(void)
+{
+	test_translate();
+	test_add();
+}
+
+/*template<typename T>
 void handle_result(const char* result)
 {
 	DeSerializer dr;
@@ -161,4 +210,4 @@ int main()
 	test_translate();
 
 	return 0;
-}
+}*/

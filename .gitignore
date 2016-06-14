@@ -3,6 +3,8 @@
 .vs
 *.VC.db
 *.VC.opendb
+*.sdf
+*.lg.txt
 x64
 Debug
 Release

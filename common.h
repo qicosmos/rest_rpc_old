@@ -16,7 +16,7 @@ struct response_msg
 	META(code, result);
 };
 
-enum result_code
+enum class result_code
 {
 	OK = 0,
 	FAIL = 1,
@@ -25,13 +25,15 @@ enum result_code
 };
 
 //
-enum framework_type
+enum class framework_type : int16_t
 {
+	DEFAULT = 0,
 	ROUNDTRIP = 1,
 };
 
-enum data_type
+enum class data_type : int16_t
 {
+	JSON = 0,
 	BINARY = 1,
 };
 
