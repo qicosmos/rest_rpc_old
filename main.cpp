@@ -26,7 +26,7 @@ struct messager
 	}
 };
 
-struct congfigure
+struct configure
 {
 	int port;
 	size_t thread_num;
@@ -35,7 +35,7 @@ struct congfigure
 	META(port, thread_num, nodelay);
 };
 
-congfigure get_config()
+configure get_config()
 {
 	//congfigure cfg = { 9000, std::thread::hardware_concurrency(), false };
 	//Serializer sr;
@@ -50,7 +50,7 @@ congfigure get_config()
 	std::stringstream ss;
 	ss << in.rdbuf();
 
-	congfigure cfg = {};
+	configure cfg = {};
 
 	DeSerializer dr;
 	try
@@ -70,7 +70,7 @@ int main()
 {
 	messager m;
 	log::get().init("rest_rpc_server.lg");
-	congfigure cfg = get_config();
+	configure cfg = get_config();
 	int port = 9000; 
 	int thread_num = std::thread::hardware_concurrency();
 	if (cfg.port != 0)
