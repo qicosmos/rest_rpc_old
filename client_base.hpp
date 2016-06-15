@@ -7,6 +7,7 @@
 #include <boost/preprocessor.hpp>
 #include "consts.h"
 #include "common.h"
+#include "function_traits.hpp"
 
 class client_base
 {
@@ -63,7 +64,7 @@ private:
 		head_t head = 
 		{ 
 			json_str.length(), 
-			static_cast<int16_t>(data_type::JSON), 
+			static_cast<int16_t>(data_type::JSON),
 			static_cast<int16_t>(ft)
 		};
 		return send_impl(head, boost::asio::buffer(json_str));
@@ -144,12 +145,17 @@ protected:
 namespace protocol
 {
 	template <typename Func>
-	struct protocol_base;
+	struct protocol_define;
+
+	template <typename Func, typename Tag, typename TagPolicy>
+	struct protocol_with_tag;
 
 	template <typename Ret, typename ... Args>
-	struct protocol_base<Ret(Args...)> : boost::function_traits<Ret(Args...)>
+	struct protocol_define<Ret(Args...)> : function_traits<Ret(Args...)>
 	{
-		explicit protocol_base(std::string name)
+		using result_type = return_type;
+
+		explicit protocol_define(std::string name)
 			: name_(std::move(name))
 		{}
 
@@ -160,20 +166,99 @@ namespace protocol
 			return sr.GetString();
 		}
 
-		template <typename Tag>
-		std::string make_json(Tag&& tag, Args&& ... args) const
+		result_type parse_json(std::string const& json_str) const
 		{
-			Serializer sr;
-			sr.Serialize(std::make_tuple(std::forward<Tag>(tag), std::forward<Args>(args)...), name_.c_str());
-			return sr.GetString();
+			DeSerializer dr;
+			dr.Parse(json_str);
+			auto& document = dr.GetDocument();
+			if (static_cast<int>(result_code::OK) == document[CODE].GetInt())
+			{
+				response_msg<result_type> response;
+				dr.Deserialize(response);
+				return response.result;
+			}
+			else
+			{
+				throw;
+			}
+		}
+
+		std::string const& name() const noexcept
+		{
+			return name_;
+		}
+
+		framework_type get_type() const noexcept
+		{
+			return framework_type::DEFAULT;
 		}
 
 	private:
 		std::string name_;
 	};
+
+	template <typename Ret, typename ... Args, typename Tag, typename TagPolicy>
+	struct protocol_with_tag<Ret(Args...), Tag, TagPolicy>
+	{
+		using protocol_basic_t = protocol_define<Ret(Args...)>;
+		using result_type = typename protocol_basic_t::result_type;
+		using tag_t = Tag;
+
+		protocol_with_tag(protocol_basic_t const& protocol, tag_t tag)
+			: tag_(std::move(tag))
+			, protocol_(protocol)
+		{
+
+		}
+
+		std::string make_json(Args&& ... args) const
+		{
+			Serializer sr;
+			sr.Serialize(std::make_tuple(tag_, std::forward<Args>(args)...), protocol_.name().c_str());
+			return sr.GetString();
+		}
+
+		result_type parse_json(std::string const& json_str) const
+		{
+			DeSerializer dr;
+			dr.Parse(json_str);
+			auto& document = dr.GetDocument();
+			if (static_cast<int>(result_code::OK) == document[CODE].GetInt())
+			{
+				response_msg<result_type, tag_t> response;
+				dr.Deserialize(response);
+				if (TagPolicy{}(tag_, response.tag))
+				{
+					return response.result;
+				}
+				throw;
+			}
+			else
+			{
+				throw;
+			}
+		}
+
+		framework_type get_type() const noexcept
+		{
+			return framework_type::ROUNDTRIP;
+		}
+
+	private:
+		tag_t tag_;
+		protocol_basic_t const& protocol_;
+	};
+
+	template <typename Func, typename Tag, typename TagPolicy = std::equal_to<std::decay_t<Tag>>>
+	auto with_tag(protocol_define<Func> const& protocol, Tag&& tag, TagPolicy = TagPolicy{})
+	{
+		using tag_t = std::remove_reference_t<std::remove_cv_t<Tag>>;
+		using protoco_with_tag_t = protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
+		return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
+	}
 }
 
-#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const protocol::protocol_base<func_type> handler{ #handler }
+#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const protocol::protocol_define<func_type> handler{ #handler }
 #define TIMAX_MULTI_RESULT(...) std::tuple<__VA_ARGS__>
 #define TIMAX_MULTI_RETURN(...) return std::make_tuple(__VA_ARGS__)
 
@@ -204,28 +289,14 @@ namespace timax
 
 		}
 
-		// call without 
-		template <typename Func, typename ... Args>
-		auto call(Func const& func, Args&& ... args) -> typename Func::result_type
+		template <typename Protocol, typename ... Args>
+		auto call(Protocol const& protocol, Args&& ... args) -> typename Protocol::result_type
 		{
-			using result_type = typename Func::result_type;
+			using result_type = typename Protocol::result_type;
 
-			auto json_str = func.make_json(std::forward<Args>(args)...);
-			auto result_str = client_base::call_json(json_str);
-			
-			DeSerializer dr;
-			dr.Parse(result_str);
-			auto& document = dr.GetDocument();
-			if (static_cast<int>(result_code::OK) == document[CODE].GetInt())
-			{
-				response_msg<result_type> response = {};
-				dr.Deserialize(response);
-				return response.result;
-			}
-			else
-			{
-				throw;
-			}
+			auto json_str = protocol.make_json(std::forward<Args>(args)...);
+			auto result_str = client_base::call_json(json_str, protocol.get_type());
+			return protocol.parse_json(result_str);
 		}
 	};
 }

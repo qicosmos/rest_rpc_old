@@ -31,7 +31,8 @@ void test_translate()
 		timax::client_proxy client{ io_service };
 		client.connect("127.0.0.1", "9000");
 
-		std::string result = client.call(client::translate, "test");
+		std::string result = client.call(
+			client::translate, "test");
 		
 		io_service.run();
 	}
