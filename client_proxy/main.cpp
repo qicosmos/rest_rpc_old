@@ -69,7 +69,8 @@ void test_translate(const configure& cfg)
 		timax::client_proxy client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
 
-		std::string result = client.call(client::translate, "test");
+		std::string result = client.call(
+			client::translate, "test");
 		
 		io_service.run();
 	}
