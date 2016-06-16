@@ -36,7 +36,7 @@ configure get_config()
 	//myfile << buf;
 	//myfile.close();
 
-	std::ifstream in("client_proxy/client.cfg");
+	std::ifstream in("client.cfg");
 	std::stringstream ss;
 	ss << in.rdbuf();
 
