@@ -17,19 +17,57 @@ struct person
 	META(age, name);
 };
 
+struct configure
+{
+	std::string hostname;
+	std::string port;
+
+	META(hostname, port);
+};
+
+configure get_config()
+{
+	//congfigure cfg1 = { "127.0.0.1", 9000 };
+	//Serializer sr;
+	//sr.Serialize(cfg1);
+
+	//const char* buf = sr.GetString();
+	//std::ofstream myfile("server.cfg");
+	//myfile << buf;
+	//myfile.close();
+
+	std::ifstream in("client_proxy/client.cfg");
+	std::stringstream ss;
+	ss << in.rdbuf();
+
+	configure cfg = {};
+	DeSerializer dr;
+	try
+	{
+		dr.Parse(ss.str());
+		dr.Deserialize(cfg);
+	}
+	catch (const std::exception& e)
+	{
+		SPD_LOG_ERROR(e.what());
+	}
+
+	return cfg;
+}
+
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(translate, std::string(std::string const&));
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 }
 
-void test_translate()
+void test_translate(const configure& cfg)
 {
 	try
 	{
 		boost::asio::io_service io_service;
 		timax::client_proxy client{ io_service };
-		client.connect("127.0.0.1", "9000");
+		client.connect(cfg.hostname, cfg.port);
 
 		std::string result = client.call(
 			protocol::with_tag(client::translate, 1), "test");
@@ -42,13 +80,13 @@ void test_translate()
 	}
 }
 
-void test_add()
+void test_add(const configure& cfg)
 {
 	try
 	{
 		boost::asio::io_service io_service;
 		timax::client_proxy client{ io_service };
-		client.connect("127.0.0.1", "9000");
+		client.connect(cfg.hostname, cfg.port);
 
 		auto result = client.call(client::add, 1, 2);
 
@@ -62,8 +100,15 @@ void test_add()
 
 int main(void)
 {
-	test_translate();
-	test_add();
+	log::get().init("rest_rpc_client.lg");
+	configure cfg = get_config();
+	if (cfg.hostname.empty())
+	{
+		cfg = { "127.0.0.1", "9000" };
+	}
+
+	test_translate(cfg);
+	test_add(cfg);
 }
 
 /*template<typename T>
