@@ -152,7 +152,7 @@ private:
 
 	template<typename F, typename ... Args>
 	static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type 
-		call(const F& f, std::string& result, Value const& tag, const std::tuple<Args...>& tp)
+		call(const F& f, std::string& result, std::string const& tag, const std::tuple<Args...>& tp)
 	{
 		call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
 		result = get_json(result_code::OK, 0, tag);
