@@ -109,6 +109,8 @@ int main(void)
 
 	test_translate(cfg);
 	test_add(cfg);
+
+	getchar();
 }
 
 /*template<typename T>
