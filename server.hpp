@@ -132,7 +132,7 @@ private:
 	void callback(const std::string& topic, const char* result, std::shared_ptr<connection> conn, bool has_error = false)
 	{
 #ifdef PUB_SUB
-		if (!has_error)
+		if (has_error)
 		{
 			SPD_LOG_ERROR(result);
 			return;

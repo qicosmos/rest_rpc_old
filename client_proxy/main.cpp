@@ -97,6 +97,24 @@ void test_add(const configure& cfg)
 	}
 }
 
+void test_pub_sub(const configure& cfg)
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		timax::client_proxy client{ io_service };
+		client.connect(cfg.hostname, cfg.port);
+
+		auto result = client.sub("add");
+		//client.pub(client::add, 1, 2);
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main(void)
 {
 	log::get().init("rest_rpc_client.lg");
