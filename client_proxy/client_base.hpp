@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <Kapok/Kapok.hpp>
+#include <kapok/Kapok.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/preprocessor.hpp>
