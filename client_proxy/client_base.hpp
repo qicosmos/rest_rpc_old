@@ -57,7 +57,7 @@ public:
 		return recieve_return();
 	}
 
-private:
+protected:
 
 	bool send_json(std::string const& json_str, framework_type ft)
 	{
@@ -293,13 +293,60 @@ namespace timax
 		}
 
 		template <typename Protocol, typename ... Args>
-		auto call(Protocol const& protocol, Args&& ... args) -> typename Protocol::result_type
+		auto call(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
 		{
 			using result_type = typename Protocol::result_type;
 
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
 			auto result_str = client_base::call_json(json_str, protocol.get_type());
 			return protocol.parse_json(result_str);
+		}
+
+		std::string sub(const std::string& topic)
+		{
+			return call(SUB_TOPIC, topic);
+		}
+
+		template<typename... Args>
+		void pub(const char* handler_name, Args&&... args)
+		{
+			auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
+			send_json(json_str, framework_type::DEFAULT);
+		}
+
+		template <typename Protocol, typename ... Args>
+		void pub(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
+		{
+			auto json_str = protocol.make_json(std::forward<Args>(args)...);
+			send_json(json_str, framework_type::DEFAULT);
+		}
+
+		template<typename... Args>
+		std::string call(const char* handler_name, Args&&... args)
+		{
+			auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
+			return call_json(json_str);
+		}
+
+	private:
+		template<typename T>
+		std::string make_request_json(const char* handler_name, T&& t)
+		{
+			Serializer sr;
+			sr.Serialize(std::forward<T>(t), handler_name);
+			return sr.GetString();
+		}
+
+		std::string make_request_json(const char* handler_name)
+		{
+			return make_request_json(handler_name, "");
+		}
+
+		template<typename... Args>
+		std::string make_request_json(const char* handler_name, Args&&... args)
+		{
+			auto tp = std::make_tuple(std::forward<Args>(args)...);
+			return make_request_json(handler_name, tp);
 		}
 	};
 }
