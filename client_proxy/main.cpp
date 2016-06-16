@@ -32,7 +32,7 @@ void test_translate()
 		client.connect("127.0.0.1", "9000");
 
 		std::string result = client.call(
-			client::translate, "test");
+			protocol::with_tag(client::translate, 1), "test");
 		
 		io_service.run();
 	}
