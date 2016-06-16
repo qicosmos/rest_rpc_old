@@ -248,19 +248,17 @@ namespace protocol
 		tag_t tag_;
 		protocol_basic_t const& protocol_;
 	};
-
-	template <typename Func, typename Tag, typename TagPolicy = std::equal_to<std::decay_t<Tag>>>
-	auto with_tag(protocol_define<Func> const& protocol, Tag&& tag, TagPolicy = TagPolicy{})
-	{
-		using tag_t = std::remove_reference_t<std::remove_cv_t<Tag>>;
-		using protoco_with_tag_t = protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
-		return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
-	}
 }
 
-#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const protocol::protocol_define<func_type> handler{ #handler }
-#define TIMAX_MULTI_RESULT(...) std::tuple<__VA_ARGS__>
-#define TIMAX_MULTI_RETURN(...) return std::make_tuple(__VA_ARGS__)
+template <typename Func, typename Tag, typename TagPolicy = std::equal_to<std::decay_t<Tag>>>
+auto with_tag(protocol::protocol_define<Func> const& protocol, Tag&& tag, TagPolicy = TagPolicy{})
+{
+	using tag_t = std::remove_reference_t<std::remove_cv_t<Tag>>;
+	using protoco_with_tag_t = protocol::protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
+	return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
+}
+
+#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::protocol::protocol_define<func_type> handler{ #handler }
 
 namespace timax
 {
