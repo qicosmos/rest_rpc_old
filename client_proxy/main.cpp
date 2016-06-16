@@ -5,7 +5,7 @@
 #include <sstream>
 #include <kapok/Kapok.hpp>
 #include "client_proxy.hpp"
-#include "../client_base.hpp"
+#include "client_base.hpp"
 #include "base64.hpp"
 #include "../common.h"
 
