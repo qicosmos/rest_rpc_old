@@ -15,13 +15,6 @@ public:
 	using io_service_t = boost::asio::io_service;
 	using tcp = boost::asio::ip::tcp;
 
-	struct head_t
-	{
-		int16_t data_type;
-		int16_t	framework_type;
-		int32_t len;
-	};
-
 protected:
 	client_base(io_service_t& io)
 		: io_(io)
@@ -63,9 +56,9 @@ private:
 	{
 		head_t head = 
 		{ 
-			json_str.length(), 
 			static_cast<int16_t>(data_type::JSON),
-			static_cast<int16_t>(ft)
+			static_cast<int16_t>(ft),
+			static_cast<int32_t>(json_str.length())
 		};
 		return send_impl(head, boost::asio::buffer(json_str));
 	}
@@ -74,9 +67,9 @@ private:
 	{
 		head_t head = 
 		{ 
-			length, 
 			static_cast<int16_t>(data_type::BINARY),
-			static_cast<int16_t>(ft)
+			static_cast<int16_t>(ft),
+			static_cast<int32_t>(length)
 		};
 		return send_impl(head, boost::asio::buffer(data, length));
 	}
@@ -91,21 +84,19 @@ private:
 			return{};
 		}
 
-		const int64_t i = *(int64_t*)(head_.data());
-		const size_t body_len = i & 0xffff;
-		const int type = i >> 32;
-		if (body_len <= 0 || body_len > MAX_BUF_LEN)
+		head_t const h = *(head_t*)(head_.data());
+		if (h.len <= 0 || h.len > MAX_BUF_LEN)
 		{
 			return{};
 		}
 			
-		boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), body_len), ec);
+		boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), h.len), ec);
 		if (ec)
 		{
 			return{};
 		}
 
-		return std::make_tuple(true, body_len);
+		return std::make_tuple(true, h.len);
 	}
 
 	bool send_impl(head_t const& head, boost::asio::const_buffer buffer)
