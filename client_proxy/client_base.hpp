@@ -81,31 +81,31 @@ private:
 		return send_impl(head, boost::asio::buffer(data, length));
 	}
 
-	bool recieve()
+	std::tuple<bool, size_t> recieve()
 	{
 		boost::system::error_code ec;
 		boost::asio::read(socket_, boost::asio::buffer(head_), ec);
 		if (ec)
 		{
 			//log
-			return false;
+			return{};
 		}
 
 		const int64_t i = *(int64_t*)(head_.data());
-		const int body_len = i & 0xffff;
+		const size_t body_len = i & 0xffff;
 		const int type = i >> 32;
 		if (body_len <= 0 || body_len > MAX_BUF_LEN)
 		{
-			return false;
+			return{};
 		}
 			
 		boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), body_len), ec);
 		if (ec)
 		{
-			return false;
+			return{};
 		}
 
-		return true;
+		return std::make_tuple(true, body_len);
 	}
 
 	bool send_impl(head_t const& head, boost::asio::const_buffer buffer)
@@ -128,11 +128,14 @@ private:
 
 	std::string recieve_return()
 	{
-		auto r = recieve();
+		bool r;
+		size_t len;
+
+		std::tie(r, len) = recieve();
 		if (!r)
 			throw std::runtime_error("call failed");
 
-		return std::string{ recv_data_.begin(), recv_data_.end() };
+		return std::string{ recv_data_.begin(), recv_data_.begin() + len };
 	}
 
 protected:
