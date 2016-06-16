@@ -36,7 +36,7 @@ configure get_config()
 	//myfile << buf;
 	//myfile.close();
 
-	std::ifstream in("client_proxy/client.cfg");
+	std::ifstream in("client.cfg");
 	std::stringstream ss;
 	ss << in.rdbuf();
 
@@ -108,6 +108,8 @@ int main(void)
 
 	test_translate(cfg);
 	test_add(cfg);
+
+	getchar();
 }
 
 /*template<typename T>
