@@ -151,9 +151,9 @@ namespace protocol
 	struct protocol_with_tag;
 
 	template <typename Ret, typename ... Args>
-	struct protocol_define<Ret(Args...)> : function_traits<Ret(Args...)>
+	struct protocol_define<Ret(Args...)>// : function_traits<Ret(Args...)>
 	{
-		using result_type = return_type;
+		using result_type = typename function_traits<Ret(Args...)>::return_type;
 
 		explicit protocol_define(std::string name)
 			: name_(std::move(name))
