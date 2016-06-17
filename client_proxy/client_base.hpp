@@ -57,6 +57,38 @@ public:
 		return recieve_return();
 	}
 
+	size_t recieve()
+	{
+		boost::system::error_code ec;
+		boost::asio::read(socket_, boost::asio::buffer(head_), ec);
+		if (ec)
+		{
+			//log
+			return 0;
+		}
+
+		const int64_t i = *(int64_t*)(head_.data());
+		const size_t body_len = i & 0xffff;
+		const int type = i >> 32;
+		if (body_len <= 0 || body_len > MAX_BUF_LEN)
+		{
+			return 0;
+		}
+
+		boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), body_len), ec);
+		if (ec)
+		{
+			return 0;
+		}
+
+		return body_len;
+	}
+
+	const char* data() const
+	{
+		return recv_data_.data();
+	}
+
 protected:
 
 	bool send_json(std::string const& json_str, framework_type ft)
@@ -81,33 +113,6 @@ protected:
 		return send_impl(head, boost::asio::buffer(data, length));
 	}
 
-	std::tuple<bool, size_t> recieve()
-	{
-		boost::system::error_code ec;
-		boost::asio::read(socket_, boost::asio::buffer(head_), ec);
-		if (ec)
-		{
-			//log
-			return{};
-		}
-
-		const int64_t i = *(int64_t*)(head_.data());
-		const size_t body_len = i & 0xffff;
-		const int type = i >> 32;
-		if (body_len <= 0 || body_len > MAX_BUF_LEN)
-		{
-			return{};
-		}
-			
-		boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), body_len), ec);
-		if (ec)
-		{
-			return{};
-		}
-
-		return std::make_tuple(true, body_len);
-	}
-
 	bool send_impl(head_t const& head, boost::asio::const_buffer buffer)
 	{
 		std::vector<boost::asio::const_buffer> message;
@@ -128,11 +133,9 @@ protected:
 
 	std::string recieve_return()
 	{
-		bool r;
-		size_t len;
+		size_t len = recieve();
 
-		std::tie(r, len) = recieve();
-		if (!r)
+		if (len==0)
 			throw std::runtime_error("call failed");
 
 		return std::string{ recv_data_.begin(), recv_data_.begin() + len };
@@ -305,6 +308,12 @@ namespace timax
 		std::string sub(const std::string& topic)
 		{
 			return call(SUB_TOPIC, topic);
+		}
+
+		template<typename Protocol>
+		std::string sub(Protocol const& protocol)
+		{
+			return sub(protocol.name());
 		}
 
 		template<typename... Args>

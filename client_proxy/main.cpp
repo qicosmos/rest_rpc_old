@@ -21,8 +21,9 @@ struct configure
 {
 	std::string hostname;
 	std::string port;
+	bool is_sub;
 
-	META(hostname, port);
+	META(hostname, port, is_sub);
 };
 
 configure get_config()
@@ -98,7 +99,7 @@ void test_add(const configure& cfg)
 	}
 }
 
-void test_pub_sub(const configure& cfg)
+void test_sub(const configure& cfg)
 {
 	try
 	{
@@ -106,8 +107,40 @@ void test_pub_sub(const configure& cfg)
 		timax::client_proxy client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
 
-		auto result = client.sub("add");
+		auto result = client.sub(client::add);
+
+		while (true)
+		{
+			size_t len = client.recieve();
+			auto result = client::add.parse_json(std::string(client.data(), len));
+			std::cout << result << std::endl;
+		}
+		
 		//client.pub(client::add, 1, 2);
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+void test_pub(const configure& cfg)
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		timax::client_proxy client{ io_service };
+		client.connect(cfg.hostname, cfg.port);
+
+		std::string str;
+		cin >> str;
+		while (str!="stop")
+		{
+			client.pub(client::add, 1, 2);
+			cin >> str;
+		}
+
 		io_service.run();
 	}
 	catch (const std::exception& e)
@@ -124,6 +157,11 @@ int main(void)
 	{
 		cfg = { "127.0.0.1", "9000" };
 	}
+
+	//if (cfg.is_sub)
+	//	test_sub(cfg);
+	//else
+	//	test_pub(cfg);
 
 	test_translate(cfg);
 	test_add(cfg);
