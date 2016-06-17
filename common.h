@@ -25,6 +25,13 @@ struct response_msg<T, void>
 	META(code, result);
 };
 
+struct head_t
+{
+	int16_t data_type;
+	int16_t	framework_type;
+	int32_t len;
+};
+
 enum class result_code
 {
 	OK = 0,
@@ -34,13 +41,13 @@ enum class result_code
 };
 
 //
-enum class framework_type : int16_t
+enum class framework_type
 {
 	DEFAULT = 0,
 	ROUNDTRIP = 1,
 };
 
-enum class data_type : int16_t
+enum class data_type
 {
 	JSON = 0,
 	BINARY = 1,

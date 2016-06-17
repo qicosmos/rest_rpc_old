@@ -15,13 +15,6 @@ public:
 	using io_service_t = boost::asio::io_service;
 	using tcp = boost::asio::ip::tcp;
 
-	struct head_t
-	{
-		int16_t data_type;
-		int16_t	framework_type;
-		int32_t len;
-	};
-
 protected:
 	client_base(io_service_t& io)
 		: io_(io)
@@ -68,8 +61,9 @@ public:
 		}
 
 		const int64_t i = *(int64_t*)(head_.data());
-		const size_t body_len = i & 0xffff;
-		const int type = i >> 32;
+		head_t h = *(head_t*)(head_.data());
+		const size_t body_len = h.len;
+		
 		if (body_len <= 0 || body_len > MAX_BUF_LEN)
 		{
 			return 0;
@@ -95,9 +89,9 @@ protected:
 	{
 		head_t head = 
 		{ 
-			json_str.length(), 
 			static_cast<int16_t>(data_type::JSON),
-			static_cast<int16_t>(ft)
+			static_cast<int16_t>(ft),
+			static_cast<int32_t>(json_str.length())
 		};
 		return send_impl(head, boost::asio::buffer(json_str));
 	}
@@ -106,9 +100,9 @@ protected:
 	{
 		head_t head = 
 		{ 
-			length, 
 			static_cast<int16_t>(data_type::BINARY),
-			static_cast<int16_t>(ft)
+			static_cast<int16_t>(ft),
+			static_cast<int32_t>(length)
 		};
 		return send_impl(head, boost::asio::buffer(data, length));
 	}
@@ -254,19 +248,17 @@ namespace protocol
 		tag_t tag_;
 		protocol_basic_t const& protocol_;
 	};
-
-	template <typename Func, typename Tag, typename TagPolicy = std::equal_to<std::decay_t<Tag>>>
-	auto with_tag(protocol_define<Func> const& protocol, Tag&& tag, TagPolicy = TagPolicy{})
-	{
-		using tag_t = std::remove_reference_t<std::remove_cv_t<Tag>>;
-		using protoco_with_tag_t = protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
-		return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
-	}
 }
 
-#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const protocol::protocol_define<func_type> handler{ #handler }
-#define TIMAX_MULTI_RESULT(...) std::tuple<__VA_ARGS__>
-#define TIMAX_MULTI_RETURN(...) return std::make_tuple(__VA_ARGS__)
+template <typename Func, typename Tag, typename TagPolicy = std::equal_to<std::decay_t<Tag>>>
+auto with_tag(protocol::protocol_define<Func> const& protocol, Tag&& tag, TagPolicy = TagPolicy{})
+{
+	using tag_t = std::remove_reference_t<std::remove_cv_t<Tag>>;
+	using protoco_with_tag_t = protocol::protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
+	return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
+}
+
+#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::protocol::protocol_define<func_type> handler{ #handler }
 
 namespace timax
 {
