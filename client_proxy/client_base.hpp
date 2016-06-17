@@ -41,9 +41,9 @@ public:
 		return recieve_return();
 	}
 
-	std::string call_binary(uint8_t const* data, size_t length, framework_type ft = framework_type::DEFAULT)
+	std::string call_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft = framework_type::DEFAULT)
 	{
-		bool r = send_binary(data, length, ft);
+		bool r = send_binary(handler_name, data, length, ft);
 		if (!r)
 			throw std::runtime_error("call failed");
 
@@ -93,25 +93,25 @@ protected:
 			static_cast<int16_t>(ft),
 			static_cast<int32_t>(json_str.length())
 		};
-		return send_impl(head, boost::asio::buffer(json_str));
+
+		const auto& message = get_json_messages(head, json_str);
+		return send_impl(message);
 	}
 
-	bool send_binary(uint8_t const* data, size_t length, framework_type ft)
+	bool send_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft)
 	{
 		head_t head = 
 		{ 
 			static_cast<int16_t>(data_type::BINARY),
 			static_cast<int16_t>(ft),
-			static_cast<int32_t>(length)
+			static_cast<int32_t>(handler_name.length() + 1 + length)
 		};
-		return send_impl(head, boost::asio::buffer(data, length));
+		const auto& message = get_binary_messages(head, handler_name, data, length);
+		return send_impl(message);
 	}
 
-	bool send_impl(head_t const& head, boost::asio::const_buffer buffer)
+	bool send_impl(const std::vector<boost::asio::const_buffer>& message)
 	{
-		std::vector<boost::asio::const_buffer> message;
-		message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
-		message.push_back(buffer);
 		boost::system::error_code ec;
 		boost::asio::write(socket_, message, ec);
 		if (ec)
@@ -123,6 +123,23 @@ protected:
 		{
 			return true;
 		}
+	}
+
+	std::vector<boost::asio::const_buffer> get_json_messages(head_t const& head, std::string const& json_str)
+	{
+		std::vector<boost::asio::const_buffer> message;
+		message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
+		message.push_back(boost::asio::buffer(json_str));
+		return message;
+	}
+
+	std::vector<boost::asio::const_buffer> get_binary_messages(head_t const& head, std::string const& handler_name, const char* data, size_t len)
+	{
+		std::vector<boost::asio::const_buffer> message;
+		message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
+		message.push_back(boost::asio::buffer(handler_name.c_str(), handler_name.length() + 1));
+		message.push_back(boost::asio::buffer(data, len));
+		return message;
 	}
 
 	std::string recieve_return()
@@ -295,6 +312,17 @@ namespace timax
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
 			auto result_str = client_base::call_json(json_str, protocol.get_type());
 			return protocol.parse_json(result_str);
+		}
+
+		template <typename Protocol>
+		std::string call_binary(Protocol const& protocol, const char* data, size_t len)
+		{
+			return client_base::call_binary(protocol.name(), data, len, protocol.get_type());
+		}
+
+		std::string call_binary(const std::string& handler_name, const char* data, size_t len, framework_type ft= framework_type::DEFAULT)
+		{
+			return client_base::call_binary(handler_name, data, len, ft);
 		}
 
 		std::string sub(const std::string& topic)

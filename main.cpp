@@ -18,7 +18,7 @@ struct messager
 		return temp;
 	}
 
-	void func(const char* data, int len, std::string& result)
+	void binary_func(const char* data, int len, std::string& result)
 	{
 		std::string s = data;
 		std::cout << s << std::endl;
@@ -83,7 +83,7 @@ int main()
 	s.register_handler("add", &add);;
 	s.register_handler("translate", &messager::translate, &m);
 
-	s.register_binary_handler("binary_func", &messager::func, &m);//note:the function type is fixed, only recieve binary data.
+	s.register_binary_handler("binary_func", &messager::binary_func, &m);//note:the function type is fixed, only recieve binary data.
 
 	s.run();
 

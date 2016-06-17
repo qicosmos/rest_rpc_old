@@ -60,6 +60,7 @@ namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(translate, std::string(std::string const&));
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(binary_func, std::string(const char*, int));
 }
 
 void test_translate(const configure& cfg)
@@ -148,6 +149,27 @@ void test_pub(const configure& cfg)
 	}
 }
 
+void test_binary(const configure& cfg)
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		timax::client_proxy client{ io_service };
+		client.connect(cfg.hostname, cfg.port);
+
+		char buf[40] = {};
+		std::string str = "it is test";
+		strcpy(buf, str.c_str());
+		auto result = client.call_binary(client::binary_func, buf, sizeof(buf));
+
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main(void)
 {
 	log::get().init("rest_rpc_client.lg");
@@ -164,7 +186,7 @@ int main(void)
 
 	test_translate(cfg);
 	test_add(cfg);
-
+	test_binary(cfg);
 	getchar();
 }
 
