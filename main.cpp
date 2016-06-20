@@ -13,9 +13,10 @@ struct messager
 {
 	std::string translate(const std::string& orignal)
 	{
-		std::string temp = orignal;
-		for (auto & c : temp) c = toupper(c);
-		return temp;
+		//std::string temp = orignal;
+		//for (auto & c : temp) c = toupper(c);
+		//return temp;
+		return orignal;
 	}
 
 	void binary_func(const char* data, int len, std::string& result)
