@@ -21,9 +21,8 @@ struct configure
 {
 	std::string hostname;
 	std::string port;
-	bool is_sub;
 
-	META(hostname, port, is_sub);
+	META(hostname, port);
 };
 
 configure get_config()
