@@ -30,7 +30,7 @@ public:
 		tcp::resolver::query query(tcp::v4(), address, port);
 		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 		boost::asio::connect(socket_, endpoint_iterator);
-		set_no_delay();
+		//set_no_delay();
 	}
 
 	std::string call_json(std::string const& json_str, framework_type ft = framework_type::DEFAULT)
