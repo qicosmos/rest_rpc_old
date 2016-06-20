@@ -30,6 +30,7 @@ public:
 		tcp::resolver::query query(tcp::v4(), address, port);
 		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 		boost::asio::connect(socket_, endpoint_iterator);
+		set_no_delay();
 	}
 
 	std::string call_json(std::string const& json_str, framework_type ft = framework_type::DEFAULT)
@@ -150,6 +151,13 @@ protected:
 			throw std::runtime_error("call failed");
 
 		return std::string{ recv_data_.begin(), recv_data_.begin() + len };
+	}
+
+	void set_no_delay()
+	{
+		boost::asio::ip::tcp::no_delay option(true);
+		boost::system::error_code ec;
+		socket_.set_option(option, ec);
 	}
 
 protected:

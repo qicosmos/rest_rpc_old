@@ -170,6 +170,30 @@ void test_binary(const configure& cfg)
 	}
 }
 
+
+void test_performance(const configure& cfg)
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		timax::client_proxy client{ io_service };
+		client.connect(cfg.hostname, cfg.port);
+		std::thread thd([&io_service] {io_service.run(); });
+
+		while (true)
+		{
+			//client.call(str);
+			client.call("translate", "test");
+		}
+
+		getchar();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
 int main(void)
 {
 	log::get().init("rest_rpc_client.lg");
@@ -183,7 +207,7 @@ int main(void)
 	//	test_sub(cfg);
 	//else
 	//	test_pub(cfg);
-
+	test_performance(cfg);
 	test_translate(cfg);
 	test_add(cfg);
 	test_binary(cfg);
@@ -258,68 +282,6 @@ void test_spawn_client()
 			std::string result = client.async_call("add", yield, 1,2);
 			handle_result<int>(result.c_str());
 		});
-		io_service.run();
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << "Exception: " << e.what() << std::endl;
-	}
-}
-
-void test_translate()
-{
-	try
-	{
-		boost::asio::io_service io_service;
-		client_proxy client(io_service);
-		client.connect("127.0.0.1", "9000");
-		
-		std::string result = client.call("translate", "test");
-		handle_result<std::string>(result.c_str());
-
-		io_service.run();
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << "Exception: " << e.what() << std::endl;
-	}
-}
-
-void test_performance()
-{
-	try
-	{
-		boost::asio::io_service io_service;
-		client_proxy client(io_service);
-		client.connect("192.168.2.169", "9000");
-		std::thread thd([&io_service] {io_service.run(); });
-
-		auto str = client.make_json("translate", "test");
-		while (true)
-		{
-			//client.call(str);
-			client.call("translate", "test");
-		}
-
-		getchar();
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << "Exception: " << e.what() << std::endl;
-	}
-}
-
-void test_binary()
-{
-	try
-	{
-		boost::asio::io_service io_service;
-		client_proxy client(io_service);
-		client.connect("127.0.0.1", "9000");
-
-		std::string result = client.call("translate", "test");
-		handle_result<std::string>(result.c_str());
-
 		io_service.run();
 	}
 	catch (const std::exception& e)

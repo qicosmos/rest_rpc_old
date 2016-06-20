@@ -18,6 +18,7 @@ public:
 
 	void start()
 	{
+		set_no_delay();
 		read_head();
 	}
 
@@ -26,6 +27,29 @@ public:
 		return socket_;
 	}
 
+	//add timeout later
+	void response(const char* json_str)
+	{
+		auto self(this->shared_from_this());
+		head_t h = { 0, 0, static_cast<int32_t>(strlen(json_str)) };
+		message_[0] = boost::asio::buffer(&h, HEAD_LEN);
+		message_[1] = boost::asio::buffer((char*)json_str, strlen(json_str));
+
+		boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
+		{
+			if (!ec)
+			{
+				g_succeed_count++;
+				read_head();
+			}
+			else
+			{
+				SPD_LOG_INFO(ec.message().c_str());
+			}
+		});
+	}
+
+private:
 	void read_head()
 	{
 		reset_timer();
@@ -101,27 +125,6 @@ public:
 		});
 	}
 
-	//add timeout later
-	void response(const char* json_str)
-	{
-		auto self(this->shared_from_this());
-		head_t h = { 0, 0, static_cast<int32_t>(strlen(json_str)) };
-		message_[0] = boost::asio::buffer(&h, HEAD_LEN);
-		message_[1] = boost::asio::buffer((char*)json_str, strlen(json_str));
-
-		boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
-		{
-			if (!ec)
-			{
-				read_head();
-			}
-			else
-			{
-				SPD_LOG_INFO(ec.message().c_str());
-			}
-		});
-	}
-
 	void reset_timer()
 	{
 		if (timeout_milli_ == 0)
@@ -160,6 +163,13 @@ public:
 	{
 		boost::system::error_code ignored_ec;
 		socket_.close(ignored_ec);
+	}
+
+	void set_no_delay()
+	{
+		boost::asio::ip::tcp::no_delay option(true);
+		boost::system::error_code ec;
+		socket_.set_option(option, ec);
 	}
 
 	tcp::socket socket_;
