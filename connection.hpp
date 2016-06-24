@@ -62,16 +62,12 @@ private:
 		{
 			if (ec)
 			{
-				if (ec)
-					std::cout << ec.message() << std::endl;
 				close();
 				return;
 			}
 
 			boost::system::error_code ec1;
 			boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
-			if (ec1)
-				std::cout << ec.message() << std::endl;
 			do_read();
 		});
 	}
