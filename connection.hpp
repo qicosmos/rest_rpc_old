@@ -7,7 +7,11 @@
 #include "router.hpp"
 
 using boost::asio::ip::tcp;
-
+std::string g_str = "HTTP/1.0 200 OK\r\n"
+"Content-Length: 4\r\n"
+"Content-Type: text/html\r\n"
+"Connection: Keep-Alive\r\n\r\n"
+"TEST";
 class connection : public std::enable_shared_from_this<connection>, private boost::noncopyable
 {
 public:
@@ -19,7 +23,8 @@ public:
 	void start()
 	{
 		set_no_delay();
-		read_head();
+		//read_head();
+		do_read();
 	}
 
 	tcp::socket& socket()
@@ -50,6 +55,22 @@ public:
 	}
 
 private:
+	void do_read()
+	{
+		auto self(this->shared_from_this());
+		boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
+		{
+			if (ec)
+			{
+				close();
+				return;
+			}
+
+			boost::system::error_code ec1;
+			boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
+			do_read();
+		});
+	}
 	void read_head()
 	{
 		reset_timer();
@@ -175,6 +196,7 @@ private:
 	tcp::socket socket_;
 	char head_[HEAD_LEN];
 	char data_[MAX_BUF_LEN];
+	char read_buf_[111];
 	std::array<boost::asio::mutable_buffer, 2> message_;
 	boost::asio::deadline_timer timer_;
 	std::size_t timeout_milli_;
