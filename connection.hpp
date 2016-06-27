@@ -7,11 +7,11 @@
 #include "router.hpp"
 
 using boost::asio::ip::tcp;
-std::string g_str = "HTTP/1.0 200 OK\r\n"
-"Content-Length: 4\r\n"
-"Content-Type: text/html\r\n"
-"Connection: Keep-Alive\r\n\r\n"
-"TEST";
+//std::string g_str = "HTTP/1.0 200 OK\r\n"
+//"Content-Length: 4\r\n"
+//"Content-Type: text/html\r\n"
+//"Connection: Keep-Alive\r\n\r\n"
+//"TEST";
 class connection : public std::enable_shared_from_this<connection>, private boost::noncopyable
 {
 public:
@@ -23,8 +23,8 @@ public:
 	void start()
 	{
 		set_no_delay();
-		//read_head();
-		do_read();
+		read_head();
+		//do_read();
 	}
 
 	tcp::socket& socket()
@@ -55,22 +55,22 @@ public:
 	}
 
 private:
-	void do_read()
-	{
-		auto self(this->shared_from_this());
-		boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
-		{
-			if (ec)
-			{
-				close();
-				return;
-			}
+	//void do_read()
+	//{
+	//	auto self(this->shared_from_this());
+	//	boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
+	//	{
+	//		if (ec)
+	//		{
+	//			close();
+	//			return;
+	//		}
 
-			boost::system::error_code ec1;
-			boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
-			do_read();
-		});
-	}
+	//		boost::system::error_code ec1;
+	//		boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
+	//		do_read();
+	//	});
+	//}
 	void read_head()
 	{
 		reset_timer();
