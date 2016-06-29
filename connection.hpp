@@ -196,7 +196,7 @@ private:
 	tcp::socket socket_;
 	char head_[HEAD_LEN];
 	char data_[MAX_BUF_LEN];
-	char read_buf_[111];
+	char read_buf_[106];
 	std::array<boost::asio::mutable_buffer, 2> message_;
 	boost::asio::deadline_timer timer_;
 	std::size_t timeout_milli_;
