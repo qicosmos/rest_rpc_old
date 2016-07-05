@@ -7,7 +7,11 @@
 #include "router.hpp"
 
 using boost::asio::ip::tcp;
-
+std::string g_str = "HTTP/1.0 200 OK\r\n"
+"Content-Length: 4\r\n"
+"Content-Type: text/html\r\n"
+"Connection: Keep-Alive\r\n\r\n"
+"TEST";
 class connection : public std::enable_shared_from_this<connection>, private boost::noncopyable
 {
 public:
@@ -18,7 +22,9 @@ public:
 
 	void start()
 	{
-		read_head();
+		set_no_delay();
+		//read_head();
+		do_read();
 	}
 
 	tcp::socket& socket()
@@ -26,6 +32,45 @@ public:
 		return socket_;
 	}
 
+	//add timeout later
+	void response(const char* json_str)
+	{
+		auto self(this->shared_from_this());
+		head_t h = { 0, 0, static_cast<int32_t>(strlen(json_str)) };
+		message_[0] = boost::asio::buffer(&h, HEAD_LEN);
+		message_[1] = boost::asio::buffer((char*)json_str, strlen(json_str));
+
+		boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
+		{
+			if (!ec)
+			{
+				g_succeed_count++;
+				read_head();
+			}
+			else
+			{
+				SPD_LOG_INFO(ec.message().c_str());
+			}
+		});
+	}
+
+private:
+	void do_read()
+	{
+		auto self(this->shared_from_this());
+		boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
+		{
+			if (ec)
+			{
+				close();
+				return;
+			}
+
+			boost::system::error_code ec1;
+			boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
+			do_read();
+		});
+	}
 	void read_head()
 	{
 		reset_timer();
@@ -162,9 +207,17 @@ public:
 		socket_.close(ignored_ec);
 	}
 
+	void set_no_delay()
+	{
+		boost::asio::ip::tcp::no_delay option(true);
+		boost::system::error_code ec;
+		socket_.set_option(option, ec);
+	}
+
 	tcp::socket socket_;
 	char head_[HEAD_LEN];
 	char data_[MAX_BUF_LEN];
+	char read_buf_[106];
 	std::array<boost::asio::mutable_buffer, 2> message_;
 	boost::asio::deadline_timer timer_;
 	std::size_t timeout_milli_;

@@ -16,9 +16,10 @@ struct messager
 		std::string temp = orignal;
 		for (auto & c : temp) c = toupper(c);
 		return temp;
+		return orignal;
 	}
 
-	void func(const char* data, int len, std::string& result)
+	void binary_func(const char* data, int len, std::string& result)
 	{
 		std::string s = data;
 		std::cout << s << std::endl;
@@ -83,22 +84,22 @@ int main()
 	s.register_handler("add", &add);;
 	s.register_handler("translate", &messager::translate, &m);
 
-	s.register_binary_handler("binary_func", &messager::func, &m);//note:the function type is fixed, only recieve binary data.
+	s.register_binary_handler("binary_func", &messager::binary_func, &m);//note:the function type is fixed, only recieve binary data.
 
 	s.run();
 
 	getchar();
 
 	//for test performance.
-	//std::uint64_t last_succeed_count = 0;
+	std::uint64_t last_succeed_count = 0;
 
-	//while (true)
-	//{
-	//	auto curr_succeed_count = (std::uint64_t)g_succeed_count;
-	//	std::cout << curr_succeed_count - last_succeed_count << std::endl;
-	//	last_succeed_count = curr_succeed_count;
-	//	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-	//}
+	while (true)
+	{
+		auto curr_succeed_count = (std::uint64_t)g_succeed_count;
+		std::cout << curr_succeed_count - last_succeed_count << std::endl;
+		last_succeed_count = curr_succeed_count;
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	}
 
 	return 0;
 }

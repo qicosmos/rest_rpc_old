@@ -40,6 +40,7 @@ public:
 		tcp::resolver::query query(tcp::v4(), address, port);
 		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 		boost::asio::connect(socket_, endpoint_iterator);
+		//set_no_delay();
 	}
 
 	std::string call_json(std::string const& json_str, framework_type ft = framework_type::DEFAULT)
@@ -51,13 +52,46 @@ public:
 		return recieve_return();
 	}
 
-	std::string call_binary(uint8_t const* data, size_t length, framework_type ft = framework_type::DEFAULT)
+	std::string call_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft = framework_type::DEFAULT)
 	{
-		bool r = send_binary(data, length, ft);
+		bool r = send_binary(handler_name, data, length, ft);
 		if (!r)
 			throw std::runtime_error("call failed");
 
 		return recieve_return();
+	}
+
+	size_t recieve()
+	{
+		boost::system::error_code ec;
+		boost::asio::read(socket_, boost::asio::buffer(head_), ec);
+		if (ec)
+		{
+			//log
+			return 0;
+		}
+
+		const int64_t i = *(int64_t*)(head_.data());
+		head_t h = *(head_t*)(head_.data());
+		const size_t body_len = h.len;
+		
+		if (body_len <= 0 || body_len > MAX_BUF_LEN)
+		{
+			return 0;
+		}
+
+		boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), body_len), ec);
+		if (ec)
+		{
+			return 0;
+		}
+
+		return body_len;
+	}
+
+	const char* data() const
+	{
+		return recv_data_.data();
 	}
 
 protected:
@@ -70,50 +104,25 @@ protected:
 			static_cast<int16_t>(ft),
 			static_cast<int32_t>(json_str.length())
 		};
-		return send_impl(head, boost::asio::buffer(json_str));
+
+		const auto& message = get_json_messages(head, json_str);
+		return send_impl(message);
 	}
 
-	bool send_binary(uint8_t const* data, size_t length, framework_type ft)
+	bool send_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft)
 	{
 		head_t head = 
 		{ 
 			static_cast<int16_t>(data_type::BINARY),
 			static_cast<int16_t>(ft),
-			static_cast<int32_t>(length)
+			static_cast<int32_t>(handler_name.length() + 1 + length)
 		};
-		return send_impl(head, boost::asio::buffer(data, length));
+		const auto& message = get_binary_messages(head, handler_name, data, length);
+		return send_impl(message);
 	}
 
-	std::tuple<bool, size_t> recieve()
+	bool send_impl(const std::vector<boost::asio::const_buffer>& message)
 	{
-		boost::system::error_code ec;
-		boost::asio::read(socket_, boost::asio::buffer(head_), ec);
-		if (ec)
-		{
-			//log
-			return{};
-		}
-
-		head_t const h = *(head_t*)(head_.data());
-		if (h.len <= 0 || h.len > MAX_BUF_LEN)
-		{
-			return{};
-		}
-			
-		boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), h.len), ec);
-		if (ec)
-		{
-			return{};
-		}
-
-		return std::make_tuple(true, h.len);
-	}
-
-	bool send_impl(head_t const& head, boost::asio::const_buffer buffer)
-	{
-		std::vector<boost::asio::const_buffer> message;
-		message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
-		message.push_back(buffer);
 		boost::system::error_code ec;
 		boost::asio::write(socket_, message, ec);
 		if (ec)
@@ -127,16 +136,38 @@ protected:
 		}
 	}
 
+	std::vector<boost::asio::const_buffer> get_json_messages(head_t const& head, std::string const& json_str)
+	{
+		std::vector<boost::asio::const_buffer> message;
+		message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
+		message.push_back(boost::asio::buffer(json_str));
+		return message;
+	}
+
+	std::vector<boost::asio::const_buffer> get_binary_messages(head_t const& head, std::string const& handler_name, const char* data, size_t len)
+	{
+		std::vector<boost::asio::const_buffer> message;
+		message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
+		message.push_back(boost::asio::buffer(handler_name.c_str(), handler_name.length() + 1));
+		message.push_back(boost::asio::buffer(data, len));
+		return message;
+	}
+
 	std::string recieve_return()
 	{
-		bool r;
-		size_t len;
+		size_t len = recieve();
 
-		std::tie(r, len) = recieve();
-		if (!r)
+		if (len==0)
 			throw std::runtime_error("call failed");
 
 		return std::string{ recv_data_.begin(), recv_data_.begin() + len };
+	}
+
+	void set_no_delay()
+	{
+		boost::asio::ip::tcp::no_delay option(true);
+		boost::system::error_code ec;
+		socket_.set_option(option, ec);
 	}
 
 protected:
@@ -301,9 +332,26 @@ namespace timax
 			return protocol.parse_json(result_str);
 		}
 
+		template <typename Protocol>
+		std::string call_binary(Protocol const& protocol, const char* data, size_t len)
+		{
+			return client_base::call_binary(protocol.name(), data, len, protocol.get_type());
+		}
+
+		std::string call_binary(const std::string& handler_name, const char* data, size_t len, framework_type ft= framework_type::DEFAULT)
+		{
+			return client_base::call_binary(handler_name, data, len, ft);
+		}
+
 		std::string sub(const std::string& topic)
 		{
 			return call(SUB_TOPIC, topic);
+		}
+
+		template<typename Protocol>
+		std::string sub(Protocol const& protocol)
+		{
+			return sub(protocol.name());
 		}
 
 		template<typename... Args>
