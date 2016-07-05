@@ -27,6 +27,14 @@ struct response_msg<T, void>
 
 struct head_t
 {
+	head_t()
+		: data_type(0)
+		, framework_type(0)
+		, len(0)
+	{
+
+	}
+
 	int16_t data_type;
 	int16_t	framework_type;
 	int32_t len;

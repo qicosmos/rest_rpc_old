@@ -180,6 +180,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="base64.hpp" />
+    <ClInclude Include="client_proxy\async_client.hpp" />
+    <ClInclude Include="client_proxy\async_client_ex.hpp" />
     <ClInclude Include="client_proxy\client_base.hpp" />
     <ClInclude Include="client_proxy\client_proxy.hpp" />
   </ItemGroup>
