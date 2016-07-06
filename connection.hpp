@@ -23,8 +23,8 @@ public:
 	void start()
 	{
 		set_no_delay();
-		//read_head();
-		do_read();
+		read_head();
+		//do_read();
 	}
 
 	tcp::socket& socket()
