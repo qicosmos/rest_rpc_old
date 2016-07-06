@@ -8,6 +8,7 @@
 #include "../consts.h"
 #include "../common.h"
 #include "../function_traits.hpp"
+#include "protocol.hpp"
 
 class client_base
 {
@@ -19,6 +20,15 @@ protected:
 	client_base(io_service_t& io)
 		: io_(io)
 		, socket_(io)
+	{
+
+	}
+
+	client_base(io_service_t& io, std::string address, std::string port)
+		: io_(io)
+		, socket_(io)
+		, address_(std::move(address))
+		, port_(std::move(port))
 	{
 
 	}
@@ -161,8 +171,10 @@ protected:
 	}
 
 protected:
-	io_service_t&		io_;
-	tcp::socket			socket_;
+	io_service_t&					io_;
+	tcp::socket						socket_;
+	std::string						address_;
+	std::string						port_;
 	std::array<char, HEAD_LEN>		head_;
 	std::array<char, MAX_BUF_LEN>	recv_data_;
 };
@@ -315,9 +327,7 @@ namespace timax
 		template <typename Protocol, typename ... Args>
 		auto call(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
 		{
-			using result_type = typename Protocol::result_type;
-
-			auto json_str = protocol.make_json(std::forward<Args>(args)...);
+			auto json_str = protocol.make_json(std::forward<std::remove_reference_t<Args>>(args)...);
 			auto result_str = client_base::call_json(json_str, protocol.get_type());
 			return protocol.parse_json(result_str);
 		}

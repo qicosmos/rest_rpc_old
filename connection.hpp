@@ -146,6 +146,27 @@ private:
 		});
 	}
 
+	//add timeout later
+	void response(const char* json_str)
+	{
+		auto self(this->shared_from_this());
+		//int64_t len = strlen(json_str);
+		head_t h = { 0, 0, static_cast<int32_t>(strlen(json_str)) };
+		message_[0] = boost::asio::buffer(&h, HEAD_LEN);
+		message_[1] = boost::asio::buffer((char*)json_str, strlen(json_str));
+		boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
+		{
+			if (!ec)
+			{
+				read_head();
+			}
+			else
+			{
+				SPD_LOG_INFO(ec.message().c_str());
+			}
+		});
+	}
+
 	void reset_timer()
 	{
 		if (timeout_milli_ == 0)
