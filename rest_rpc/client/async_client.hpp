@@ -1,19 +1,5 @@
 #pragma once
 
-#include <string>
-#include <list>
-#include <type_traits>
-#include <kapok/Kapok.hpp>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include "../consts.h"
-#include "../common.h"
-#include "../function_traits.hpp"
-#include "../protocol.hpp"
-
 namespace std
 {
 	template<bool Test, class T = void>
@@ -243,7 +229,6 @@ namespace timax { namespace rpc
 		}
 
 	private:
-
 		template <typename Client>
 		auto get_impl() const
 			-> std::enable_if_t<is_task_thread_safe<Client>::value, result_type>
@@ -319,8 +304,7 @@ namespace timax { namespace rpc
 		typename ClientThreadSafePolicy, 
 		typename TaskThreadSafePolicy
 	>
-	class async_client : public boost::enable_shared_from_this<
-		async_client<ClientThreadSafePolicy, TaskThreadSafePolicy>>
+	class async_client : public boost::enable_shared_from_this<async_client<ClientThreadSafePolicy, TaskThreadSafePolicy>>
 	{
 	public:
 		using ctsp = ClientThreadSafePolicy;
@@ -387,7 +371,7 @@ namespace timax { namespace rpc
 						resolver_.async_resolve(q, boost::bind(&async_client::handle_resolve, shared_from_this(),
 							task, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
 			
-						setup_timeout(task, timer_);
+						//setup_timeout(task, timer_);
 					}
 					else
 					{
@@ -517,7 +501,7 @@ namespace timax { namespace rpc
 				return task;
 			});
 
-			if (!next_task)
+			if (nullptr != next_task)
 			{
 				start_send_recv(next_task);
 			}
@@ -560,7 +544,7 @@ namespace timax { namespace rpc
 
 			send(task);
 			receive(task);
-			setup_timeout(task, task->timer);
+			//setup_timeout(task, task->timer);
 		}
 
 		void send(task_ptr task)
@@ -586,17 +570,20 @@ namespace timax { namespace rpc
 			resolver_.cancel();
 			timer_.cancel();
 
-			current_->timer.cancel();
-			current_->do_void([this] 
-			{	
-				if (task_status::processing == current_->status)
+			if (nullptr != current_)
+			{
+				current_->timer.cancel();
+				current_->do_void([this]
 				{
-					socket_.cancel();
-					current_->status = task_status::aborted;
-					current_->notify();
-				}
-			});
-			current_.reset();
+					if (task_status::processing == current_->status)
+					{
+						//socket_.cancel();
+						current_->status = task_status::aborted;
+						current_->notify();
+					}
+				});
+				current_.reset();
+			}
 
 			for (auto task : tasks_)
 			{
@@ -630,7 +617,7 @@ namespace timax { namespace rpc
 					// In this situation, task is in progress, we need cancle socket
 					if (task_status::processing == task->status)
 					{
-						socket_.cancel();
+						//socket_.cancel();
 						current_->status = task_status::aborted;
 						current_->notify();
 						current_.reset();

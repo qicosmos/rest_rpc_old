@@ -1,8 +1,8 @@
 #pragma once
 
-#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::protocol::protocol_define<func_type> handler{ #handler }
+#define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::timax::rpc::protocol_define<func_type> handler{ #handler }
 
-namespace protocol
+namespace timax { namespace rpc
 {
 	template <typename Func>
 	struct protocol_define;
@@ -11,7 +11,7 @@ namespace protocol
 	struct protocol_with_tag;
 
 	template <typename Ret, typename ... Args>
-	struct protocol_define<Ret(Args...)>// : function_traits<Ret(Args...)>
+	struct protocol_define<Ret(Args...)>
 	{
 		using result_type = typename function_traits<Ret(Args...)>::return_type;
 
@@ -108,12 +108,28 @@ namespace protocol
 		tag_t tag_;
 		protocol_basic_t const& protocol_;
 	};
-}
 
-template <typename Func, typename Tag, typename TagPolicy = std::equal_to<std::decay_t<Tag>>>
-auto with_tag(protocol::protocol_define<Func> const& protocol, Tag&& tag, TagPolicy = TagPolicy{})
-{
-	using tag_t = std::remove_reference_t<std::remove_cv_t<Tag>>;
-	using protoco_with_tag_t = protocol::protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
-	return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
-}
+	template <typename Func, typename Tag, typename TagPolicy = std::equal_to<std::decay_t<Tag>>>
+	auto with_tag(protocol_define<Func> const& protocol, Tag&& tag, TagPolicy = TagPolicy{})
+	{
+		using tag_t = std::remove_reference_t<std::remove_cv_t<Tag>>;
+		using protoco_with_tag_t = protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
+		return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
+	}
+
+	template <typename Func, typename ... Args>
+	struct is_argument_match
+	{
+	private:
+		template <typename T>
+		static std::false_type test(...);
+
+		template <typename T, typename =
+			decltype(std::declval<T>()(std::declval<Args>()...))>
+			static std::true_type test(int);
+
+		using result_type = decltype(test<Func>(0));
+	public:
+		static constexpr bool value = result_type::value;
+	};
+} }
