@@ -1,4 +1,4 @@
-#include <rest_rpc/client.hpp>
+#include <rest_rpc/rpc.hpp>
 
 struct configure
 {
