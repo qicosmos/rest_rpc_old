@@ -252,6 +252,19 @@ namespace timax { namespace rpc
 	};
 } }
 
+#define TIMAX_ERROR_THROW_CANCEL_RETURN(e) \
+if(e)\
+{\
+	if (boost::system::errc::operation_canceled == e)\
+	{\
+		SPD_LOG_NOTICE(e.message().c_str()); return;\
+	}\
+	SPD_LOG_ERROR(e.message().c_str());\
+	throw boost::system::system_error{ e };\
+}
+
+
+
 // implement async_client
 namespace timax { namespace rpc
 {
@@ -371,7 +384,7 @@ namespace timax { namespace rpc
 						resolver_.async_resolve(q, boost::bind(&async_client::handle_resolve, shared_from_this(),
 							task, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
 			
-						//setup_timeout(task, timer_);
+						setup_timeout(task, timer_);
 					}
 					else
 					{
@@ -401,7 +414,7 @@ namespace timax { namespace rpc
 					if (current_ == task && task->status == task_status::processing)
 					{
 						current_.reset();
-						socket_.cancel();
+						socket_.close();
 					}
 				}
 				else
@@ -414,19 +427,9 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		void check_system_error(boost::system::error_code const& error)
-		{
-			if (error && boost::system::errc::operation_canceled != error)
-			{
-				// TO DO : log error
-				destroy(error);
-				throw boost::system::system_error{ error };
-			}
-		}
-
 		void handle_timeout(task_ptr task, boost::system::error_code const& error)
 		{
-			check_system_error(error);
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
 
 			thread_safe_policy_.do_void([this, task]
 			{
@@ -448,7 +451,7 @@ namespace timax { namespace rpc
 
 		void handle_resolve(task_ptr task, boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
 		{
-			check_system_error(error);
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
 
 			// log try to connect
 			boost::asio::async_connect(socket_, endpoint_iterator, boost::bind(&async_client::handle_connect, shared_from_this(),
@@ -457,7 +460,8 @@ namespace timax { namespace rpc
 
 		void handle_connect(task_ptr task, boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
 		{
-			check_system_error(error);
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
+
 			timer_.cancel();
 			thread_safe_policy_.do_void([this] { connecting_ = false; });
 			start_send_recv(task);		// we do the task directly
@@ -465,12 +469,12 @@ namespace timax { namespace rpc
 
 		void handle_write(task_ptr task, boost::system::error_code const& error)
 		{
-			check_system_error(error);
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
 		}
 
 		void handle_read_head(task_ptr task, boost::system::error_code const& error)
 		{
-			check_system_error(error);
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
 
 			task->rep.resize(task->head.len + 1);
 			boost::asio::async_read(socket_, boost::asio::buffer(&task->rep[0], task->head.len),
@@ -480,7 +484,8 @@ namespace timax { namespace rpc
 
 		void handle_read_body(task_ptr task, boost::system::error_code const& error)
 		{
-			check_system_error(error);
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
+
 			task->timer.cancel();
 			task->do_void([task] { task->status = task_status::accomplished; });
 			task->notify();
@@ -544,7 +549,7 @@ namespace timax { namespace rpc
 
 			send(task);
 			receive(task);
-			//setup_timeout(task, task->timer);
+			setup_timeout(task, task->timer);
 		}
 
 		void send(task_ptr task)
@@ -577,7 +582,7 @@ namespace timax { namespace rpc
 				{
 					if (task_status::processing == current_->status)
 					{
-						//socket_.cancel();
+						socket_.close();
 						current_->status = task_status::aborted;
 						current_->notify();
 					}

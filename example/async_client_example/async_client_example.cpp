@@ -69,6 +69,7 @@ int main(void)
 
 	// test add 
 	auto task = client->call(client::add, 4, 6);
+	task.cancle();
 	auto result = task.get();
 
 	// notify and wait for exit
