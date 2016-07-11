@@ -46,7 +46,7 @@ namespace client
 
 int main(void)
 {
-	using async_client_t = timax::rpc::thread_safe_async_client;
+	using async_client_t = timax::rpc::async_client;
 
 	// init log
 	timax::log::get().init("rest_rpc_client.lg");
@@ -69,7 +69,7 @@ int main(void)
 
 	// test add 
 	auto task = client->call(client::add, 4, 6);
-	task.cancle();
+	//task.cancel();
 	auto result = task.get();
 
 	// notify and wait for exit

@@ -1,86 +1,8 @@
 #pragma once
 
-namespace std
-{
-	template<bool Test, class T = void>
-	using disable_if_t = typename enable_if<!Test, T>::type;
-}
-
-namespace timax { namespace rpc
-{
-	class task_thread_safety
-	{
-	public:
-		auto get_lock() const
-		{
-			return std::unique_lock<std::mutex>{ mutex_ };
-		}
-
-		auto wait() const
-		{
-			auto lock = get_lock();
-			cond_.wait(lock);
-			return std::move(lock);
-		}
-
-		template <typename Pred>
-		auto wait(Pred pred) const
-		{
-			auto lock = get_lock();
-			cond_.wait(lock, pred);
-			return std::move(lock);
-		}
-
-		void notify_one() const
-		{
-			cond_.notify_one();
-		}
-
-	private:
-		mutable	std::mutex					mutex_;
-		mutable std::condition_variable		cond_;
-	};
-} } 
-
 // task
 namespace timax { namespace rpc 
 {
-	class client_single_thread_policy;
-	class client_multi_thread_policy;
-
-	template 
-	<
-		typename ClientThreadSafepolict = client_single_thread_policy,
-		typename TaskThreadSafePolicy = void
-	>
-	class async_client;
-
-	template <typename AsyncClient>
-	struct is_task_thread_safe;
-
-	template <typename ClientThreadSafePolicy, typename TaskThreadSafepolict>
-	struct is_task_thread_safe<async_client<ClientThreadSafePolicy, TaskThreadSafepolict>> : std::true_type
-	{
-	};
-
-	template <typename ClientThreadSafePolicy>
-	struct is_task_thread_safe<async_client<ClientThreadSafePolicy, void>> : std::false_type
-	{
-	};
-
-	template <typename AsyncClient>
-	struct is_client_thread_safe;
-
-	template <typename ClientThreadSafePolicy, typename TaskThreadSafepolict>
-	struct is_client_thread_safe<async_client<ClientThreadSafePolicy, TaskThreadSafepolict>> : std::true_type
-	{
-	};
-
-	template <typename TaskThreadSafepolict>
-	struct is_client_thread_safe<async_client<client_single_thread_policy, TaskThreadSafepolict>> : std::false_type
-	{
-	};
-
 	using deadline_timer_t = boost::asio::deadline_timer;
 	using io_service_t = boost::asio::io_service;
 	using tcp = boost::asio::ip::tcp;
@@ -93,9 +15,9 @@ namespace timax { namespace rpc
 		aborted,
 	};
 
-	struct task_base_t
+	struct task_t
 	{
-		explicit task_base_t(io_service_t& io, std::string req)
+		explicit task_t(io_service_t& io, std::string req)
 			: timer(io)
 			, status(task_status::established)
 			, req(std::move(req))
@@ -108,88 +30,38 @@ namespace timax { namespace rpc
 			return status == task_status::aborted || status == task_status::accomplished;
 		}
 
+		auto get_lock() const
+		{
+			return std::unique_lock<std::mutex>{ mutex };
+		}
+
+		auto wait() const
+		{
+			auto lock = get_lock();
+			cond.wait(lock, [this] { return is_finished(); });
+			return std::move(lock);
+		}
+
+		void notify() const
+		{
+			cond.notify_all();
+		}
+
+		void abort()
+		{
+			{
+				auto lock = get_lock();
+				if (!is_finished())
+					status = task_status::aborted;
+			}
+			notify();
+		}
+
 		deadline_timer_t			timer;
 		task_status					status;
 		head_t						head;
 		std::string					req;
 		std::string					rep;
-	};
-
-
-	template <typename ThreadSafePolicy = void>
-	struct task : task_base_t
-	{	
-		using tsp = ThreadSafePolicy;
-
-		task(io_service_t& ios, std::string req)
-			: task_base_t(ios, std::move(req))
-		{
-		}
-
-		auto get_lock() const
-		{
-			return tsp_.get_lock();
-		}
-
-		auto wait() const
-		{
-			return std::move(tsp_.wait([this] { return is_finished(); }));
-		}
-
-		void notify() const
-		{
-			tsp_.notify_one();
-		}
-
-		template <typename F>
-		void do_void(F&& f) const
-		{
-			auto lock = get_lock();
-			f();
-		}
-
-		template <typename F>
-		void do_return(F&& f) const
-		{
-			auto lock = get_lock();
-			return f();
-		}
-
-		tsp		tsp_;
-	};
-
-	template <>
-	struct task<void> : task_base_t
-	{
-		using tsp = void;
-
-		task(io_service_t& ios, std::string req)
-			: task_base_t(ios, std::move(req))
-		{
-		}
-
-		void wait() const
-		{
-			std::unique_lock<std::mutex> lock{ mutex };
-			cond.wait(lock, [this] { return is_finished(); });
-		}
-
-		void notify() const
-		{
-			cond.notify_one();
-		}
-
-		template <typename F>
-		void do_void(F&& f) const
-		{
-			f();
-		}
-
-		template <typename F>
-		void do_return(F&& f) const
-		{
-			return f();
-		}
 
 		mutable	std::mutex					mutex;
 		mutable std::condition_variable		cond;
@@ -200,12 +72,9 @@ namespace timax { namespace rpc
 	{
 	public:
 		using protocol_type = Proto;
-		using client_type = AsyncClient;
-		using client_ptr = boost::shared_ptr<client_type>;
-		using tsp = typename client_type::ttsp;
-
+		using task_ptr = boost::shared_ptr<task_t>;
+		using client_ptr = boost::shared_ptr<AsyncClient>;
 		using result_type = typename protocol_type::result_type;
-		using task_ptr = boost::shared_ptr<task<tsp>>;
 		
 		task_wrapper(protocol_type const& protocol, task_ptr task, client_ptr client)
 			: protocol_(protocol)
@@ -217,36 +86,37 @@ namespace timax { namespace rpc
 
 		result_type get() const
 		{
-			return get_impl<client_type>();
-		}
-
-		void cancle()
-		{
-			task_->do_void([this] 
+			if (nullptr != task_)
 			{
-				client_->cancle(task_);
-			});
+				auto lock = task_->wait();
+				if(task_status::accomplished == task_->status)
+					return protocol_.parse_json(task_->rep);
+			}
+			throw;
+		}
+
+		void wait() const
+		{
+			if (nullptr != task_)
+			{
+				auto lock = task_->wait();
+				if (task_status::accomplished == task_->status)
+				{
+					protocol_.parse_json(task_->rep);
+					return;
+				}	
+			}
+			throw;
+		}
+
+		void cancel()
+		{
+			client_->cancel(task_);
+			task_.reset();
 		}
 
 	private:
-		template <typename Client>
-		auto get_impl() const
-			-> std::enable_if_t<is_task_thread_safe<Client>::value, result_type>
-		{
-			auto lock = task_->wait();
-			return protocol_.parse_json(task_->rep);
-		}
-
-		template <typename Client>
-		auto get_impl() const
-			-> std::disable_if_t<is_task_thread_safe<Client>::value, result_type>
-		{
-			task_->wait();
-			return protocol_.parse_json(task_->rep);
-		}
-
-	private:
-		protocol_type const&		protocol_;
+		protocol_type				protocol_;
 		task_ptr					task_;
 		client_ptr					client_;
 	};
@@ -263,48 +133,9 @@ if(e)\
 	throw boost::system::system_error{ e };\
 }
 
-
-
 // implement async_client
 namespace timax { namespace rpc
 {
-	class client_multi_thread_policy
-	{
-	public:
-		template <typename F>
-		void do_void(F&& f) const
-		{
-			std::unique_lock<std::mutex> lock{ mutex_ };
-			f();
-		}
-
-		template <typename F>
-		auto do_return(F&& f) const
-		{
-			std::unique_lock<std::mutex> lock{ mutex_ };
-			return f();
-		}
-
-	private:
-		mutable std::mutex		mutex_;
-	};
-
-	class client_single_thread_policy
-	{
-	public:
-		template <typename F>
-		void do_void(F&& f) const
-		{
-			f();
-		}
-
-		template <typename F>
-		auto do_return(F&& f) const
-		{
-			return f();
-		}
-	};
-
 	enum class client_status
 	{
 		disable = 0,		// client is not available
@@ -312,19 +143,13 @@ namespace timax { namespace rpc
 		busy = 3,			// tasks_ is no empty
 	};
 
-	template 
-	<
-		typename ClientThreadSafePolicy, 
-		typename TaskThreadSafePolicy
-	>
-	class async_client : public boost::enable_shared_from_this<async_client<ClientThreadSafePolicy, TaskThreadSafePolicy>>
+	class async_client : public boost::enable_shared_from_this<async_client>
 	{
 	public:
-		using ctsp = ClientThreadSafePolicy;
-		using ttsp = TaskThreadSafePolicy;
-		using this_type = async_client<ctsp, ttsp>;
-		using task_type = task<ttsp>;
+		using this_type = async_client;
+		using task_type = task_t;
 		using task_ptr = boost::shared_ptr<task_type>;
+		using ptmf_t = void (async_client::*)(task_ptr, boost::system::error_code const&);
 
 	public:
 		async_client(io_service_t& ios, std::string address, std::string port)
@@ -342,14 +167,7 @@ namespace timax { namespace rpc
 
 		~async_client()
 		{
-			thread_safe_policy_.do_void([this] 
-			{
-				if (status_ != client_status::disable)
-				{
-					destroy(boost::system::errc::make_error_code(
-						boost::system::errc::success));
-				}
-			});
+			destroy(boost::system::errc::make_error_code(boost::system::errc::success));
 		}
 
 		template <typename Proto, typename ... Args>
@@ -371,87 +189,75 @@ namespace timax { namespace rpc
 				static_cast<int32_t>(task->req.length())
 			};
 
-			if (!socket_.is_open())
+			ios_.post([this, task] 
 			{
-				thread_safe_policy_.do_void([this, task]
+				if (!socket_.is_open())
 				{
 					if (!connecting_)
 					{
 						connecting_ = true;
 						status_ = client_status::busy;
-			
+
 						tcp::resolver::query q = { tcp::v4(), address_, port_ };
 						resolver_.async_resolve(q, boost::bind(&async_client::handle_resolve, shared_from_this(),
 							task, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
-			
-						setup_timeout(task, timer_);
+
+						setup_timeout(task, timer_, &async_client::handle_connect_timeout);
 					}
 					else
 					{
 						assert(status_ == client_status::busy);
 						tasks_.push_back(task);
 					}
-				});
-			}
-			else
-			{
-				do_call(task);
-			}
+				}
+				else
+				{
+					do_call(task);
+				}
+			});
 
 			return{ proto, task, shared_from_this() };
 		}
 
-		void cancle(task_ptr task)
+		void cancel(task_ptr task)
 		{
-			thread_safe_policy_.do_void([this, task] 
+			task->timer.cancel();
+			ios_.post([this, task] 
 			{
-				task->timer.cancel();
+				task->abort();
 
 				auto itr = std::find(tasks_.begin(), tasks_.end(), task);
-				if (tasks_.end() == itr)
-				{
-					// In this situation, task is in progress, we need cancle socket
-					if (current_ == task && task->status == task_status::processing)
-					{
-						current_.reset();
-						socket_.close();
-					}
-				}
-				else
+				if (tasks_.end() != itr)
 				{
 					tasks_.erase(itr);
 				}
-
-				task->status = task_status::aborted;
-			});	
+			});
 		}
 
 	private:
 		void handle_timeout(task_ptr task, boost::system::error_code const& error)
 		{
-			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
+			task->abort();
+		}
 
-			thread_safe_policy_.do_void([this, task]
+		void handle_connect_timeout(task_ptr task, boost::system::error_code const& error)
+		{
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
+
+			if (connecting_)
 			{
 				auto errc = boost::system::errc::make_error_code(boost::system::errc::timed_out);
-
-				if (connecting_)
-				{
-					// connecting to server time out
-					destroy(errc);
-				}
-				else
-				{
-					cancle_private(task, errc);
-				}
-			});
-			task->do_void([task] { task->status = task_status::aborted; });
-			task->notify();
+				destroy(errc);
+			}
+	
+			task->timer.cancel();
+			task->abort();
 		}
 
 		void handle_resolve(task_ptr task, boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
 		{
-			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
 
 			// log try to connect
 			boost::asio::async_connect(socket_, endpoint_iterator, boost::bind(&async_client::handle_connect, shared_from_this(),
@@ -460,22 +266,22 @@ namespace timax { namespace rpc
 
 		void handle_connect(task_ptr task, boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
 		{
-			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
 
 			timer_.cancel();
-			thread_safe_policy_.do_void([this] { connecting_ = false; });
+			connecting_ = false;
 			start_send_recv(task);		// we do the task directly
 		}
 
 		void handle_write(task_ptr task, boost::system::error_code const& error)
 		{
-			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
 		}
 
 		void handle_read_head(task_ptr task, boost::system::error_code const& error)
 		{
-			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
-
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
+			
 			task->rep.resize(task->head.len + 1);
 			boost::asio::async_read(socket_, boost::asio::buffer(&task->rep[0], task->head.len),
 				boost::bind(&async_client::handle_read_body, shared_from_this(),
@@ -484,72 +290,53 @@ namespace timax { namespace rpc
 
 		void handle_read_body(task_ptr task, boost::system::error_code const& error)
 		{
-			TIMAX_ERROR_THROW_CANCEL_RETURN(error)
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
 
 			task->timer.cancel();
-			task->do_void([task] { task->status = task_status::accomplished; });
+			{
+				auto lock = task->get_lock();
+				if (!task->is_finished())
+					task->status = task_status::accomplished;
+			}
 			task->notify();
 
-			auto next_task = thread_safe_policy_.do_return([this]
-			{
-				assert(client_status::busy == status_);
-				if (tasks_.empty())
-				{
-					status_ = client_status::ready;
-					current_.reset();
-					return task_ptr{ nullptr };
-				}
-
-				auto task = tasks_.front();
-				tasks_.pop_front();
-				current_ = task;
-				return task;
-			});
-
-			if (nullptr != next_task)
-			{
-				start_send_recv(next_task);
-			}
+			call_next_if_there_exist();
 		}
 
-		void setup_timeout(task_ptr task, deadline_timer_t& timer)
+		void setup_timeout(task_ptr task, deadline_timer_t& timer, ptmf_t ptmf)
 		{
 			timer.cancel();
-			timer.expires_from_now(boost::posix_time::milliseconds{ 1000 });
-			timer.async_wait(boost::bind(&async_client::handle_timeout,
-				shared_from_this(), task, boost::asio::placeholders::error));
+			timer.expires_from_now(boost::posix_time::seconds{ 60 });		// timeout 60s, for debug
+			timer.async_wait(boost::bind(ptmf, shared_from_this(), task, boost::asio::placeholders::error));
 		}
 
 		void do_call(task_ptr task)
 		{
-			if (!thread_safe_policy_.do_return([this, task]() -> bool 
+			assert(client_status::disable != status_);
+			if (client_status::busy == status_)
 			{
-				assert(client_status::disable != status_);
-				if (client_status::busy == status_)
-				{
-					tasks_.push_back(task);
-					return true;
-				}
-
-				current_ = task;
+				tasks_.push_back(task);
+			}
+			else
+			{
 				status_ = client_status::busy;
-				return false;
-			}))
-			{
 				start_send_recv(task);
 			}
 		}
 
 		void start_send_recv(task_ptr task)
 		{
-			task->do_void([task] 
+			if (task->is_finished())
 			{
-				task->status = task_status::processing;
-			});
-
-			send(task);
-			receive(task);
-			setup_timeout(task, task->timer);
+				// task being aborted
+				call_next_if_there_exist();
+			}
+			else
+			{
+				send(task);
+				receive(task);
+				setup_timeout(task, task->timer, &async_client::handle_timeout);
+			}
 		}
 
 		void send(task_ptr task)
@@ -573,61 +360,30 @@ namespace timax { namespace rpc
 		{
 			// TO DO ...  log out error
 			resolver_.cancel();
-			timer_.cancel();
-
-			if (nullptr != current_)
-			{
-				current_->timer.cancel();
-				current_->do_void([this]
-				{
-					if (task_status::processing == current_->status)
-					{
-						socket_.close();
-						current_->status = task_status::aborted;
-						current_->notify();
-					}
-				});
-				current_.reset();
-			}
-
+			socket_.close();
+			
 			for (auto task : tasks_)
 			{
-				task->do_void([task]
-				{
-					assert(task_status::established == task->status);
-					task->status = task_status::aborted;
-					task->notify();
-				});
+				task->timer.cancel();
+				task->abort();
 			}
 
 			tasks_.clear();
-			status_ = client_status::disable;
 		}
 
-		void cancle_private(task_ptr task, boost::system::error_code const& error)
+		void call_next_if_there_exist()
 		{
-			// this line of code is thread safe
-			task->timer.cancel();
-
-			// task is not added to the tasks_
-			auto itr = std::find(tasks_.begin(), tasks_.end(), task);
-			if (tasks_.end() != itr)
+			assert(client_status::busy == status_);
+			if (tasks_.empty())
 			{
-				tasks_.erase(itr);
+				status_ = client_status::ready;
 			}
-			else if(current_ == task)
+			else
 			{
-				task->do_void([this, task] 
-				{
-					// In this situation, task is in progress, we need cancle socket
-					if (task_status::processing == task->status)
-					{
-						//socket_.cancel();
-						current_->status = task_status::aborted;
-						current_->notify();
-						current_.reset();
-					}
-				});
+				auto next_task = tasks_.front();
+				tasks_.pop_front();
+
+				start_send_recv(next_task);
 			}
 		}
 
@@ -641,19 +397,6 @@ namespace timax { namespace rpc
 		client_status				status_;
 		bool						connecting_;
 		std::list<task_ptr>			tasks_;
-		task_ptr					current_;
-		ctsp						thread_safe_policy_;
 	};
-
-	// io.run() & client.call() & task.get() are all in different threads
-	using thread_safe_async_client =
-		async_client<client_multi_thread_policy, task_thread_safety>;
-
-	// client.call() & io.run() are in the same thread, and task.get() in another
-	using task_safe_async_client =
-		async_client<client_single_thread_policy, task_thread_safety>;
-
-	// client.call(), io.run() and task.get() are in the same thread
-	using thread_unsafe_async_client = async_client<>;
 
 } }
