@@ -1,4 +1,5 @@
 #include <rest_rpc/rpc.hpp>
+#include <iostream>
 
 struct configure
 {
@@ -76,6 +77,8 @@ int main(void)
 	work.reset();
 	if (io_thread.joinable())
 		io_thread.join();
+
+	std::cout << result << std::endl;
 
 	return 0;
 }

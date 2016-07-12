@@ -9,6 +9,7 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <functional>
 #include <tuple>
 #include <list>
