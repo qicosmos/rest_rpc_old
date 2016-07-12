@@ -29,7 +29,7 @@
 #include <boost/enable_shared_from_this.hpp>
 
 // third-party libraries
-#include <kapok/kapok.hpp>
+#include <kapok/Kapok.hpp>
 
 // common headers
 #include <rest_rpc/base/log.hpp>
