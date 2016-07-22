@@ -93,7 +93,7 @@ struct messeger
 
 TEST_CASE(rpc_qps, true)
 {
-	messager m;
+	messeger m;
 
 	server s(9000, std::thread::hardware_concurrency()); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &add);;
