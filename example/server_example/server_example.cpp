@@ -7,7 +7,7 @@ namespace client
 		return a + b;
 	}
 
-	struct messager
+	struct messenger
 	{
 		std::string translate(const std::string& orignal)
 		{
@@ -59,10 +59,10 @@ namespace client
 int main()
 {
 	using timax::rpc::server;
-	using client::messager;
+	using client::messenger;
 	using client::configure;
 
-	messager m;
+	messenger m;
 	timax::log::get().init("rest_rpc_server.lg");
 	auto cfg = client::get_config();
 	int port = 9000; 
@@ -75,9 +75,9 @@ int main()
 
 	server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &client::add);;
-	s.register_handler("translate", &messager::translate, &m);
+	s.register_handler("translate", &messenger::translate, &m);
 
-	s.register_binary_handler("binary_func", &messager::binary_func, &m);//note:the function type is fixed, only recieve binary data.
+	s.register_binary_handler("binary_func", &messenger::binary_func, &m);//note:the function type is fixed, only recieve binary data.
 
 	s.run();
 

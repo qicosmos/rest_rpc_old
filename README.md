@@ -50,7 +50,7 @@ rpc server提供两个服务，一个是add服务，实现一个简单的加法�
     	return a + b;
     }
     
-    struct messager
+    struct messenger
     {
     	std::string translate(const std::string& orignal)
     	{
@@ -65,8 +65,8 @@ rpc server提供两个服务，一个是add服务，实现一个简单的加法�
     	server s(9000, std::thread::hardware_concurrency()); 
 
     	s.register_handler("add", &add);
-		messager m;
-    	s.register_handler("translate", &messager::translate, &m);
+		messenger m;
+    	s.register_handler("translate", &messenger::translate, &m);
     
     	s.run();
     	return 0;
