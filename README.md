@@ -64,7 +64,7 @@ rpc server提供两个服务，一个是add服务，实现一个简单的加法�
     	server s(9000, std::thread::hardware_concurrency()); 
 
     	s.register_handler("add", &add);
-		messager m;
+		messeger m;
     	s.register_handler("translate", &messeger::translate, &m);
     
     	s.run();
