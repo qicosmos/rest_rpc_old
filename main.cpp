@@ -69,7 +69,7 @@ TEST_CASE(asio_test, false)
 	getchar();
 }
 
-struct messeger
+struct messenger
 {
 	std::string translate(const std::string& orignal)
 	{
@@ -93,12 +93,12 @@ struct messeger
 
 TEST_CASE(rpc_qps, true)
 {
-	messeger m;
+	messenger m;
 
 	server s(9000, std::thread::hardware_concurrency()); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &add);;
-	s.register_handler("translate", &messeger::translate, &m);
-	s.register_handler("upload", &messeger::upload, &m);
+	s.register_handler("translate", &messenger::translate, &m);
+	s.register_handler("upload", &messenger::upload, &m);
 
 	s.run();
 
