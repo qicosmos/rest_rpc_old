@@ -24,7 +24,7 @@ namespace timax { namespace rpc
 				// has tag
 				assert(it->value.IsArray() && it->value.Size() > 1);
 				tag_ = tag_connection + as_str(it->value[0]);
-				for (size_t i = 1; i < it->value.Size(); i++)
+				for (rapidjson::SizeType i = 1; i < it->value.Size(); i++)
 				{
 					put_str(it->value[i], wr, buf);
 				}
@@ -33,7 +33,7 @@ namespace timax { namespace rpc
 			{
 				if (it->value.IsArray())
 				{
-					for (size_t i = 0; i < it->value.Size(); i++)
+					for (rapidjson::SizeType i = 0; i < it->value.Size(); i++)
 					{
 						put_str(it->value[i], wr, buf);
 					}
@@ -110,7 +110,7 @@ namespace timax { namespace rpc
 
 			val.Accept(wr);
 			const char* js = buf.GetString();
-			const int len = strlen(js);
+			size_t len = strlen(js);
 			if (len == 0)
 				return;
 
@@ -134,7 +134,7 @@ namespace timax { namespace rpc
 			rapidjson::Writer<StringBuffer> wr(buf);
 			val.Accept(wr);
 			const char* js = buf.GetString();
-			const int len = strlen(js);
+			size_t len = strlen(js);
 			if (len == 0)
 				return "";
 			if (len == 2 && js[0] == '"')

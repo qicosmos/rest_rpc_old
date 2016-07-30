@@ -122,7 +122,7 @@ namespace timax { namespace rpc
 				return;
 			}
 
-			const int offset = func_name.length() + 1;
+			size_t offset = func_name.length() + 1;
 			it->second(data + offset, length - offset, result);
 			result = get_json(result_code::OK, result, std::string{});
 			callback_to_server_(func_name, result.c_str(), conn, false);
