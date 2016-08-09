@@ -55,6 +55,7 @@ namespace client
 	}
 }
 
+//this demo is not thread safe, if you want thread safe, use threadpool, manager holds many uploader object with filename.
 class file_manager
 {
 	enum status
