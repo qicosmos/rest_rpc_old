@@ -45,6 +45,10 @@ namespace client
 	TIMAX_DEFINE_PROTOCOL(translate, std::string(std::string const&));
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(binary_func, std::string(const char*, int));
+	TIMAX_DEFINE_PROTOCOL(begin_upload, bool(const std::string&));
+	TIMAX_DEFINE_PROTOCOL(upload, void(const char*, int));
+	TIMAX_DEFINE_PROTOCOL(end_upload, bool());
+	TIMAX_DEFINE_PROTOCOL(cancel_upload, bool());
 }
 
 using sync_client = timax::rpc::sync_client;
@@ -178,11 +182,130 @@ void test_performance(const client::configure& cfg)
 	}
 }
 
+template <typename F>
+class scope_guard
+{
+public:
+	explicit scope_guard(F && f) : func_(std::move(f)), dismiss_(false) {}
+	explicit scope_guard(const F& f) : func_(f), dismiss_(false) {}
+
+	~scope_guard()
+	{
+		if (!dismiss_)
+			func_();
+	}
+
+	scope_guard(scope_guard && rhs) : func_(std::move(rhs.m_func)), dismiss_(rhs.m_dismiss) { rhs.dismiss(); }
+
+	void dismiss()
+	{
+		dismiss_ = true;
+	}
+
+private:
+	F func_;
+	bool dismiss_;
+
+	scope_guard();
+	scope_guard(const scope_guard&);
+	scope_guard& operator=(const scope_guard&);
+};
+
+template <typename F>
+scope_guard<typename std::decay<F>::type> make_guard(F && f)
+{
+	return scope_guard<typename std::decay<F>::type>(std::forward<F>(f));
+}
+
+void func(sync_client& client, std::ifstream& stream)
+{
+	//auto guard = make_guard([&client, &stream] {
+	//	//stream.close();
+	//	bool r = client.call(client::cancel_upload);
+	//});
+
+	const int size = 4096;
+	char buf[size];
+	while (stream)
+	{
+		stream.read(buf, size);
+		int real_size = static_cast<int>(stream.gcount());
+		client.call_binary(client::upload, buf, real_size);
+		throw std::exception();
+	}
+}
+
+void test_upload_file(const client::configure& cfg)
+{
+	boost::asio::io_service io_service;
+	sync_client client{ io_service };
+	client.connect(cfg.hostname, cfg.port);
+	std::thread thd([&io_service] {io_service.run(); });
+
+	try
+	{
+		bool r = client.call(client::begin_upload, "test file");
+		if (!r)
+			return;
+
+		std::ifstream stream("D:/OReilly.Docker.Cookbook.pdf", std::ios::ios_base::binary | std::ios::ios_base::in);
+		if (!stream.is_open())
+			return;
+
+		auto guard = make_guard([&client, &stream] {
+			stream.close();
+			client.call(client::cancel_upload);
+			client.disconnect();
+		});
+		
+		const int size = 4096;
+		char buf[size];
+		while (stream)
+		{
+			stream.read(buf, size);
+			int real_size = static_cast<int>(stream.gcount());
+			client.call_binary(client::upload, buf, real_size);
+		}
+
+		client.call(client::end_upload);
+
+		guard.dismiss();
+		stream.close();
+		
+		getchar();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+
+	thd.join();
+}
+
+void read_file()
+{
+	std::ifstream stream("D:/OReilly.Docker.Cookbook.pdf", std::ifstream::binary);
+	if (!stream)
+		return;
+
+	const int size = 8192;
+	char buf[8192] = {};
+	while (stream)
+	{
+		stream.read(buf, size);
+		std::cout << stream.gcount() << std::endl;
+	}
+
+	if (!stream)
+		return;
+}
+
 int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 	auto cfg = client::get_config();
-	
+//	read_file();
+	test_upload_file(cfg);
 	//test_performance(cfg);
 	test_translate(cfg);
 	test_add(cfg);

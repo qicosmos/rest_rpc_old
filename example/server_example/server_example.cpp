@@ -17,11 +17,10 @@ namespace client
 			return orignal;
 		}
 
-		void binary_func(const char* data, int len, std::string& result)
+		void binary_func(const char* data, int len)
 		{
 			std::string s = data;
 			std::cout << s << std::endl;
-			result = "ok";
 		}
 	};
 	struct configure
@@ -56,6 +55,60 @@ namespace client
 	}
 }
 
+class file_manager
+{
+	enum status
+	{
+		init,
+		begin,
+		uploading,
+		end
+	};
+public:
+	bool begin_upload(const std::string& filename)
+	{
+		assert(status_ == status::init || status_ == status::end);
+		output_file_.open(filename, std::ios_base::binary);
+		if (!output_file_) 
+		{
+			return false;
+		}
+		status_ = status::begin;
+		filename_ = filename;
+		return true;
+	}
+
+	void upload(const char* data, size_t size)
+	{
+		assert(status_ == status::begin|| status_== status::uploading);
+		
+		output_file_.write(data, size);
+
+		status_ = status::uploading;
+	}
+
+	bool cancel_upload()
+	{
+		output_file_.close();
+		status_ = status::init;
+		int ret = std::remove(filename_.c_str());
+		return ret == 0;
+	}
+
+	bool end_upload()
+	{
+		assert(status_ == status::uploading);
+		output_file_.close();
+		status_ = status::end;
+		return true;
+	}
+
+private:
+	std::ofstream output_file_;
+	status status_ = status::init;
+	std::string filename_;
+};
+
 int main()
 {
 	using timax::rpc::server;
@@ -76,6 +129,12 @@ int main()
 	server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	s.register_handler("add", &client::add);;
 	s.register_handler("translate", &messenger::translate, &m);
+
+	file_manager fm;
+	s.register_handler("begin_upload", &file_manager::begin_upload, &fm);
+	s.register_handler("end_upload", &file_manager::end_upload, &fm);
+	s.register_handler("cancel_upload", &file_manager::cancel_upload, &fm);
+	s.register_binary_handler("upload", &file_manager::upload, &fm);
 
 	s.register_binary_handler("binary_func", &messenger::binary_func, &m);//note:the function type is fixed, only recieve binary data.
 

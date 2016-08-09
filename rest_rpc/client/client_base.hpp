@@ -35,6 +35,12 @@ namespace timax { namespace rpc
 			//set_no_delay();
 		}
 
+		void disconnect()
+		{
+			socket_.shutdown(boost::asio::socket_base::shutdown_both);
+			socket_.close();
+		}
+
 		std::string call_json(std::string const& json_str, framework_type ft = framework_type::DEFAULT)
 		{
 			bool r = send_json(json_str, ft);
@@ -44,13 +50,13 @@ namespace timax { namespace rpc
 			return recieve_return();
 		}
 
-		std::string call_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft = framework_type::DEFAULT)
+		bool call_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft = framework_type::DEFAULT)
 		{
 			bool r = send_binary(handler_name, data, length, ft);
 			if (!r)
 				throw std::runtime_error("call failed");
 
-			return recieve_return();
+			return r;
 		}
 
 		size_t recieve()
@@ -99,6 +105,21 @@ namespace timax { namespace rpc
 
 			const auto& message = get_json_messages(head, json_str);
 			return send_impl(message);
+		}
+
+		bool direct_send_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft)
+		{
+			boost::system::error_code ec;
+			boost::asio::write(socket_, boost::asio::buffer(data, length), ec);
+			if (ec)
+			{
+				//log
+				return false;
+			}
+			else
+			{
+				return true;
+			}
 		}
 
 		bool send_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft)
@@ -184,21 +205,42 @@ namespace timax { namespace rpc
 
 		}
 
+		//template <typename Protocol, typename ... Args>
+		//auto call(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
+		//{
+		//	auto json_str = protocol.make_json(std::forward<Args>(args)...);
+		//	auto result_str = client_base::call_json(json_str, protocol.get_type());
+		//	return protocol.parse_json(result_str);
+		//}
+
 		template <typename Protocol, typename ... Args>
-		auto call(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
+		std::enable_if_t<!std::is_void<typename Protocol::result_type>::value, typename Protocol::result_type> call(Protocol const& protocol, Args&& ... args)
 		{
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
 			auto result_str = client_base::call_json(json_str, protocol.get_type());
 			return protocol.parse_json(result_str);
 		}
 
+		template <typename Protocol, typename ... Args>
+		std::enable_if_t<std::is_void<typename Protocol::result_type>::value> call(Protocol const& protocol, Args&& ... args)
+		{
+			auto json_str = protocol.make_json(std::forward<Args>(args)...);
+			client_base::call_json(json_str, protocol.get_type());
+		}
+
+		//template<typename Protocol>
+		//auto call()
+		//{
+
+		//}
+
 		template <typename Protocol>
-		std::string call_binary(Protocol const& protocol, const char* data, size_t len)
+		bool call_binary(Protocol const& protocol, const char* data, size_t len)
 		{
 			return client_base::call_binary(protocol.name(), data, len, protocol.get_type());
 		}
 
-		std::string call_binary(const std::string& handler_name, const char* data, size_t len, framework_type ft = framework_type::DEFAULT)
+		bool call_binary(const std::string& handler_name, const char* data, size_t len, framework_type ft = framework_type::DEFAULT)
 		{
 			return client_base::call_binary(handler_name, data, len, ft);
 		}

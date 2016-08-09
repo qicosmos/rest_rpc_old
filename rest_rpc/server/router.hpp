@@ -57,7 +57,7 @@ namespace timax { namespace rpc
 		template<typename Function, typename Self>
 		void register_binary_handler(std::string const & name, const Function& f, Self* self)
 		{
-			this->map_binary_[name] = [f, self](const char* data, size_t len, std::string& result) { (*self.*f)(data, len, result); };
+			this->map_binary_[name] = [f, self](const char* data, size_t len) { (*self.*f)(data, len); };
 		}
 
 		void remove_handler(std::string const& name)
@@ -111,21 +111,20 @@ namespace timax { namespace rpc
 		template<typename T>
 		void route_binary(const char* data, std::size_t length, T conn, bool round_trip)
 		{
-			std::string result = "";
 			std::string func_name = data;
 
 			auto it = map_binary_.find(func_name);
 			if (it == map_binary_.end())
 			{
-				result = get_json(result_code::ARGUMENT_EXCEPTION, "unknown function: " + func_name, std::string{});
-				callback_to_server_(func_name, result.c_str(), conn, true);
 				return;
 			}
 
 			size_t offset = func_name.length() + 1;
-			it->second(data + offset, length - offset, result);
-			result = get_json(result_code::OK, result, std::string{});
-			callback_to_server_(func_name, result.c_str(), conn, false);
+
+			it->second(data + offset, length - offset);
+			conn->read_head();
+			//result = get_json(result_code::OK, result, std::string{});
+			//callback_to_server_(func_name, result.c_str(), conn, false);
 		}
 
 	private:
@@ -265,7 +264,7 @@ namespace timax { namespace rpc
 
 		std::map<std::string, invoker_function> map_invokers_;
 		std::function<void(const std::string&, const char*, std::shared_ptr<connection>, bool)> callback_to_server_;
-		std::map<std::string, std::function<void(const char*, size_t, std::string& result)>> map_binary_;
+		std::map<std::string, std::function<void(const char*, size_t)>> map_binary_;
 	};
 } }
 
