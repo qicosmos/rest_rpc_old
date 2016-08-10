@@ -24,7 +24,7 @@ namespace client
 		std::stringstream ss;
 		ss << in.rdbuf();
 
-		configure cfg = {};
+		configure cfg = { "127.0.0.1", "9000" }; //if can't find the config file, give the default value.
 		DeSerializer dr;
 		try
 		{
