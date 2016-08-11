@@ -225,7 +225,8 @@ namespace timax { namespace rpc
 		std::enable_if_t<std::is_void<typename Protocol::result_type>::value> call(Protocol const& protocol, Args&& ... args)
 		{
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			client_base::call_json(json_str, protocol.get_type());
+			return send_json(json_str, protocol.get_type());
+			//client_base::call_json(json_str, protocol.get_type());
 		}
 
 		//template<typename Protocol>
