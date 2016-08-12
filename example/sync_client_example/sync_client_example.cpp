@@ -51,6 +51,16 @@ namespace client
 	TIMAX_DEFINE_PROTOCOL(cancel_upload, bool());
 }
 
+namespace sub_client
+{
+	TIMAX_DEFINE_SUB_PROTOCOL(sub_topic, bool(std::string));
+}
+
+namespace pub_client
+{
+	TIMAX_DEFINE_PUB_PROTOCOL(add, int(int, int));
+}
+
 using sync_client = timax::rpc::sync_client;
 
 void test_translate(const client::configure& cfg)
@@ -97,7 +107,7 @@ void test_sub(const client::configure& cfg)
 		sync_client client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
 
-		auto result = client.sub(client::add);
+		bool r = client.sub(sub_client::sub_topic, "add");
 
 		while (true)
 		{
@@ -127,7 +137,7 @@ void test_pub(const client::configure& cfg)
 		cin >> str;
 		while (str != "stop")
 		{
-			client.pub(client::add, 1, 2);
+			client.pub(pub_client::add, 1, 2);
 			cin >> str;
 		}
 
@@ -304,6 +314,17 @@ int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 	auto cfg = client::get_config();
+
+	std::string s;
+	std::cin >> s;
+
+	if (s == "sub")
+		test_sub(cfg);
+	else if (s == "pub")
+		test_pub(cfg);
+
+	return 0;
+
 //	read_file();
 	test_upload_file(cfg);
 	//test_performance(cfg);

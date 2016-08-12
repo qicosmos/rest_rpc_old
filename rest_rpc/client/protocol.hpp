@@ -1,6 +1,8 @@
 #pragma once
 
 #define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::timax::rpc::protocol_define<func_type> handler{ #handler }
+#define TIMAX_DEFINE_PUB_PROTOCOL(handler, func_type) static const ::timax::rpc::pub_protocol_define<func_type> handler{ #handler }
+#define TIMAX_DEFINE_SUB_PROTOCOL(handler, func_type) static const ::timax::rpc::sub_protocol_define<func_type> handler{ #handler }
 
 namespace timax { namespace rpc
 {
@@ -63,6 +65,32 @@ namespace timax { namespace rpc
 
 	private:
 		std::string name_;
+	};
+
+	template <typename Func>
+	struct sub_protocol_define : protocol_define<Func>
+	{
+		explicit sub_protocol_define(std::string name)
+			: protocol_define<Func>(std::move(name))
+		{}
+
+		framework_type get_type() const noexcept
+		{
+			return framework_type::SUB;
+		}
+	};
+
+	template <typename Func>
+	struct pub_protocol_define : protocol_define<Func>
+	{
+		explicit pub_protocol_define(std::string name)
+			: protocol_define<Func>(std::move(name))
+		{}
+
+		framework_type get_type() const noexcept
+		{
+			return framework_type::PUB;
+		}
 	};
 
 	template <typename Ret, typename ... Args, typename Tag, typename TagPolicy>

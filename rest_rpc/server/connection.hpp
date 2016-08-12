@@ -122,17 +122,17 @@ namespace timax { namespace rpc
 				{
 					router& _router = router::get();
 					//if type is tag, need callback to client the tag
-					bool round_trip = (head.framework_type == static_cast<int>(framework_type::ROUNDTRIP));
+					//bool round_trip = (head.framework_type == static_cast<int>(framework_type::ROUNDTRIP));
 
 					//if tag is binary, route_binary
 					bool binary_type = (head.data_type == static_cast<int>(data_type::BINARY));
 					if (!binary_type)
 					{
-						_router.route(data_, length, self, round_trip);
+						_router.route(data_, length, self, head.framework_type);
 					}
 					else
 					{
-						_router.route_binary(data_, length, self, round_trip);
+						_router.route_binary(data_, length, self, head.framework_type);
 					}
 				}
 				else
@@ -190,6 +190,7 @@ namespace timax { namespace rpc
 		}
 
 		friend class router;
+		friend class server;
 
 		tcp::socket socket_;
 		char head_[HEAD_LEN];

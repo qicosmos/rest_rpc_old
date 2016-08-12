@@ -42,6 +42,8 @@ namespace timax{ namespace rpc
 	{
 		DEFAULT = 0,
 		ROUNDTRIP = 1,
+		PUB = 2,
+		SUB = 3,
 	};
 
 	enum class data_type

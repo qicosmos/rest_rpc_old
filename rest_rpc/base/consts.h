@@ -3,6 +3,7 @@
 namespace timax { namespace rpc 
 {
 	const char* SUB_TOPIC = "sub_topic";
+	const char* PUB_TOPIC = "pub_topic";
 	const char* RESULT = "result";
 	const char* CODE = "code";
 

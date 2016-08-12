@@ -233,29 +233,27 @@ namespace timax { namespace rpc
 			return client_base::call_binary(handler_name, data, len, ft);
 		}
 
-		std::string sub(const std::string& topic)
+		//std::string sub(const std::string& topic)
+		//{
+		//	return call(SUB_TOPIC, topic);
+		//}
+
+		template<typename Protocol, typename ... Args>
+		auto sub(Protocol const& protocol, Args&& ... args)
 		{
-			return call(SUB_TOPIC, topic);
+			return call(protocol, std::forward<Args>(args)...);
 		}
 
-		template<typename Protocol>
-		std::string sub(Protocol const& protocol)
-		{
-			return sub(protocol.name());
-		}
-
-		template<typename... Args>
-		void pub(const char* handler_name, Args&&... args)
-		{
-			auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
-			send_json(json_str, framework_type::DEFAULT);
-		}
+		//template<typename... Args>
+		//auto pub(const char* handler_name, Args&&... args)
+		//{
+		//	return call(protocol, std::forward<Args>(args)...);
+		//}
 
 		template <typename Protocol, typename ... Args>
-		void pub(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
+		auto pub(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
 		{
-			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			send_json(json_str, framework_type::DEFAULT);
+			return call(protocol, std::forward<Args>(args)...);
 		}
 
 		template<typename... Args>

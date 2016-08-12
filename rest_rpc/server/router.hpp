@@ -66,15 +66,22 @@ namespace timax { namespace rpc
 			this->map_binary_.erase(name);
 		}
 
-		void set_callback(const std::function<void(const std::string&, const char*, std::shared_ptr<connection>, bool)>& callback)
+		void set_callback(const std::function<void(const std::string&, const char*, std::shared_ptr<connection>, int16_t, bool)>& callback)
 		{
 			callback_to_server_ = callback;
 		}
 
+		bool has_handler(const std::string func_name)
+		{
+			return map_invokers_.find(func_name) != map_invokers_.end();
+		}
+
 		template<typename T>
-		void route(const char* text, std::size_t length, T conn, bool round_trip)
+		void route(const char* text, std::size_t length, T conn, int16_t ftype)
 		{
 			token_parser parser;
+			framework_type type = (framework_type)ftype;
+			bool round_trip = (ftype == static_cast<int>(framework_type::ROUNDTRIP));
 			parser.parse(text, length, round_trip);
 
 			assert((round_trip && !parser.tag().empty()) ||
@@ -89,14 +96,14 @@ namespace timax { namespace rpc
 				if (it == map_invokers_.end())
 				{
 					result = get_json(result_code::ARGUMENT_EXCEPTION, "unknown function: " + func_name, parser.tag());
-					callback_to_server_(func_name, result.c_str(), conn, true); //has error
+					callback_to_server_(func_name, result.c_str(), conn, ftype, true); //has error
 					return;
 				}
 
 				if (it->second.param_size() != parser.param_size()) //参数个数不匹配 
 				{
 					result = get_json(result_code::ARGUMENT_EXCEPTION, std::string("parameter number is not match"), parser.tag());
-					callback_to_server_(func_name, result.c_str(), conn, true); //has error
+					callback_to_server_(func_name, result.c_str(), conn, ftype, true); //has error
 					break;
 				}
 
@@ -104,12 +111,12 @@ namespace timax { namespace rpc
 				it->second(parser, result, parser.tag());
 				//response(result.c_str()); //callback to connection
 				if (callback_to_server_)
-					callback_to_server_(func_name, result.c_str(), conn, false);
+					callback_to_server_(func_name, result.c_str(), conn, ftype, false);
 			}
 		}
 
 		template<typename T>
-		void route_binary(const char* data, std::size_t length, T conn, bool round_trip)
+		void route_binary(const char* data, std::size_t length, T conn, int16_t ftype)
 		{
 			std::string func_name = data;
 
@@ -263,7 +270,7 @@ namespace timax { namespace rpc
 		}
 
 		std::map<std::string, invoker_function> map_invokers_;
-		std::function<void(const std::string&, const char*, std::shared_ptr<connection>, bool)> callback_to_server_;
+		std::function<void(const std::string&, const char*, std::shared_ptr<connection>, int16_t, bool)> callback_to_server_;
 		std::map<std::string, std::function<void(const char*, size_t)>> map_binary_;
 	};
 } }
