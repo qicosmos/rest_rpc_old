@@ -47,7 +47,7 @@ namespace client
 	TIMAX_DEFINE_PROTOCOL(binary_func, std::string(const char*, int));
 	TIMAX_DEFINE_PROTOCOL(begin_upload, bool(const std::string&));
 	TIMAX_DEFINE_PROTOCOL(upload, void(const char*, int));
-	TIMAX_DEFINE_PROTOCOL(end_upload, bool());
+	TIMAX_DEFINE_PROTOCOL(end_upload, void());
 	TIMAX_DEFINE_PROTOCOL(cancel_upload, bool());
 }
 

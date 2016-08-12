@@ -39,8 +39,16 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				throw;
+				throw logic_error("request faild");
 			}
+		}
+
+		bool get_result(std::string const& json_str) const
+		{
+			DeSerializer dr;
+			dr.Parse(json_str);
+			auto& document = dr.GetDocument();
+			return static_cast<int>(result_code::OK) == document[CODE].GetInt();
 		}
 
 		std::string const& name() const noexcept
@@ -91,11 +99,11 @@ namespace timax { namespace rpc
 				{
 					return response.result;
 				}
-				throw;
+				throw std::invalid_argument("json result is not valid");
 			}
 			else
 			{
-				throw;
+				throw logic_error("request faild");
 			}
 		}
 

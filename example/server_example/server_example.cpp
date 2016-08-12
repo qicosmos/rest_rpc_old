@@ -96,12 +96,12 @@ public:
 		return ret == 0;
 	}
 
-	bool end_upload()
+	void end_upload()
 	{
 		assert(status_ == status::uploading);
 		output_file_.close();
 		status_ = status::end;
-		return true;
+		//return true;
 	}
 
 private:

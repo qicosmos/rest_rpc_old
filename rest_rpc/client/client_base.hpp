@@ -107,21 +107,6 @@ namespace timax { namespace rpc
 			return send_impl(message);
 		}
 
-		bool direct_send_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft)
-		{
-			boost::system::error_code ec;
-			boost::asio::write(socket_, boost::asio::buffer(data, length), ec);
-			if (ec)
-			{
-				//log
-				return false;
-			}
-			else
-			{
-				return true;
-			}
-		}
-
 		bool send_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft)
 		{
 			head_t head =
@@ -225,8 +210,10 @@ namespace timax { namespace rpc
 		std::enable_if_t<std::is_void<typename Protocol::result_type>::value> call(Protocol const& protocol, Args&& ... args)
 		{
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			return send_json(json_str, protocol.get_type());
-			//client_base::call_json(json_str, protocol.get_type());
+			auto result_str = client_base::call_json(json_str, protocol.get_type());
+			bool r = protocol.get_result(result_str);
+			if (!r)
+				throw std::domain_error("call faild");
 		}
 
 		//template<typename Protocol>
