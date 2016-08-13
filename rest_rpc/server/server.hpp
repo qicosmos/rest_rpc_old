@@ -10,6 +10,7 @@ namespace timax { namespace rpc
 		{
 			register_handler(SUB_TOPIC, &server::sub, this);
 			router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+			router::get().set_callback_pub_binary(std::bind(&server::pub, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 			do_accept();
 		}
 
@@ -84,7 +85,7 @@ namespace timax { namespace rpc
 			return topic;
 		}
 
-		void pub(const std::string& topic, const std::string& result)
+		void pub(const std::string& topic, const char* data, size_t size)
 		{
 			decltype(conn_map_.equal_range(topic)) temp;
 			std::unique_lock<std::mutex> lock(mtx_);
@@ -103,7 +104,7 @@ namespace timax { namespace rpc
 					it = conn_map_.erase(it);
 				else
 				{
-					ptr->response(result.c_str());
+					ptr->response(data, size);
 					++it;
 				}
 			}
@@ -136,7 +137,7 @@ namespace timax { namespace rpc
 			framework_type type = (framework_type)ftype;
 			if (type == framework_type::DEFAULT)
 			{
-				conn->response(result);
+				conn->response(result, strlen(result));
 				return;
 			}
 			else if (type == framework_type::SUB)
@@ -147,11 +148,11 @@ namespace timax { namespace rpc
 				std::unique_lock<std::mutex> lock(mtx_);
 				conn_map_.emplace(handler_name, conn);
 				lock.unlock();
-				conn->response(result);
+				conn->response(result, strlen(result));
 			}
 			else if (type == framework_type::PUB)
 			{
-				pub(topic, result);
+				pub(topic, result, strlen(result));
 				conn->read_head();
 			}
 		}

@@ -54,11 +54,16 @@ namespace client
 namespace sub_client
 {
 	TIMAX_DEFINE_SUB_PROTOCOL(sub_topic, std::string(std::string));
+	TIMAX_DEFINE_SUB_PROTOCOL(begin_upload, bool(const std::string&));
+	TIMAX_DEFINE_SUB_PROTOCOL(upload, void(const char*, int));
+	TIMAX_DEFINE_SUB_PROTOCOL(end_upload, void());
+	TIMAX_DEFINE_SUB_PROTOCOL(cancel_upload, bool());
 }
 
 namespace pub_client
 {
 	TIMAX_DEFINE_PUB_PROTOCOL(add, int(int, int));
+	TIMAX_DEFINE_PUB_PROTOCOL(transfer, void(const char*, int));
 }
 
 using sync_client = timax::rpc::sync_client;
@@ -99,8 +104,74 @@ void test_add(const client::configure& cfg)
 	}
 }
 
+void test_sub_file(const client::configure& cfg)
+{
+	try
+	{
+		boost::asio::io_service io_service;
+		sync_client client{ io_service };
+		client.connect(cfg.hostname, cfg.port);
+
+		auto r = client.sub(sub_client::sub_topic, "add");
+		r = client.sub(sub_client::sub_topic, "transfer");
+		while (true)
+		{
+			size_t len = client.recieve();
+			auto result = client::add.parse_json(std::string(client.data(), len));
+			std::cout << result << std::endl;
+		}
+
+		//client.pub(client::add, 1, 2);
+		io_service.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+}
+
+void test_pub_file(const client::configure& cfg)
+{
+	boost::asio::io_service io_service;
+	sync_client client{ io_service };
+	client.connect(cfg.hostname, cfg.port);
+	std::thread thd([&io_service] {io_service.run(); });
+
+	try
+	{
+		std::ifstream stream("D:/boost_1_61_0.zip", std::ios::ios_base::binary | std::ios::ios_base::in);
+		if (!stream.is_open())
+		{
+			thd.join();
+			return;
+		}
+
+		const int size = 4096;
+		char buf[size];
+		while (stream)
+		{
+			stream.read(buf, size);
+			int real_size = static_cast<int>(stream.gcount());
+			client.call_binary(pub_client::transfer, buf, real_size);
+		}
+
+		client.call(client::end_upload);
+
+		stream.close();
+
+		getchar();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
+
+	thd.join();
+}
+
 void test_sub(const client::configure& cfg)
 {
+	test_sub_file(cfg);
 	try
 	{
 		boost::asio::io_service io_service;
@@ -127,6 +198,7 @@ void test_sub(const client::configure& cfg)
 
 void test_pub(const client::configure& cfg)
 {
+	test_pub_file(cfg);
 	try
 	{
 		boost::asio::io_service io_service;

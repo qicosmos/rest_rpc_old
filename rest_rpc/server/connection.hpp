@@ -29,12 +29,12 @@ namespace timax { namespace rpc
 		}
 
 		//add timeout later
-		void response(const char* json_str)
+		void response(const char* data, size_t size)
 		{
 			auto self(this->shared_from_this());
-			head_t h = { 0, 0, static_cast<int32_t>(strlen(json_str)) };
+			head_t h = { 0, 0, static_cast<int>(size) };
 			message_[0] = boost::asio::buffer(&h, HEAD_LEN);
-			message_[1] = boost::asio::buffer((char*)json_str, strlen(json_str));
+			message_[1] = boost::asio::buffer((char*)data, size);
 
 			boost::asio::async_write(socket_, message_, [this, self](boost::system::error_code ec, std::size_t length)
 			{

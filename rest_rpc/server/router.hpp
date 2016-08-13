@@ -71,9 +71,16 @@ namespace timax { namespace rpc
 			callback_to_server_ = callback;
 		}
 
+		void set_callback_pub_binary(const std::function<void(const std::string&, const char*, size_t)>& callback)
+		{
+			callback_to_pub_binary_ = callback;
+		}
+
 		bool has_handler(const std::string func_name)
 		{
-			return map_invokers_.find(func_name) != map_invokers_.end();
+			bool r = map_invokers_.find(func_name) != map_invokers_.end();
+			bool r1 = map_binary_.find(func_name) != map_binary_.end();
+			return r || r1;
 		}
 
 		template<typename T>
@@ -119,14 +126,23 @@ namespace timax { namespace rpc
 		void route_binary(const char* data, std::size_t length, T conn, int16_t ftype)
 		{
 			std::string func_name = data;
+			size_t offset = func_name.length() + 1;
+
+			framework_type type = (framework_type)ftype;
+			if (type == framework_type::PUB)
+			{
+				//pub binary
+				if (callback_to_pub_binary_)
+					callback_to_pub_binary_(func_name, data + offset, length - offset);
+
+				return;
+			}
 
 			auto it = map_binary_.find(func_name);
 			if (it == map_binary_.end())
 			{
 				return;
 			}
-
-			size_t offset = func_name.length() + 1;
 
 			it->second(data + offset, length - offset);
 			conn->read_head();
@@ -271,6 +287,7 @@ namespace timax { namespace rpc
 
 		std::map<std::string, invoker_function> map_invokers_;
 		std::function<void(const std::string&, const char*, std::shared_ptr<connection>, int16_t, bool)> callback_to_server_;
+		std::function<void(const std::string&, const char*, size_t)> callback_to_pub_binary_;
 		std::map<std::string, std::function<void(const char*, size_t)>> map_binary_;
 	};
 } }

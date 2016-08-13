@@ -137,6 +137,8 @@ int main()
 	s.register_handler("cancel_upload", &file_manager::cancel_upload, &fm);
 	s.register_binary_handler("upload", &file_manager::upload, &fm);
 
+	s.register_binary_handler("transfer", [](const char*, size_t){});//empty, just forward raw data.
+
 	s.register_binary_handler("binary_func", &messenger::binary_func, &m);//note:the function type is fixed, only recieve binary data.
 
 	s.run();
