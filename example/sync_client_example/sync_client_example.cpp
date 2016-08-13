@@ -53,7 +53,7 @@ namespace client
 
 namespace sub_client
 {
-	TIMAX_DEFINE_SUB_PROTOCOL(sub_topic, bool(std::string));
+	TIMAX_DEFINE_SUB_PROTOCOL(sub_topic, std::string(std::string));
 }
 
 namespace pub_client
@@ -107,7 +107,7 @@ void test_sub(const client::configure& cfg)
 		sync_client client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
 
-		bool r = client.sub(sub_client::sub_topic, "add");
+		auto r = client.sub(sub_client::sub_topic, "add");
 
 		while (true)
 		{

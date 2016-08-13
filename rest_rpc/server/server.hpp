@@ -73,15 +73,15 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		bool sub(const std::string& topic)
+		std::string sub(const std::string& topic)
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
 			if (!router::get().has_handler(topic))
-				return false;
+				return "";
 
 			//conn_map_.emplace(topic, conn_);
 
-			return true;
+			return topic;
 		}
 
 		void pub(const std::string& topic, const std::string& result)
@@ -141,7 +141,12 @@ namespace timax { namespace rpc
 			}
 			else if (type == framework_type::SUB)
 			{
-				conn_map_.emplace(topic, conn); //how to get the real topic??
+				rapidjson::Document doc;
+				doc.Parse(result);
+				auto handler_name = doc[RESULT].GetString();
+				std::unique_lock<std::mutex> lock(mtx_);
+				conn_map_.emplace(handler_name, conn);
+				lock.unlock();
 				conn->response(result);
 			}
 			else if (type == framework_type::PUB)
@@ -149,32 +154,6 @@ namespace timax { namespace rpc
 				pub(topic, result);
 				conn->read_head();
 			}
-//#ifdef PUB_SUB
-//			if (has_error)
-//			{
-//				SPD_LOG_ERROR(result);
-//				return;
-//			}
-//
-//			if (topic == SUB_TOPIC)
-//			{
-//				rapidjson::Document doc;
-//				doc.Parse(result);
-//				auto handler_name = doc[RESULT].GetString();
-//				std::weak_ptr<connection> wp(conn);
-//				conn_map_.emplace(handler_name, wp);
-//				conn->response(result);
-//				return;
-//			}
-//
-//			if (!conn_map_.empty())
-//			{
-//				pub(topic, result);
-//				conn->read_head();
-//			}
-//#else
-//			conn->response(result);
-//#endif
 		}
 
 		io_service_pool io_service_pool_;

@@ -253,7 +253,9 @@ namespace timax { namespace rpc
 		template <typename Protocol, typename ... Args>
 		auto pub(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
 		{
-			return call(protocol, std::forward<Args>(args)...);
+			auto json_str = protocol.make_json(std::forward<Args>(args)...);
+			bool r = client_base::send_json(json_str, protocol.get_type());
+			return r;
 		}
 
 		template<typename... Args>

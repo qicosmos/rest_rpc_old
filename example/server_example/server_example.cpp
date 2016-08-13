@@ -17,7 +17,7 @@ namespace client
 			return orignal;
 		}
 
-		void binary_func(const char* data, int len)
+		void binary_func(const char* data, size_t len)
 		{
 			std::string s = data;
 			std::cout << s << std::endl;
@@ -26,7 +26,7 @@ namespace client
 	struct configure
 	{
 		int port;
-		size_t thread_num;
+		int thread_num;
 		bool nodelay;
 
 		META(port, thread_num, nodelay);
