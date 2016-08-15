@@ -55,10 +55,6 @@ namespace client
 namespace sub_client
 {
 	TIMAX_DEFINE_SUB_PROTOCOL(sub_topic, std::string(std::string));
-	TIMAX_DEFINE_SUB_PROTOCOL(begin_upload, bool(const std::string&));
-	TIMAX_DEFINE_SUB_PROTOCOL(upload, void(const char*, int));
-	TIMAX_DEFINE_SUB_PROTOCOL(end_upload, void());
-	TIMAX_DEFINE_SUB_PROTOCOL(cancel_upload, bool());
 }
 
 namespace pub_client
@@ -115,15 +111,21 @@ void test_sub_file(const client::configure& cfg)
 		
 		int total = 0;
 		auto r = client.sub(sub_client::sub_topic, "transfer");
-		while (true)
+
+		size_t len = client.recieve();
+		int total_size = *(int*)(client.data()); 
+		std::cout << total_size << std::endl;
+
+		std::ofstream output_file("tempfile", std::ios_base::binary);
+		while (total_size)
 		{
 			size_t len = client.recieve();
 			total += len;
-			//auto result = client::add.parse_json(std::string(client.data(), len));
-			std::cout << total << std::endl;
+			total_size -= len;
+			output_file.write(client.data(), len);
 		}
 
-		//client.pub(client::add, 1, 2);
+		output_file.close();
 		io_service.run();
 	}
 	catch (const std::exception& e)
@@ -150,17 +152,22 @@ void test_pub_file(const client::configure& cfg)
 		}
 
 		std::ifstream stream("D:/OReilly.Docker.Cookbook.pdf", std::ios::ios_base::binary | std::ios::ios_base::in);
-		if (!stream.is_open())
+		if (!stream)
 		{
 			std::cout << "the file is not exist" << std::endl;
 			thd.join();
 			return;
 		}
 
-		//stream.seekg(0, ios_base::end);
-		//auto total = stream.tellg();
-		//std::cout << total << std::endl;
-		//stream.seekg(ios_base::beg);
+		stream.seekg(0, ios_base::end);
+		auto total = (int)stream.tellg();
+		std::cout << total << std::endl;
+		stream.seekg(ios_base::beg);
+
+		//char sizebuf[4];
+		//memcpy(sizebuf, &total, sizeof(int));
+		//int rr = *reinterpret_cast<int*>(sizebuf);
+		client.call_binary(pub_client::transfer, (char*)(&total), sizeof(int)); //tell the subscriber total size
 
 		const int size = 4096;
 		char buf[size];
@@ -170,7 +177,6 @@ void test_pub_file(const client::configure& cfg)
 			int real_size = static_cast<int>(stream.gcount());
 			client.call_binary(pub_client::transfer, buf, real_size);
 		}
-
 		stream.close();
 
 		getchar();
