@@ -9,6 +9,7 @@ namespace timax { namespace rpc
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 		{
 			register_handler(SUB_TOPIC, &server::sub, this);
+			register_handler("is_subscriber_exsit", &server::is_subscriber_exsit, this);
 			router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			router::get().set_callback_pub_binary(std::bind(&server::pub, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 			do_accept();
@@ -83,6 +84,12 @@ namespace timax { namespace rpc
 			//conn_map_.emplace(topic, conn_);
 
 			return topic;
+		}
+
+		bool is_subscriber_exsit(const std::string& topic)
+		{
+			std::unique_lock<std::mutex> lock(mtx_);
+			return conn_map_.find(topic) != conn_map_.end();
 		}
 
 		void pub(const std::string& topic, const char* data, size_t size)

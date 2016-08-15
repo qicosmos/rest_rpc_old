@@ -49,6 +49,7 @@ namespace client
 	TIMAX_DEFINE_PROTOCOL(upload, void(const char*, int));
 	TIMAX_DEFINE_PROTOCOL(end_upload, void());
 	TIMAX_DEFINE_PROTOCOL(cancel_upload, bool());
+	TIMAX_DEFINE_PROTOCOL(is_subscriber_exsit, bool(const std::string&));
 }
 
 namespace sub_client
@@ -111,7 +112,7 @@ void test_sub_file(const client::configure& cfg)
 		boost::asio::io_service io_service;
 		sync_client client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
-
+		
 		int total = 0;
 		auto r = client.sub(sub_client::sub_topic, "transfer");
 		while (true)
@@ -140,6 +141,14 @@ void test_pub_file(const client::configure& cfg)
 
 	try
 	{
+		bool r = client.call(client::is_subscriber_exsit, pub_client::transfer.name());
+		if (!r)
+		{
+			std::cout << "the topic has no subscriber" << std::endl;
+			thd.join();
+			return;
+		}
+
 		std::ifstream stream("D:/OReilly.Docker.Cookbook.pdf", std::ios::ios_base::binary | std::ios::ios_base::in);
 		if (!stream.is_open())
 		{
