@@ -112,13 +112,14 @@ void test_sub_file(const client::configure& cfg)
 		sync_client client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
 
-		auto r = client.sub(sub_client::sub_topic, "add");
-		r = client.sub(sub_client::sub_topic, "transfer");
+		int total = 0;
+		auto r = client.sub(sub_client::sub_topic, "transfer");
 		while (true)
 		{
 			size_t len = client.recieve();
-			auto result = client::add.parse_json(std::string(client.data(), len));
-			std::cout << result << std::endl;
+			total += len;
+			//auto result = client::add.parse_json(std::string(client.data(), len));
+			std::cout << total << std::endl;
 		}
 
 		//client.pub(client::add, 1, 2);
@@ -139,12 +140,18 @@ void test_pub_file(const client::configure& cfg)
 
 	try
 	{
-		std::ifstream stream("D:/boost_1_61_0.zip", std::ios::ios_base::binary | std::ios::ios_base::in);
+		std::ifstream stream("D:/OReilly.Docker.Cookbook.pdf", std::ios::ios_base::binary | std::ios::ios_base::in);
 		if (!stream.is_open())
 		{
+			std::cout << "the file is not exist" << std::endl;
 			thd.join();
 			return;
 		}
+
+		//stream.seekg(0, ios_base::end);
+		//auto total = stream.tellg();
+		//std::cout << total << std::endl;
+		//stream.seekg(ios_base::beg);
 
 		const int size = 4096;
 		char buf[size];
@@ -154,8 +161,6 @@ void test_pub_file(const client::configure& cfg)
 			int real_size = static_cast<int>(stream.gcount());
 			client.call_binary(pub_client::transfer, buf, real_size);
 		}
-
-		client.call(client::end_upload);
 
 		stream.close();
 
@@ -167,6 +172,7 @@ void test_pub_file(const client::configure& cfg)
 	}
 
 	thd.join();
+	getchar();
 }
 
 void test_sub(const client::configure& cfg)

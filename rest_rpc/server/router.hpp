@@ -135,6 +135,8 @@ namespace timax { namespace rpc
 				if (callback_to_pub_binary_)
 					callback_to_pub_binary_(func_name, data + offset, length - offset);
 
+				conn->read_head();
+
 				return;
 			}
 

@@ -66,6 +66,7 @@ namespace timax { namespace rpc
 			if (ec)
 			{
 				//log
+				std::cout << ec.message() << std::endl;
 				return 0;
 			}
 
@@ -126,6 +127,7 @@ namespace timax { namespace rpc
 			if (ec)
 			{
 				//log
+				std::cout << ec.message() << std::endl;
 				return false;
 			}
 			else
