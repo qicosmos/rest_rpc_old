@@ -55,6 +55,7 @@ namespace client
 namespace sub_client
 {
 	TIMAX_DEFINE_SUB_PROTOCOL(sub_topic, std::string(std::string));
+	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 }
 
 namespace pub_client
@@ -192,7 +193,6 @@ void test_pub_file(const client::configure& cfg)
 
 void test_sub(const client::configure& cfg)
 {
-	test_sub_file(cfg);
 	try
 	{
 		boost::asio::io_service io_service;
@@ -204,11 +204,10 @@ void test_sub(const client::configure& cfg)
 		while (true)
 		{
 			size_t len = client.recieve();
-			auto result = client::add.parse_json(std::string(client.data(), len));
+			auto result = sub_client::add.parse_json(std::string(client.data(), len));
 			std::cout << result << std::endl;
 		}
 
-		//client.pub(client::add, 1, 2);
 		io_service.run();
 	}
 	catch (const std::exception& e)
@@ -219,12 +218,18 @@ void test_sub(const client::configure& cfg)
 
 void test_pub(const client::configure& cfg)
 {
-	test_pub_file(cfg);
 	try
 	{
 		boost::asio::io_service io_service;
 		sync_client client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
+
+		bool r = client.call(client::is_subscriber_exsit, pub_client::add.name());
+		if (!r)
+		{
+			std::cout << "the topic has no subscriber" << std::endl;
+			return;
+		}
 
 		std::string str;
 		cin >> str;
