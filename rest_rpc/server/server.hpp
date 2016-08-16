@@ -1,4 +1,5 @@
 #pragma once
+#include <thread_pool.hpp>
 
 namespace timax { namespace rpc 
 {
@@ -104,6 +105,9 @@ namespace timax { namespace rpc
 			temp = range;
 			lock.unlock();
 
+			std::shared_ptr<char> share_data(new char[size], [](char*p) {delete p; });
+			memcpy(share_data.get(), data, size);
+
 			for (auto it = range.first; it != range.second;)
 			{
 				auto ptr = it->second.lock();
@@ -111,7 +115,8 @@ namespace timax { namespace rpc
 					it = conn_map_.erase(it);
 				else
 				{
-					ptr->response(data, size);
+					pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
+					
 					++it;
 				}
 			}
@@ -172,6 +177,7 @@ namespace timax { namespace rpc
 
 		std::multimap<std::string, std::weak_ptr<connection>> conn_map_;
 		std::mutex mtx_;
+		ThreadPool pool_;
 	};
 
 } }
