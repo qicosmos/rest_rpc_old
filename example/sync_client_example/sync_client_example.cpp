@@ -303,7 +303,7 @@ public:
 			func_();
 	}
 
-	scope_guard(scope_guard && rhs) : func_(std::move(rhs.func_)), dismiss_(rhs.m_dismiss) { rhs.dismiss(); }
+	scope_guard(scope_guard && rhs) : func_(std::move(rhs.func_)), dismiss_(rhs.dismiss_) { rhs.dismiss(); }
 
 	void dismiss()
 	{
