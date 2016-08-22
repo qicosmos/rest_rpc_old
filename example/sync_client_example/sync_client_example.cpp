@@ -1,4 +1,5 @@
 #include <rest_rpc/client.hpp>
+#include "unified_client.hpp"
 
 namespace client
 {
@@ -410,6 +411,8 @@ void read_file()
 
 int main(void)
 {
+	test_msgpack_tuple();
+	test_binary();
 	timax::log::get().init("rest_rpc_client.lg");
 	auto cfg = client::get_config();
 

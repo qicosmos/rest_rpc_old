@@ -127,7 +127,7 @@ if(e)\
 {\
 	if (boost::system::errc::operation_canceled == e)\
 	{\
-		SPD_LOG_NOTICE(e.message().c_str()); return;\
+		SPD_LOG_INFO(e.message().c_str()); return;\
 	}\
 	SPD_LOG_ERROR(e.message().c_str());\
 	throw boost::system::system_error{ e };\

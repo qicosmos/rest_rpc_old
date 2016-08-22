@@ -3,4 +3,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\example\sync_client_example\sync_client_example.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\example\sync_client_example\unified_client.hpp" />
+  </ItemGroup>
 </Project>
