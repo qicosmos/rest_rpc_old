@@ -411,11 +411,12 @@ void read_file()
 
 int main(void)
 {
-	test_msgpack_tuple();
-	test_binary();
 	timax::log::get().init("rest_rpc_client.lg");
 	auto cfg = client::get_config();
 
+	timax::rpc::unified_client uclient;
+	uclient.connect("127.0.0.1", "9000");
+	uclient.call("add", 1, 2);
 	std::string s;
 	std::cin >> s;
 
