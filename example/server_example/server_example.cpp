@@ -115,7 +115,7 @@ private:
 	std::string filename_;
 };
 
-void after(std::shared_ptr<timax::rpc::server> sp, int r)
+void after(std::shared_ptr<timax::rpc::connection> sp, int r)
 {
 
 }
@@ -126,7 +126,6 @@ int main()
 	using client::messenger;
 	using client::configure;
 
-	messenger m;
 	timax::log::get().init("rest_rpc_server.lg");
 	auto cfg = client::get_config();
 	int port = 9000; 
@@ -139,11 +138,13 @@ int main()
 
 	auto sp = std::make_shared<server>(port, thread_num);
 	//server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
-	file_manager fm;
+	
+	messenger m;
 	sp->register_handler("translate", &messenger::translate, &m, nullptr);
 	
+	file_manager fm;
 	sp->register_handler("add", &client::add, &after);
-	sp->register_handler("test", &client::test, [](auto svr) {});
+	sp->register_handler("test", &client::test, [](auto conn) {});
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
 	/*sp->register_handler1("add", &client::add, [&s](int r) {});
 	sp->register_handler1("test", &client::test,&after);*/

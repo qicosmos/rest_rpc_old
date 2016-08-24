@@ -7,7 +7,7 @@ namespace timax { namespace rpc
 		"Content-Type: text/html\r\n"
 		"Connection: Keep-Alive\r\n\r\n"
 		"TEST";
-
+	using callback = std::function<void(std::shared_ptr<connection>, const char* data, size_t size)>;
 	class connection : public std::enable_shared_from_this<connection>, private boost::noncopyable
 	{
 	public:
@@ -20,7 +20,6 @@ namespace timax { namespace rpc
 		{
 			set_no_delay();
 			read_head();
-			//do_read();
 		}
 
 		tcp::socket& socket()
@@ -50,23 +49,12 @@ namespace timax { namespace rpc
 			});
 		}
 
-	private:
-		void do_read()
+		static void set_callback(const callback& cb)
 		{
-			auto self(this->shared_from_this());
-			boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
-			{
-				if (ec)
-				{
-					close();
-					return;
-				}
-
-				boost::system::error_code ec1;
-				boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
-				do_read();
-			});
+			callback_ = cb;
 		}
+
+	private:
 		void read_head()
 		{
 			reset_timer();
@@ -120,11 +108,12 @@ namespace timax { namespace rpc
 
 				if (!ec)
 				{
-					router& _router = router::get();
+					//router& _router = router::get();
 					//if type is tag, need callback to client the tag
 					//bool round_trip = (head.framework_type == static_cast<int>(framework_type::ROUNDTRIP));
-
-					_router.route(data_, length);
+					//server_.callback(self, data_, length);
+					callback_(self, data_, length);
+					//_router.route(data_, length);
 					//if tag is binary, route_binary
 					/*bool binary_type = (head.data_type == static_cast<int>(data_type::BINARY));
 					if (!binary_type)
@@ -200,6 +189,8 @@ namespace timax { namespace rpc
 		std::array<boost::asio::mutable_buffer, 2> message_;
 		boost::asio::deadline_timer timer_;
 		std::size_t timeout_milli_;
-	};
 
+		static callback callback_;
+	};
+	callback connection::callback_;
 } }

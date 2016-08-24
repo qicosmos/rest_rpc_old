@@ -4,6 +4,7 @@
 
 namespace timax { namespace rpc 
 {
+	class connection;
 	class router : boost::noncopyable
 	{
 	public:
@@ -35,7 +36,7 @@ namespace timax { namespace rpc
 			return invokers_.find(func_name) != invokers_.end();
 		}
 
-		void route(const char* data, size_t size)
+		void route(std::shared_ptr<connection> conn, const char* data, size_t size)
 		{
 			std::string func_name = data;
 			auto it = invokers_.find(func_name);
@@ -45,7 +46,7 @@ namespace timax { namespace rpc
 				int length = func_name.length();
 				msgpack::unpack(&msg, data + length + 1, size - length - 1);
 				
-				it->second(msg.get());
+				it->second(conn, msg.get());
 			}		
 		}
 
@@ -58,44 +59,48 @@ namespace timax { namespace rpc
 		void register_nonmember_func(std::string const & name, const Function& f, const AfterFunction& afterfunc)
 		{
 			using std::placeholders::_1;
+			using std::placeholders::_2;
 
-			this->invokers_[name] = { std::bind(&invoker1<Function, AfterFunction>::apply, f, afterfunc, _1) };
+			this->invokers_[name] = { std::bind(&invoker<Function, AfterFunction>::apply, f, afterfunc, _1, _2) };
 		}
 
 		template<typename Function, typename AfterFunction, typename Self>
 		void register_member_func(const std::string& name, const Function& f, Self* self, const AfterFunction& afterfunc)
 		{
 			using std::placeholders::_1;
+			using std::placeholders::_2;
 
-			this->invokers_[name] = { std::bind(&invoker1<Function, AfterFunction>::template apply_member<Self>, f, self, afterfunc, _1) };
+			this->invokers_[name] = { std::bind(&invoker<Function, AfterFunction>::template apply_member<Self>, f, self, afterfunc, _1, _2) };
 		}
 
 		template<typename Function, typename AfterFunction>
-		struct invoker1
+		struct invoker
 		{
-			static inline void apply(const Function& func, const AfterFunction& afterfunc, const msgpack::object& o)
+			static inline void apply(const Function& func, const AfterFunction& afterfunc, std::shared_ptr<connection> conn, const msgpack::object& o)
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
 				tuple_type tp;
 				o.convert(tp);
 
-				call(func, afterfunc, tp);
+				call(func, afterfunc, conn, tp);
 			}
 
 			template<typename F, typename AfterFunction, typename ... Args>
 			static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
-				call(const F& f, const AfterFunction& af, const std::tuple<Args...>& tp)
+				call(const F& f, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
 			{
 				call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				af();
+				if(af)
+					af(conn);
 			}
 
 			template<typename F, typename AfterFunction, typename ... Args>
 			static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
-				call(const F& f, const AfterFunction& af, const std::tuple<Args...>& tp)
+				call(const F& f, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
 			{
 				auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				af(r);
+				if(af)
+					af(conn, r);
 			}
 
 			template<typename F, size_t... I, typename ... Args>
@@ -106,29 +111,29 @@ namespace timax { namespace rpc
 
 			//member function
 			template<typename Self>
-			static inline void apply_member(const Function& func, Self* self, const AfterFunction& afterfunc, const msgpack::object& o)
+			static inline void apply_member(const Function& func, Self* self, const AfterFunction& afterfunc, std::shared_ptr<connection> conn, const msgpack::object& o)
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
 				tuple_type tp;
 				o.convert(tp);
 
-				call_member(func, self, afterfunc, tp);
+				call_member(func, self, afterfunc, conn, tp);
 			}
 
 			template<typename F, typename AfterFunction, typename Self, typename ... Args>
 			static inline std::enable_if_t<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
-				call_member(const F& f, Self* self, const AfterFunction& af, const std::tuple<Args...>& tp)
+				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
 			{
 				call_member_helper(f, self, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				af();
+				af(conn);
 			}
 
 			template<typename F, typename AfterFunction, typename Self, typename ... Args>
 			static inline std::enable_if_t<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
-				call_member(const F& f, Self* self, const AfterFunction& af, const std::tuple<Args...>& tp)
+				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
 			{
 				auto r = call_member_helper(f, self, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				af(r);
+				af(conn, r);
 			}
 
 			template<typename F, typename Self, size_t... Indexes, typename ... Args>
@@ -138,7 +143,7 @@ namespace timax { namespace rpc
 			}
 		};
 
-		std::map<std::string, std::function<void(const msgpack::object&)>> invokers_;
+		std::map<std::string, std::function<void(std::shared_ptr<connection>, const msgpack::object&)>> invokers_;
 	};
 } }
 

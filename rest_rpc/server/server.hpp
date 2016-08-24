@@ -1,5 +1,6 @@
 #pragma once
 #include <thread_pool.hpp>
+#include "connection.hpp"
 
 namespace timax { namespace rpc 
 {
@@ -9,7 +10,8 @@ namespace timax { namespace rpc
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 		{
-			//register_handler(SUB_TOPIC, &server::sub, this);
+			register_handler(SUB_TOPIC, &server::sub, this, [](std::shared_ptr<connection> ptr, bool r) {});
+			connection::set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 			//register_handler("is_subscriber_exsit", &server::is_subscriber_exsit, this);
 			//router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			//router::get().set_callback_pub_binary(std::bind(&server::pub, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -34,51 +36,51 @@ namespace timax { namespace rpc
 		}
 
 		template<typename Function>
-		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<server>, typename function_traits<Function>::return_type)>& af)
+		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection>, typename function_traits<Function>::return_type)>& af)
 		{
 			if (af == nullptr)
 			{
 				//af = default; response
 			}
 
-			std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
-			router::get().register_handler(name, f, fn);
+			//std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
+			router::get().register_handler(name, f, af);
 		}
 
 		template<typename Function>
-		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<server>)>& af)
+		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection>)>& af)
 		{
 			if (af == nullptr)
 			{
 				//af = default;
 			}
 
-			std::function<void()> fn = std::bind(af, shared_from_this());
-			router::get().register_handler(name, f, fn);
+			//std::function<void()> fn = std::bind(af, shared_from_this());
+			router::get().register_handler(name, f, af);
 		}
 
 		template<typename Function, typename Self>
-		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<server>, typename function_traits<Function>::return_type)>& af)
+		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection>, typename function_traits<Function>::return_type)>& af)
 		{
 			if (af == nullptr)
 			{
 				//af = default; response
 			}
 
-			std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
-			router::get().register_handler(name, f, self, fn);
+			//std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
+			router::get().register_handler(name, f, self, af);
 		}
 
 		template<typename Function, typename Self>
-		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<server>)>& af)
+		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection>)>& af)
 		{
 			if (af == nullptr)
 			{
 				//af = default;
 			}
 
-			std::function<void()> fn = std::bind(af, shared_from_this());
-			router::get().register_handler(name, f, self, fn);
+			//std::function<void()> fn = std::bind(af, shared_from_this());
+			router::get().register_handler(name, f, self, af);
 		}
 
 		void remove_handler(std::string const& name)
@@ -89,7 +91,7 @@ namespace timax { namespace rpc
 	private:
 		void do_accept()
 		{
-			conn_.reset(new connection(io_service_pool_.get_io_service(), timeout_milli_));
+			conn_.reset(new connection(io_service_pool_.get_io_service(), timeout_milli_));  //how to pass server to the connection?
 			acceptor_.async_accept(conn_->socket(), [this](boost::system::error_code ec)
 			{
 				if (ec)
@@ -106,15 +108,15 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		std::string sub(const std::string& topic)
+		bool sub(const std::string& topic)
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
 			if (!router::get().has_handler(topic))
-				return "";
+				return false;
 
-			//conn_map_.emplace(topic, conn_);
+			conn_map_.emplace(topic, conn_);
 
-			return topic;
+			return true;
 		}
 
 		bool is_subscriber_exsit(const std::string& topic)
@@ -167,8 +169,14 @@ namespace timax { namespace rpc
 			}
 		}
 
+		void callback(std::shared_ptr<connection> conn, const char* data, size_t size)
+		{
+			router& _router = router::get();
+			_router.route(conn, data, size);
+		}
+
 		//this callback from router, tell the server which connection sub the topic and the result of handler
-		void callback(const std::string& topic, const char* result, std::shared_ptr<connection> conn, int16_t ftype, bool has_error = false)
+		void callback1(const std::string& topic, const char* result, std::shared_ptr<connection> conn, int16_t ftype, bool has_error = false)
 		{
 			if (has_error)
 			{
@@ -199,6 +207,9 @@ namespace timax { namespace rpc
 			}
 		}
 
+		
+
+		friend class connection;
 		io_service_pool io_service_pool_;
 		tcp::acceptor acceptor_;
 		std::shared_ptr<connection> conn_;
