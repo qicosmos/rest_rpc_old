@@ -7,6 +7,11 @@ namespace client
 		return a + b;
 	}
 
+	void test(int a, int b, int c)
+	{
+		std::cout << a + b + c << std::endl;
+	}
+
 	struct messenger
 	{
 		std::string translate(const std::string& orignal)
@@ -110,6 +115,11 @@ private:
 	std::string filename_;
 };
 
+void after(std::shared_ptr<timax::rpc::server> sp, int r)
+{
+
+}
+
 int main()
 {
 	using timax::rpc::server;
@@ -127,21 +137,18 @@ int main()
 		thread_num = cfg.thread_num;
 	}
 
-	server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
-	s.register_handler("add", &client::add);;
-	s.register_handler("translate", &messenger::translate, &m);
-
+	auto sp = std::make_shared<server>(port, thread_num);
+	//server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	file_manager fm;
-	s.register_handler("begin_upload", &file_manager::begin_upload, &fm);
-	s.register_handler("end_upload", &file_manager::end_upload, &fm);
-	s.register_handler("cancel_upload", &file_manager::cancel_upload, &fm);
-	s.register_binary_handler("upload", &file_manager::upload, &fm);
+	sp->register_handler("translate", &messenger::translate, &m, nullptr);
+	
+	sp->register_handler("add", &client::add, &after);
+	sp->register_handler("test", &client::test, [](auto svr) {});
+	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
+	/*sp->register_handler1("add", &client::add, [&s](int r) {});
+	sp->register_handler1("test", &client::test,&after);*/
 
-	s.register_binary_handler("transfer", [](const char*, size_t){});//empty, just forward raw data.
-
-	s.register_binary_handler("binary_func", &messenger::binary_func, &m);//note:the function type is fixed, only recieve binary data.
-
-	s.run();
+	sp->run();
 
 	getchar();
 

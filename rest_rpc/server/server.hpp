@@ -3,16 +3,16 @@
 
 namespace timax { namespace rpc 
 {
-	class server : private boost::noncopyable
+	class server : private boost::noncopyable, public std::enable_shared_from_this<server>
 	{
 	public:
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 		{
-			register_handler(SUB_TOPIC, &server::sub, this);
-			register_handler("is_subscriber_exsit", &server::is_subscriber_exsit, this);
-			router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
-			router::get().set_callback_pub_binary(std::bind(&server::pub, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+			//register_handler(SUB_TOPIC, &server::sub, this);
+			//register_handler("is_subscriber_exsit", &server::is_subscriber_exsit, this);
+			//router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+			//router::get().set_callback_pub_binary(std::bind(&server::pub, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 			do_accept();
 		}
 
@@ -33,22 +33,52 @@ namespace timax { namespace rpc
 			router::get().register_handler(name, f);
 		}
 
-		template<typename Function, typename Self>
-		void register_handler(std::string const & name, const Function& f, Self* self)
+		template<typename Function>
+		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<server>, typename function_traits<Function>::return_type)>& af)
 		{
-			router::get().register_handler(name, f, self);
+			if (af == nullptr)
+			{
+				//af = default; response
+			}
+
+			std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
+			router::get().register_handler(name, f, fn);
 		}
 
 		template<typename Function>
-		void register_binary_handler(std::string const & name, const Function& f)
+		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<server>)>& af)
 		{
-			router::get().register_binary_handler(name, f);
+			if (af == nullptr)
+			{
+				//af = default;
+			}
+
+			std::function<void()> fn = std::bind(af, shared_from_this());
+			router::get().register_handler(name, f, fn);
 		}
 
 		template<typename Function, typename Self>
-		void register_binary_handler(std::string const & name, const Function& f, Self* self)
+		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<server>, typename function_traits<Function>::return_type)>& af)
 		{
-			router::get().register_binary_handler(name, f, self);
+			if (af == nullptr)
+			{
+				//af = default; response
+			}
+
+			std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
+			router::get().register_handler(name, f, self, fn);
+		}
+
+		template<typename Function, typename Self>
+		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<server>)>& af)
+		{
+			if (af == nullptr)
+			{
+				//af = default;
+			}
+
+			std::function<void()> fn = std::bind(af, shared_from_this());
+			router::get().register_handler(name, f, self, fn);
 		}
 
 		void remove_handler(std::string const& name)

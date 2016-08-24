@@ -124,8 +124,9 @@ namespace timax { namespace rpc
 					//if type is tag, need callback to client the tag
 					//bool round_trip = (head.framework_type == static_cast<int>(framework_type::ROUNDTRIP));
 
+					_router.route(data_, length);
 					//if tag is binary, route_binary
-					bool binary_type = (head.data_type == static_cast<int>(data_type::BINARY));
+					/*bool binary_type = (head.data_type == static_cast<int>(data_type::BINARY));
 					if (!binary_type)
 					{
 						_router.route(data_, length, self, head.framework_type);
@@ -133,7 +134,7 @@ namespace timax { namespace rpc
 					else
 					{
 						_router.route_binary(data_, length, self, head.framework_type);
-					}
+					}*/
 				}
 				else
 				{

@@ -2,7 +2,6 @@
 #include <boost/asio.hpp>
 #include <msgpack.hpp>
 #include <string>
-#include <boost/timer.hpp>
 
 using blob = msgpack::type::raw_ref;
 namespace timax{namespace rpc
@@ -27,15 +26,15 @@ namespace timax{namespace rpc
 		template<typename... Args>
 		void call(const std::string& handler_name, Args&&... args)
 		{
-			const auto& pack = get_pack_message(handler_name, std::forward<Args>(args)...);
+			const auto& pack = get_pack_message(std::forward<Args>(args)...);
 			head_t head =
 			{
 				static_cast<int16_t>(data_type::JSON),
 				static_cast<int16_t>(framework_type::DEFAULT),
-				static_cast<int32_t>(pack.size())
+				static_cast<int32_t>(handler_name.size() +1+ pack.size())
 			};
 
-			bool r = send_impl(get_messages(head, pack));
+			bool r = send_impl(get_messages(head, handler_name, pack));
 			auto result = recieve_return();
 		}
 
@@ -48,19 +47,13 @@ namespace timax{namespace rpc
 			msgpack::pack(buffer, tp);
 
 			return buffer;
-			//msgpack::unpacked msg;
-			//msgpack::unpack(&msg, buffer.data(), buffer.size());
-			//decltype(tp) tp1;
-			//msg.get().convert(tp1);
-
-			//char buf[7];
-			//memcpy(buf, std::get<2>(tp1).ptr, 6);
 		}
 
-		std::vector<boost::asio::const_buffer> get_messages(const head_t& head, const msgpack::sbuffer& sbuf)
+		std::vector<boost::asio::const_buffer> get_messages(const head_t& head, const std::string& handler_name, const msgpack::sbuffer& sbuf)
 		{
 			std::vector<boost::asio::const_buffer> message;
 			message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
+			message.push_back(boost::asio::buffer(&handler_name[0], handler_name.size()+1));
 			message.push_back(boost::asio::buffer(sbuf.data(), sbuf.size()));
 			return message;
 		}
@@ -128,50 +121,3 @@ namespace timax{namespace rpc
 		std::array<char, MAX_BUF_LEN>	recv_data_;
 	};
 }}
-
-void test_msgpack_tuple()
-{
-	std::tuple<std::array<int, 4>, std::string, std::vector<uint8_t>> tp;
-	std::vector<uint8_t> v;
-	int const num = 30000000L;
-	v.reserve(num);
-
-	for (int i = 0; i < num; ++i) v.push_back(i);
-
-	std::array<int, 4> arr = { 1,2,3,4 };
-	tp = std::make_tuple(arr, "it is a test", std::move(v));
-
-	boost::timer t;
-	std::stringstream buffer;
-	msgpack::pack(buffer, tp);
-	std::cout << t.elapsed() << std::endl;
-
-	buffer.seekg(0);
-	std::tuple<std::array<int, 4>, std::string, std::vector<uint8_t>> tp2;
-	std::get<2>(tp2).reserve(num);
-	t.restart();
-	msgpack::object_handle oh;
-	msgpack::unpack(oh, buffer.str().data(), buffer.str().size());
-	oh.get().convert(tp2);
-	std::cout << t.elapsed() << std::endl;
-}
-
-void test_binary()
-{
-	const char* data = "hello";
-	msgpack::type::raw_ref r = { data, 6 };
-
-	std::vector<char> v(data, data + 6);
-
-	msgpack::sbuffer sbuf;
-	msgpack::pack(sbuf, v);
-	msgpack::pack(sbuf, r);
-
-	msgpack::unpacked msg;
-	msgpack::unpack(&msg, sbuf.data(), sbuf.size());
-	msgpack::object o = msg.get();
-	msgpack::type::raw_ref r1;
-	o.convert(r1);
-
-	std::cout << r1.ptr << std::endl;
-}

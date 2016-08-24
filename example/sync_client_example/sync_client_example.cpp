@@ -416,7 +416,8 @@ int main(void)
 
 	timax::rpc::unified_client uclient;
 	uclient.connect("127.0.0.1", "9000");
-	uclient.call("add", 1, 2);
+	//uclient.call("add", 1, 2);
+	uclient.call(client::begin_upload.name(), "tempfile");
 	std::string s;
 	std::cin >> s;
 
