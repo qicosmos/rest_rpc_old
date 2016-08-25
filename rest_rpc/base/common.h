@@ -29,7 +29,7 @@ namespace timax{ namespace rpc
 		int32_t len;
 	};
 
-	enum class result_code
+	enum class result_code : int16_t
 	{
 		OK = 0,
 		FAIL = 1,

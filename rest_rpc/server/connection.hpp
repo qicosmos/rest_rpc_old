@@ -28,10 +28,10 @@ namespace timax { namespace rpc
 		}
 
 		//add timeout later
-		void response(const char* data, size_t size)
+		void response(const char* data, size_t size, result_code code=result_code::OK)
 		{
 			auto self(this->shared_from_this());
-			head_t h = { 0, 0, static_cast<int>(size) };
+			head_t h = { (int16_t)code, 0, static_cast<int>(size) };
 			message_[0] = boost::asio::buffer(&h, HEAD_LEN);
 			message_[1] = boost::asio::buffer((char*)data, size);
 

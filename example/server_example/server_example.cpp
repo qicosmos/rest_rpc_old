@@ -2,16 +2,6 @@
 
 namespace client
 {
-	int add(int a, int b)
-	{
-		return a + b;
-	}
-
-	void test(int a, int b, int c)
-	{
-		std::cout << a + b + c << std::endl;
-	}
-
 	struct messenger
 	{
 		std::string translate(const std::string& orignal)
@@ -115,9 +105,19 @@ private:
 	std::string filename_;
 };
 
-void after(std::shared_ptr<timax::rpc::connection> sp, int r)
+int add(int a, int b)
 {
+	return a + b;
+}
 
+void after_add(std::shared_ptr<timax::rpc::connection> sp, int r)
+{
+	//encode
+	//auto tp = std::make_tuple(0, r);
+	msgpack::sbuffer sbuf;
+	msgpack::pack(sbuf, "error");
+
+	sp->response(sbuf.data(), sbuf.size(), timax::rpc::result_code::FAIL);
 }
 
 int main()
@@ -143,8 +143,7 @@ int main()
 	sp->register_handler("translate", &messenger::translate, &m, nullptr);
 	
 	file_manager fm;
-	sp->register_handler("add", &client::add, &after);
-	sp->register_handler("test", &client::test, [](auto conn) {});
+	sp->register_handler("add", &add, &after_add);
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
 	/*sp->register_handler1("add", &client::add, [&s](int r) {});
 	sp->register_handler1("test", &client::test,&after);*/
