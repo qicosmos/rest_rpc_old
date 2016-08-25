@@ -21,6 +21,15 @@ namespace timax
 				return msg.get().as<T>();
 			}
 		};
+
+		struct kapok_decode
+		{
+			template<typename T>
+			T unpack(blob bl)
+			{
+				return{};
+			}
+		};
 	}
 }
 

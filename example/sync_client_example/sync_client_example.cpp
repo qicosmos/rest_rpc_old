@@ -75,7 +75,7 @@ void test_translate(const client::configure& cfg)
 		sync_client client{ io_service };
 		client.connect(cfg.hostname, cfg.port);
 
-		std::string result = client.call(with_tag(client::translate, 1), "test");
+		std::string result = client.call(client::translate, "test");
 
 		io_service.run();
 	}
@@ -413,6 +413,7 @@ int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 	auto cfg = client::get_config();
+	test_add(cfg);
 
 	timax::rpc::unified_client uclient;
 	uclient.connect("127.0.0.1", "9000");

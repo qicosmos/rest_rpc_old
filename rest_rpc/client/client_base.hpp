@@ -41,9 +41,9 @@ namespace timax { namespace rpc
 			socket_.close();
 		}
 
-		std::string call_json(std::string const& json_str, framework_type ft = framework_type::DEFAULT)
+		std::string call_json(std::string const& handler_name, std::string const& json_str, framework_type ft = framework_type::DEFAULT)
 		{
-			bool r = send_json(json_str, ft);
+			bool r = send_json(handler_name, json_str, ft);
 			if (!r)
 				throw std::runtime_error("call failed");
 
@@ -95,16 +95,16 @@ namespace timax { namespace rpc
 
 	protected:
 
-		bool send_json(std::string const& json_str, framework_type ft)
+		bool send_json(std::string const& handler_name, std::string const& json_str, framework_type ft)
 		{
 			head_t head =
 			{
 				static_cast<int16_t>(data_type::JSON),
 				static_cast<int16_t>(ft),
-				static_cast<int32_t>(json_str.length())
+				static_cast<int32_t>(handler_name.size()+1+json_str.length())
 			};
 
-			const auto& message = get_json_messages(head, json_str);
+			const auto& message = get_json_messages(head, handler_name, json_str);
 			return send_impl(message);
 		}
 
@@ -136,10 +136,11 @@ namespace timax { namespace rpc
 			}
 		}
 
-		std::vector<boost::asio::const_buffer> get_json_messages(head_t const& head, std::string const& json_str)
+		std::vector<boost::asio::const_buffer> get_json_messages(head_t const& head, std::string const& handler_name, std::string const& json_str)
 		{
 			std::vector<boost::asio::const_buffer> message;
 			message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
+			message.push_back(boost::asio::buffer(&handler_name[0], handler_name.size() + 1));
 			message.push_back(boost::asio::buffer(json_str));
 			return message;
 		}
@@ -204,7 +205,7 @@ namespace timax { namespace rpc
 		std::enable_if_t<!std::is_void<typename Protocol::result_type>::value, typename Protocol::result_type> call(Protocol const& protocol, Args&& ... args)
 		{
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			auto result_str = client_base::call_json(json_str, protocol.get_type());
+			auto result_str = client_base::call_json(protocol.name(), json_str, protocol.get_type());
 			return protocol.parse_json(result_str);
 		}
 
@@ -212,7 +213,7 @@ namespace timax { namespace rpc
 		std::enable_if_t<std::is_void<typename Protocol::result_type>::value> call(Protocol const& protocol, Args&& ... args)
 		{
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			auto result_str = client_base::call_json(json_str, protocol.get_type());
+			auto result_str = client_base::call_json(protocol.name(), json_str, protocol.get_type());
 			bool r = protocol.get_result(result_str);
 			if (!r)
 				throw std::domain_error("call faild");
@@ -256,7 +257,7 @@ namespace timax { namespace rpc
 		auto pub(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
 		{
 			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			bool r = client_base::send_json(json_str, protocol.get_type());
+			bool r = client_base::send_json("",json_str, protocol.get_type());
 			return r;
 		}
 
@@ -264,7 +265,7 @@ namespace timax { namespace rpc
 		std::string call(const char* handler_name, Args&&... args)
 		{
 			auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
-			return call_json(json_str);
+			return call_json("",json_str);
 		}
 
 	private:

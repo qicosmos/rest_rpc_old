@@ -24,7 +24,7 @@ namespace timax { namespace rpc
 		std::string make_json(Args&& ... args) const
 		{
 			Serializer sr;
-			sr.Serialize(std::make_tuple(std::forward<Args>(args)...), name_.c_str());
+			sr.Serialize(std::make_tuple(std::forward<Args>(args)...));
 			return sr.GetString();
 		}
 
