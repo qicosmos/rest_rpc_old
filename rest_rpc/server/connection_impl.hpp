@@ -2,7 +2,8 @@
 
 namespace timax { namespace rpc 
 {
-	connection::connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli)
+	template <typename Decode>
+	connection<Decode>::connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli)
 		: server_(server)
 		, socket_(io_service)
 		, head_(), data_(), read_buf_()
@@ -13,18 +14,21 @@ namespace timax { namespace rpc
 
 	}
 
-	void connection::start()
+	template <typename Decode>
+	void connection<Decode>::start()
 	{
 		set_no_delay();
 		read_head();
 	}
 
-	tcp::socket& connection::socket()
+	template <typename Decode>
+	tcp::socket& connection<Decode>::socket()
 	{
 		return socket_;
 	}
 
-	void connection::response(const char* data, size_t size, result_code code)
+	template <typename Decode>
+	void connection<Decode>::response(const char* data, size_t size, result_code code)
 	{
 		auto self(this->shared_from_this());
 		head_t h = { (int16_t)code, 0, static_cast<int>(size) };
@@ -45,7 +49,8 @@ namespace timax { namespace rpc
 		});
 	}
 
-	void connection::read_head()
+	template <typename Decode>
+	void connection<Decode>::read_head()
 	{
 		reset_timer();
 		auto self(this->shared_from_this());
@@ -56,7 +61,7 @@ namespace timax { namespace rpc
 				cancel_timer();
 				return;
 			}
-	
+
 			if (!ec)
 			{
 				head_t h = *(head_t*)(head_.data());
@@ -67,7 +72,7 @@ namespace timax { namespace rpc
 					read_body(h);
 					return;
 				}
-	
+
 				if (h.len == 0) //nobody, just head.
 				{
 					read_head();
@@ -86,16 +91,17 @@ namespace timax { namespace rpc
 		});
 	}
 
-	void connection::read_body(head_t const& head)
+	template <typename Decode>
+	void connection<Decode>::read_body(head_t const& head)
 	{
 		auto self(this->shared_from_this());
 		boost::asio::async_read(socket_, boost::asio::buffer(data_, head.len), [this, head, self](boost::system::error_code ec, std::size_t length)
 		{
 			cancel_timer();
-	
+
 			if (!socket_.is_open())
 				return;
-	
+
 			if (!ec)
 			{
 				//router& _router = router::get();
@@ -108,11 +114,11 @@ namespace timax { namespace rpc
 				/*bool binary_type = (head.data_type == static_cast<int>(data_type::BINARY));
 				if (!binary_type)
 				{
-					_router.route(data_, length, self, head.framework_type);
+				_router.route(data_, length, self, head.framework_type);
 				}
 				else
 				{
-					_router.route_binary(data_, length, self, head.framework_type);
+				_router.route_binary(data_, length, self, head.framework_type);
 				}*/
 				server_->callback(self, data_.data(), length);
 			}
@@ -123,7 +129,8 @@ namespace timax { namespace rpc
 		});
 	}
 
-	void connection::reset_timer()
+	template <typename Decode>
+	void connection<Decode>::reset_timer()
 	{
 		if (timeout_milli_ == 0)
 			return;
@@ -149,8 +156,8 @@ namespace timax { namespace rpc
 		});
 	}
 
-
-	void connection::cancel_timer()
+	template <typename Decode>
+	void connection<Decode>::cancel_timer()
 	{
 		if (timeout_milli_ == 0)
 			return;
@@ -158,13 +165,15 @@ namespace timax { namespace rpc
 		timer_.cancel();
 	}
 
-	void connection::close()
+	template <typename Decode>
+	void connection<Decode>::close()
 	{
 		boost::system::error_code ignored_ec;
 		socket_.close(ignored_ec);
 	}
 
-	void connection::set_no_delay()
+	template <typename Decode>
+	void connection<Decode>::set_no_delay()
 	{
 		boost::asio::ip::tcp::no_delay option(true);
 		boost::system::error_code ec;

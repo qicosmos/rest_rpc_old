@@ -8,12 +8,13 @@ namespace timax { namespace rpc
 		"Connection: Keep-Alive\r\n\r\n"
 		"TEST";
 
-	class connection : public std::enable_shared_from_this<connection>, private boost::noncopyable
+	template <typename Decode>
+	class connection : public std::enable_shared_from_this<connection<Decode>>, private boost::noncopyable
 	{
-		friend class router;
-		friend class server;
+		//friend class template router<Decode>;
+		//friend class template server<Decode>;
 
-		using server_ptr = std::shared_ptr<server>;
+		using server_ptr = std::shared_ptr<server<Decode>>;
 		using message_t  = std::array<boost::asio::mutable_buffer, 2>;
 		using deadline_timer_t = boost::asio::deadline_timer;
 
@@ -28,6 +29,7 @@ namespace timax { namespace rpc
 		void response(const char* data, size_t size, result_code code = result_code::OK);
 
 	private:
+
 		void read_head();
 		void read_body(head_t const& head);
 		void reset_timer();

@@ -1,14 +1,19 @@
 #pragma once
 #include "../base/function_traits.hpp"
 #include <msgpack.hpp>
+#include "../base/codec.hpp"
 
 namespace timax { namespace rpc 
 {
+	template <typename Decode>
 	class connection;
+
+	template<typename Decode>
 	class router : boost::noncopyable
 	{
+		using connection_t = connection<Decode>;
 	public:
-		static router& get()
+		static router<Decode>& get()
 		{
 			static router instance;
 			return instance;
@@ -36,17 +41,17 @@ namespace timax { namespace rpc
 			return invokers_.find(func_name) != invokers_.end();
 		}
 
-		void route(std::shared_ptr<connection> conn, const char* data, size_t size)
+		void route(std::shared_ptr<connection_t> conn, const char* data, size_t size)
 		{
 			std::string func_name = data;
 			auto it = invokers_.find(func_name);
 			if (it != invokers_.end())
 			{
 				msgpack::unpacked msg;
-				int length = func_name.length();
-				msgpack::unpack(&msg, data + length + 1, size - length - 1);
+				auto length = func_name.length();
+				blob bl = { data + length + 1, size - length - 1 };
 				
-				it->second(conn, msg.get());
+				it->second(conn, bl);
 			}		
 		}
 
@@ -76,18 +81,19 @@ namespace timax { namespace rpc
 		template<typename Function, typename AfterFunction>
 		struct invoker
 		{
-			static inline void apply(const Function& func, const AfterFunction& afterfunc, std::shared_ptr<connection> conn, const msgpack::object& o)
+			static inline void apply(const Function& func, const AfterFunction& afterfunc, std::shared_ptr<connection_t> conn, blob bl)
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
-				tuple_type tp;
-				o.convert(tp);
 
+				Decode dr;
+				tuple_type tp = dr.unpack<tuple_type>(bl);
+				
 				call(func, afterfunc, conn, tp);
 			}
 
 			template<typename F, typename AfterFunction, typename ... Args>
 			static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
-				call(const F& f, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
+				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
 				call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
 				if(af)
@@ -96,7 +102,7 @@ namespace timax { namespace rpc
 
 			template<typename F, typename AfterFunction, typename ... Args>
 			static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
-				call(const F& f, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
+				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
 				auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
 				if(af)
@@ -111,18 +117,18 @@ namespace timax { namespace rpc
 
 			//member function
 			template<typename Self>
-			static inline void apply_member(const Function& func, Self* self, const AfterFunction& afterfunc, std::shared_ptr<connection> conn, const msgpack::object& o)
+			static inline void apply_member(const Function& func, Self* self, const AfterFunction& afterfunc, std::shared_ptr<connection_t> conn, blob bl)
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
 				tuple_type tp;
-				o.convert(tp);
+				//o.convert(tp);
 
 				call_member(func, self, afterfunc, conn, tp);
 			}
 
 			template<typename F, typename AfterFunction, typename Self, typename ... Args>
 			static inline std::enable_if_t<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
-				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
+				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
 				call_member_helper(f, self, std::make_index_sequence<sizeof... (Args)>{}, tp);
 				af(conn);
@@ -130,7 +136,7 @@ namespace timax { namespace rpc
 
 			template<typename F, typename AfterFunction, typename Self, typename ... Args>
 			static inline std::enable_if_t<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
-				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection> conn, const std::tuple<Args...>& tp)
+				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
 				auto r = call_member_helper(f, self, std::make_index_sequence<sizeof... (Args)>{}, tp);
 				af(conn, r);
@@ -143,7 +149,7 @@ namespace timax { namespace rpc
 			}
 		};
 
-		std::map<std::string, std::function<void(std::shared_ptr<connection>, const msgpack::object&)>> invokers_;
+		std::map<std::string, std::function<void(std::shared_ptr<connection_t>, blob)>> invokers_;
 	};
 } }
 

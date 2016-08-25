@@ -44,5 +44,9 @@ namespace timax { namespace rpc
 	using tcp = boost::asio::ip::tcp;
 	using io_service_t = boost::asio::io_service;
 
+	template <typename Decode>
 	class connection;
+
+	template <typename Decode>
+	class server;
 } }

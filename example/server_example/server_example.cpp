@@ -110,7 +110,7 @@ int add(int a, int b)
 	return a + b;
 }
 
-void after_add(std::shared_ptr<timax::rpc::connection> sp, int r)
+void after_add(std::shared_ptr<timax::rpc::connection<timax::rpc::msgpack_decode>> sp, int r)
 {
 	//encode
 	//auto tp = std::make_tuple(0, r);
@@ -122,6 +122,7 @@ void after_add(std::shared_ptr<timax::rpc::connection> sp, int r)
 
 int main()
 {
+	using namespace timax::rpc;
 	using timax::rpc::server;
 	using client::messenger;
 	using client::configure;
@@ -136,7 +137,7 @@ int main()
 		thread_num = cfg.thread_num;
 	}
 
-	auto sp = std::make_shared<server>(port, thread_num);
+	auto sp = std::make_shared<server<msgpack_decode>>(port, thread_num);
 	//server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	
 	messenger m;
