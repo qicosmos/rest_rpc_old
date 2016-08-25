@@ -179,9 +179,6 @@ namespace timax { namespace rpc
 			socket_.set_option(option, ec);
 		}
 
-		friend class router;
-		friend class server;
-
 		tcp::socket socket_;
 		char head_[HEAD_LEN];
 		char data_[MAX_BUF_LEN];

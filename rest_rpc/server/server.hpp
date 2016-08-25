@@ -1,10 +1,12 @@
 #pragma once
 #include <thread_pool.hpp>
 #include "connection.hpp"
+#include "rest_rpc/base/codec.hpp"
 
 namespace timax { namespace rpc 
 {
-	class server : private boost::noncopyable, public std::enable_shared_from_this<server>
+	template<typename Decode>
+	class server : private boost::noncopyable, public std::enable_shared_from_this<server<Decode>>
 	{
 	public:
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
@@ -32,7 +34,7 @@ namespace timax { namespace rpc
 		template<typename Function>
 		void register_handler(std::string const & name, const Function& f)
 		{
-			router::get().register_handler(name, f);
+			router<Decode>::get().register_handler(name, f);
 		}
 
 		template<typename Function>
@@ -43,8 +45,7 @@ namespace timax { namespace rpc
 				//af = default; response
 			}
 
-			//std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
-			router::get().register_handler(name, f, af);
+			router<Decode>::get().register_handler(name, f, af);
 		}
 
 		template<typename Function>
@@ -55,8 +56,7 @@ namespace timax { namespace rpc
 				//af = default;
 			}
 
-			//std::function<void()> fn = std::bind(af, shared_from_this());
-			router::get().register_handler(name, f, af);
+			router<Decode>::get().register_handler(name, f, af);
 		}
 
 		template<typename Function, typename Self>
@@ -67,8 +67,7 @@ namespace timax { namespace rpc
 				//af = default; response
 			}
 
-			//std::function<void(typename function_traits<Function>::return_type)> fn = std::bind(af, shared_from_this(), std::placeholders::_1);
-			router::get().register_handler(name, f, self, af);
+			router<Decode>::get().register_handler(name, f, self, af);
 		}
 
 		template<typename Function, typename Self>
@@ -79,13 +78,12 @@ namespace timax { namespace rpc
 				//af = default;
 			}
 
-			//std::function<void()> fn = std::bind(af, shared_from_this());
-			router::get().register_handler(name, f, self, af);
+			router<Decode>::get().register_handler(name, f, self, af);
 		}
 
 		void remove_handler(std::string const& name)
 		{
-			router::get().remove_handler(name);
+			router<Decode>::get().remove_handler(name);
 		}
 
 	private:
@@ -111,7 +109,7 @@ namespace timax { namespace rpc
 		bool sub(const std::string& topic)
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
-			if (!router::get().has_handler(topic))
+			if (!router<Decode>::get().has_handler(topic))
 				return false;
 
 			conn_map_.emplace(topic, conn_);
@@ -171,7 +169,7 @@ namespace timax { namespace rpc
 
 		void callback(std::shared_ptr<connection> conn, const char* data, size_t size)
 		{
-			router& _router = router::get();
+			auto& _router = router<Decode>::get();
 			_router.route(conn, data, size);
 		}
 

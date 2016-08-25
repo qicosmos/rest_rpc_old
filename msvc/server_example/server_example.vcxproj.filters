@@ -3,4 +3,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\example\server_example\server_example.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\rest_rpc\base\codec.hpp" />
+  </ItemGroup>
 </Project>
