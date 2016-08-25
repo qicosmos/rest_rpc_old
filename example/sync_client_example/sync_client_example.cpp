@@ -430,12 +430,12 @@ int main(void)
 	return 0;
 
 //	read_file();
-	test_upload_file(cfg);
+	//test_upload_file(cfg);
 	//test_performance(cfg);
-	test_translate(cfg);
-	test_add(cfg);
-	test_binary(cfg);
-	getchar();
+	//test_translate(cfg);
+	//test_add(cfg);
+	//test_binary(cfg);
+	//getchar();
 
 	return 0;
 }

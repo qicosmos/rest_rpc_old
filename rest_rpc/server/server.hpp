@@ -1,6 +1,5 @@
 #pragma once
 #include <thread_pool.hpp>
-#include "connection.hpp"
 #include "rest_rpc/base/codec.hpp"
 
 namespace timax { namespace rpc 
@@ -8,12 +7,13 @@ namespace timax { namespace rpc
 	template<typename Decode>
 	class server : private boost::noncopyable, public std::enable_shared_from_this<server<Decode>>
 	{
+		using connection_t = connection<Decode>;
 	public:
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 		{
-			register_handler(SUB_TOPIC, &server::sub, this, [](std::shared_ptr<connection> ptr, bool r) {});
-			connection::set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+			register_handler(SUB_TOPIC, &server::sub, this, [](std::shared_ptr<connection_t> ptr, bool r) {});
+			//connection::set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 			//register_handler("is_subscriber_exsit", &server::is_subscriber_exsit, this);
 			//router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			//router::get().set_callback_pub_binary(std::bind(&server::pub, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -38,7 +38,7 @@ namespace timax { namespace rpc
 		}
 
 		template<typename Function>
-		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection>, typename function_traits<Function>::return_type)>& af)
+		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
 		{
 			if (af == nullptr)
 			{
@@ -49,7 +49,7 @@ namespace timax { namespace rpc
 		}
 
 		template<typename Function>
-		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection>)>& af)
+		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>)>& af)
 		{
 			if (af == nullptr)
 			{
@@ -60,7 +60,7 @@ namespace timax { namespace rpc
 		}
 
 		template<typename Function, typename Self>
-		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection>, typename function_traits<Function>::return_type)>& af)
+		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
 		{
 			if (af == nullptr)
 			{
@@ -71,7 +71,7 @@ namespace timax { namespace rpc
 		}
 
 		template<typename Function, typename Self>
-		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection>)>& af)
+		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>)>& af)
 		{
 			if (af == nullptr)
 			{
@@ -89,7 +89,7 @@ namespace timax { namespace rpc
 	private:
 		void do_accept()
 		{
-			conn_.reset(new connection(io_service_pool_.get_io_service(), timeout_milli_));  //how to pass server to the connection?
+			conn_.reset(new connection<Decode>(shared_from_this(), io_service_pool_.get_io_service(), timeout_milli_));  //how to pass server to the connection?
 			acceptor_.async_accept(conn_->socket(), [this](boost::system::error_code ec)
 			{
 				if (ec)
@@ -167,14 +167,14 @@ namespace timax { namespace rpc
 			}
 		}
 
-		void callback(std::shared_ptr<connection> conn, const char* data, size_t size)
+		void callback(std::shared_ptr<connection_t> conn, const char* data, size_t size)
 		{
 			auto& _router = router<Decode>::get();
 			_router.route(conn, data, size);
 		}
 
 		//this callback from router, tell the server which connection sub the topic and the result of handler
-		void callback1(const std::string& topic, const char* result, std::shared_ptr<connection> conn, int16_t ftype, bool has_error = false)
+		void callback1(const std::string& topic, const char* result, std::shared_ptr<connection_t> conn, int16_t ftype, bool has_error = false)
 		{
 			if (has_error)
 			{
@@ -205,19 +205,16 @@ namespace timax { namespace rpc
 			}
 		}
 
-		
-
-		friend class connection;
+		friend class connection<Decode>;
 		io_service_pool io_service_pool_;
 		tcp::acceptor acceptor_;
-		std::shared_ptr<connection> conn_;
+		std::shared_ptr<connection_t> conn_;
 		std::shared_ptr<std::thread> thd_;
 		std::size_t timeout_milli_;
 
-		std::multimap<std::string, std::weak_ptr<connection>> conn_map_;
+		std::multimap<std::string, std::weak_ptr<connection_t>> conn_map_;
 		std::mutex mtx_;
 		ThreadPool pool_;
 	};
 
 } }
-

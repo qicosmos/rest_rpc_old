@@ -110,7 +110,7 @@ int add(int a, int b)
 	return a + b;
 }
 
-void after_add(std::shared_ptr<timax::rpc::connection> sp, int r)
+void after_add(std::shared_ptr<timax::rpc::connection<timax::rpc::msgpack_decode>> sp, int r)
 {
 	//encode
 	//auto tp = std::make_tuple(0, r);
