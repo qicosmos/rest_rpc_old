@@ -91,7 +91,7 @@ namespace timax { namespace rpc
 				call(func, afterfunc, conn, tp);
 			}
 
-			template<typename F, typename AfterFunction, typename ... Args>
+			template<typename F, typename ... Args>
 			static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
 				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
@@ -100,7 +100,7 @@ namespace timax { namespace rpc
 					af(conn);
 			}
 
-			template<typename F, typename AfterFunction, typename ... Args>
+			template<typename F, typename ... Args>
 			static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
 				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
@@ -127,7 +127,7 @@ namespace timax { namespace rpc
 				call_member(func, self, afterfunc, conn, tp);
 			}
 
-			template<typename F, typename AfterFunction, typename Self, typename ... Args>
+			template<typename F, typename Self, typename ... Args>
 			static inline std::enable_if_t<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
 				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
@@ -135,7 +135,7 @@ namespace timax { namespace rpc
 				af(conn);
 			}
 
-			template<typename F, typename AfterFunction, typename Self, typename ... Args>
+			template<typename F, typename Self, typename ... Args>
 			static inline std::enable_if_t<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
 				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
