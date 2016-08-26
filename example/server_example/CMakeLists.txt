@@ -12,7 +12,7 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
     #)
 endif ()
 
-find_package(Boost COMPONENTS coroutine context system thread chrono REQUIRED)
+find_package(Boost 1.55 COMPONENTS coroutine context system thread chrono REQUIRED)
 
 set(REST_RPC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
