@@ -90,7 +90,7 @@ namespace timax { namespace rpc
 	private:
 		void do_accept()
 		{
-			conn_.reset(new connection<Decode>(shared_from_this(), io_service_pool_.get_io_service(), timeout_milli_));  //how to pass server to the connection?
+			conn_.reset(new connection<Decode>(this->shared_from_this(), io_service_pool_.get_io_service(), timeout_milli_));  //how to pass server to the connection?
 			acceptor_.async_accept(conn_->socket(), [this](boost::system::error_code ec)
 			{
 				if (ec)
