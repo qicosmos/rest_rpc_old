@@ -211,7 +211,7 @@ namespace timax { namespace rpc
 				throw client_exception
 				{ 
 					static_cast<result_code>(head_t_->code), 
-					std::move(marshal_.unpack<std::string>(recv_data(), head_t_->len))
+					std::move(marshal_.template unpack<std::string>(recv_data(), head_t_->len))
 				};
 			}
 			// unpack the receive data
