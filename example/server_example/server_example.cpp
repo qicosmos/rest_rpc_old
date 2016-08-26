@@ -1,5 +1,5 @@
 #include <rest_rpc/server.hpp>
-
+using namespace timax::rpc;
 namespace client
 {
 	struct messenger
@@ -110,7 +110,7 @@ int add(int a, int b)
 	return a + b;
 }
 
-void after_add(std::shared_ptr<timax::rpc::connection<timax::rpc::msgpack_decode>> sp, int r)
+void after_add(std::shared_ptr<connection<msgpack_decode>> sp, int r)
 {
 	//encode
 	//auto tp = std::make_tuple(0, r);
@@ -122,7 +122,7 @@ void after_add(std::shared_ptr<timax::rpc::connection<timax::rpc::msgpack_decode
 
 int main()
 {
-	using namespace timax::rpc;
+	
 	using timax::rpc::server;
 	using client::messenger;
 	using client::configure;

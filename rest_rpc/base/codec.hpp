@@ -1,6 +1,6 @@
 #pragma once
 #include <msgpack.hpp>
-
+#include <kapok\Kapok.hpp>
 namespace timax
 {
 	namespace rpc 
@@ -27,7 +27,12 @@ namespace timax
 			template<typename T>
 			T unpack(blob bl)
 			{
-				return{};
+				DeSerializer dr;
+				dr.Parse(bl.data, bl.size);
+
+				T t;
+				dr.Deserialize(t);
+				return t;
 			}
 		};
 	}
