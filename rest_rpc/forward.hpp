@@ -18,6 +18,7 @@
 #include <utility>
 #include <map>
 #include <stdexcept>
+#include <type_traits>
 
 // boost libraries
 #include <boost/asio.hpp>
@@ -38,6 +39,7 @@
 #include <rest_rpc/base/consts.h>
 #include <rest_rpc/base/common.h>
 #include <rest_rpc/base/utils.hpp>
+#include <rest_rpc/base/codec.hpp>
 
 namespace timax { namespace rpc 
 {

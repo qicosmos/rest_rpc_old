@@ -86,7 +86,7 @@ namespace timax { namespace rpc
 				using tuple_type = typename function_traits<Function>::tuple_type;
 
 				Decode dr;
-				tuple_type tp = dr.unpack<tuple_type>(bl);
+				tuple_type tp = dr.unpack<tuple_type>(bl.ptr, bl.size);
 				
 				call(func, afterfunc, conn, tp);
 			}

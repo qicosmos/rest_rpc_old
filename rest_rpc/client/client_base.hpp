@@ -2,6 +2,53 @@
 
 namespace timax { namespace rpc 
 {
+	class client_exception
+	{
+	public:
+		client_exception(result_code code, std::string message)
+			: code_(code)
+			, message_(std::move(message))
+		{
+
+		}
+
+		result_code errcode() const noexcept
+		{
+			return code_;
+		}
+
+		std::string const& message() const noexcept
+		{
+			return message_;
+		}
+
+		std::string what() const
+		{
+			std::string what;
+			switch (code_)
+			{
+			case result_code::FAIL:
+				what = "User defined failure. ";
+				break;
+			case result_code::EXCEPTION:
+				what = "Exception. ";
+				break;
+			case result_code::ARGUMENT_EXCEPTION:
+				what = "Argument exception. ";
+				break;
+			default:
+				what = "Unknown failure. ";
+				break;
+			}
+			what += message_;
+			return what;
+		}
+
+	private:
+		result_code		code_;
+		std::string		message_;
+	};
+
 	class client_base
 	{
 	public:
@@ -21,6 +68,7 @@ namespace timax { namespace rpc
 			, socket_(io)
 			, address_(std::move(address))
 			, port_(std::move(port))
+			, head_t_(nullptr)
 		{
 
 		}
@@ -32,7 +80,6 @@ namespace timax { namespace rpc
 			tcp::resolver::query query(tcp::v4(), address, port);
 			tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 			boost::asio::connect(socket_, endpoint_iterator);
-			//set_no_delay();
 		}
 
 		void disconnect()
@@ -41,82 +88,56 @@ namespace timax { namespace rpc
 			socket_.close();
 		}
 
-		std::string call_json(std::string const& json_str, framework_type ft = framework_type::DEFAULT)
+		const char* recv_data() const noexcept
 		{
-			bool r = send_json(json_str, ft);
-			if (!r)
-				throw std::runtime_error("call failed");
-
-			return recieve_return();
+			return recv_data_.data();
 		}
 
-		bool call_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft = framework_type::DEFAULT)
+		void call(std::string const& handle_name, char const* data, size_t size)
 		{
-			bool r = send_binary(handler_name, data, length, ft);
-			if (!r)
+			if (!send(handle_name, data, size))
 				throw std::runtime_error("call failed");
 
-			return r;
+			recieve();
 		}
 
-		size_t recieve()
+	protected:
+		void recieve()
 		{
 			boost::system::error_code ec;
 			boost::asio::read(socket_, boost::asio::buffer(head_), ec);
 			if (ec)
 			{
 				//log
-				std::cout << ec.message() << std::endl;
-				return 0;
+				//std::cout << ec.message() << std::endl;
+				throw std::runtime_error(ec.message());
 			}
 
 			const int64_t i = *(int64_t*)(head_.data());
-			head_t h = *(head_t*)(head_.data());
-			const size_t body_len = h.len;
+			head_t_ = (head_t*)(head_.data());
+			const size_t body_len = head_t_->len;
 
 			if (body_len <= 0 || body_len > MAX_BUF_LEN)
 			{
-				return 0;
+				throw std::runtime_error("call failed");
 			}
 
 			boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), body_len), ec);
 			if (ec)
 			{
-				return 0;
+				throw std::runtime_error(ec.message());
 			}
-
-			return body_len;
 		}
 
-		const char* data() const
-		{
-			return recv_data_.data();
-		}
-
-	protected:
-
-		bool send_json(std::string const& json_str, framework_type ft)
+		bool send(std::string const& handler_name, char const* data, size_t size)
 		{
 			head_t head =
 			{
-				static_cast<int16_t>(data_type::JSON),
-				static_cast<int16_t>(ft),
-				static_cast<int32_t>(json_str.length())
+				0, 0,
+				static_cast<int32_t>(size + handler_name.size() + 1)
 			};
 
-			const auto& message = get_json_messages(head, json_str);
-			return send_impl(message);
-		}
-
-		bool send_binary(std::string const& handler_name, char const* data, size_t length, framework_type ft)
-		{
-			head_t head =
-			{
-				static_cast<int16_t>(data_type::BINARY),
-				static_cast<int16_t>(ft),
-				static_cast<int32_t>(handler_name.length() + 1 + length)
-			};
-			const auto& message = get_binary_messages(head, handler_name, data, length);
+			auto message = get_messages(head, handler_name, data, size);
 			return send_impl(message);
 		}
 
@@ -136,31 +157,13 @@ namespace timax { namespace rpc
 			}
 		}
 
-		std::vector<boost::asio::const_buffer> get_json_messages(head_t const& head, std::string const& json_str)
-		{
-			std::vector<boost::asio::const_buffer> message;
-			message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
-			message.push_back(boost::asio::buffer(json_str));
-			return message;
-		}
-
-		std::vector<boost::asio::const_buffer> get_binary_messages(head_t const& head, std::string const& handler_name, const char* data, size_t len)
+		std::vector<boost::asio::const_buffer> get_messages(head_t const& head, std::string const& handler_name, const char* data, size_t len)
 		{
 			std::vector<boost::asio::const_buffer> message;
 			message.push_back(boost::asio::buffer(&head, sizeof(head_t)));
 			message.push_back(boost::asio::buffer(handler_name.c_str(), handler_name.length() + 1));
 			message.push_back(boost::asio::buffer(data, len));
 			return message;
-		}
-
-		std::string recieve_return()
-		{
-			size_t len = recieve();
-
-			if (len == 0)
-				throw std::runtime_error("call failed");
-
-			return std::string{ recv_data_.begin(), recv_data_.begin() + len };
 		}
 
 		void set_no_delay()
@@ -177,14 +180,14 @@ namespace timax { namespace rpc
 		std::string						port_;
 		std::array<char, HEAD_LEN>		head_;
 		std::array<char, MAX_BUF_LEN>	recv_data_;
+		head_t*							head_t_;
 	};
 
-} }
-
-namespace timax { namespace rpc
-{
+	template <typename Marshal>
 	class sync_client : public client_base
 	{
+		using base_type = client_base;
+
 	public:
 		sync_client(io_service_t& io)
 			: client_base(io)
@@ -192,102 +195,47 @@ namespace timax { namespace rpc
 
 		}
 
-		//template <typename Protocol, typename ... Args>
-		//auto call(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
-		//{
-		//	auto json_str = protocol.make_json(std::forward<Args>(args)...);
-		//	auto result_str = client_base::call_json(json_str, protocol.get_type());
-		//	return protocol.parse_json(result_str);
-		//}
+		template <typename Protocol, typename ... Args>
+		auto call(Protocol const& protocol, Args&& ... args)
+			-> std::enable_if_t<!std::is_void<typename Protocol::result_type>::value, typename Protocol::result_type>
+		{
+			// pack arguments to buffer
+			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
+
+			// call the rpc
+			base_type::call(protocol.name(), buffer.data(), buffer.size());
+
+			if (head_t_->code != 0)
+			{
+				throw client_exception
+				{ 
+					static_cast<result_code>(head_t_->code), 
+					std::move(marshal_.unpack<std::string>(recv_data(), head_t_->len))
+				};
+			}
+			// unpack the receive data
+			return protocol.unpack(marshal_, recv_data(), head_t_->len);
+		}
 
 		template <typename Protocol, typename ... Args>
-		std::enable_if_t<!std::is_void<typename Protocol::result_type>::value, typename Protocol::result_type> call(Protocol const& protocol, Args&& ... args)
+		auto call(Protocol const& protocol, Args&& ... args)
+			-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
 		{
-			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			auto result_str = client_base::call_json(json_str, protocol.get_type());
-			return protocol.parse_json(result_str);
-		}
-
-		template <typename Protocol, typename ... Args>
-		std::enable_if_t<std::is_void<typename Protocol::result_type>::value> call(Protocol const& protocol, Args&& ... args)
-		{
-			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			auto result_str = client_base::call_json(json_str, protocol.get_type());
-			bool r = protocol.get_result(result_str);
-			if (!r)
-				throw std::domain_error("call faild");
-		}
-
-		//template<typename Protocol>
-		//auto call()
-		//{
-
-		//}
-
-		template <typename Protocol>
-		bool call_binary(Protocol const& protocol, const char* data, size_t len)
-		{
-			return client_base::call_binary(protocol.name(), data, len, protocol.get_type());
-		}
-
-		bool call_binary(const std::string& handler_name, const char* data, size_t len, framework_type ft = framework_type::DEFAULT)
-		{
-			return client_base::call_binary(handler_name, data, len, ft);
-		}
-
-		//std::string sub(const std::string& topic)
-		//{
-		//	return call(SUB_TOPIC, topic);
-		//}
-
-		template<typename Protocol, typename ... Args>
-		auto sub(Protocol const& protocol, Args&& ... args)
-		{
-			return call(protocol, std::forward<Args>(args)...);
-		}
-
-		//template<typename... Args>
-		//auto pub(const char* handler_name, Args&&... args)
-		//{
-		//	return call(protocol, std::forward<Args>(args)...);
-		//}
-
-		template <typename Protocol, typename ... Args>
-		auto pub(Protocol const& protocol, Args&& ... args)// -> typename Protocol::result_type
-		{
-			auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			bool r = client_base::send_json(json_str, protocol.get_type());
-			return r;
-		}
-
-		template<typename... Args>
-		std::string call(const char* handler_name, Args&&... args)
-		{
-			auto json_str = make_request_json(handler_name, std::forward<Args>(args)...);
-			return call_json(json_str);
+			//auto json_str = protocol.make_json(std::forward<Args>(args)...);
+			//auto result_str = client_base::call_json(json_str, protocol.get_type());
+			//bool r = protocol.get_result(result_str);
+			//if (!r)
+			//	throw std::domain_error("call faild");
 		}
 
 	private:
-		template<typename T>
-		std::string make_request_json(const char* handler_name, T&& t)
-		{
-			Serializer sr;
-			sr.Serialize(std::forward<T>(t), handler_name);
-			return sr.GetString();
-		}
-
-		std::string make_request_json(const char* handler_name)
-		{
-			return make_request_json(handler_name, "");
-		}
-
-		template<typename... Args>
-		std::string make_request_json(const char* handler_name, Args&&... args)
-		{
-			auto tp = std::make_tuple(std::forward<Args>(args)...);
-			return make_request_json(handler_name, tp);
-		}
+		Marshal		marshal_;
 	};
+
+} }
+
+namespace timax { namespace rpc
+{
 
 	// client without protocol
 	using sync_raw_client = client_base;

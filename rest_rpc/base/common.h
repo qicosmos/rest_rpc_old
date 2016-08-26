@@ -24,7 +24,7 @@ namespace timax{ namespace rpc
 
 	struct head_t
 	{
-		int16_t data_type;
+		int16_t code;
 		int16_t	framework_type;
 		int32_t len;
 	};

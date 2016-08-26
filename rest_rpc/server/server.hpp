@@ -17,7 +17,6 @@ namespace timax { namespace rpc
 			//register_handler("is_subscriber_exsit", &server::is_subscriber_exsit, this);
 			//router::get().set_callback(std::bind(&server::callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			//router::get().set_callback_pub_binary(std::bind(&server::pub, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-			do_accept();
 		}
 
 		~server()
@@ -28,6 +27,7 @@ namespace timax { namespace rpc
 
 		void run()
 		{
+			do_accept();
 			thd_ = std::make_shared<std::thread>([this] {io_service_pool_.run(); });
 		}
 
