@@ -20,6 +20,7 @@ include_directories(
 		${Boost_INCLUDE_DIRS}
 		${REST_RPC_PATH}
 		${REST_RPC_PATH}/Kapok
+		${REST_RPC_PATH}/Kapok/fmt
 		${REST_RPC_PATH}/spdlog/include
 		${REST_RPC_PATH}/thread-pool-cpp/thread_pool
 		${REST_RPC_PATH}/msgpack/include
