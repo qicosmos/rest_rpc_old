@@ -116,7 +116,7 @@ void compose(int i, const std::string& str, blob bl, double d)
 }
 
 template<typename T>
-void after_add(std::shared_ptr<connection<msgpack_decode>> sp, T r)
+void after_add(std::shared_ptr<connection<msgpack_codec>> sp, T r)
 {
 	//encode
 	msgpack::sbuffer sbuf;
@@ -125,7 +125,7 @@ void after_add(std::shared_ptr<connection<msgpack_decode>> sp, T r)
 	sp->response(sbuf.data(), sbuf.size());
 }
 
-void after(std::shared_ptr<connection<msgpack_decode>> sp)
+void after(std::shared_ptr<connection<msgpack_codec>> sp)
 {
 	//encode
 }
@@ -146,7 +146,7 @@ int main()
 		thread_num = cfg.thread_num;
 	}
 
-	auto sp = std::make_shared<server<msgpack_decode>>(port, thread_num);
+	auto sp = std::make_shared<server<msgpack_codec>>(port, thread_num);
 	//server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 	
 	messenger m;

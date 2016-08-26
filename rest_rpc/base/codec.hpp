@@ -4,7 +4,7 @@ namespace timax { namespace rpc
 {
 	using blob = msgpack::type::raw_ref;
 
-	struct msgpack_decode
+	struct msgpack_codec
 	{
 		using buffer_type = msgpack::sbuffer;
 
@@ -36,7 +36,7 @@ namespace timax { namespace rpc
 		msgpack::unpacked msg_;
 	};
 
-	struct kapok_decode
+	struct kapok_codec
 	{
 		template<typename T>
 		T unpack(blob bl)
