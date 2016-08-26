@@ -33,6 +33,7 @@
 // third-party libraries
 #include <kapok/Kapok.hpp>
 #include <msgpack.hpp>
+#include <thread_pool.hpp>
 
 // common headers
 #include <rest_rpc/base/log.hpp>

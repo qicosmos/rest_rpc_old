@@ -1,7 +1,4 @@
 #pragma once
-#include "../base/function_traits.hpp"
-#include <msgpack.hpp>
-#include "../base/codec.hpp"
 
 namespace timax { namespace rpc 
 {
