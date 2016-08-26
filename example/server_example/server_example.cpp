@@ -1,5 +1,5 @@
 #include <rest_rpc/server.hpp>
-
+using namespace timax::rpc;
 namespace client
 {
 	struct messenger
@@ -110,19 +110,28 @@ int add(int a, int b)
 	return a + b;
 }
 
-void after_add(std::shared_ptr<timax::rpc::connection<timax::rpc::msgpack_decode>> sp, int r)
+void compose(int i, const std::string& str, blob bl, double d)
+{
+	std::cout << i << " " << str << " " << bl.ptr << " " << d << std::endl;;
+}
+
+template<typename T>
+void after_add(std::shared_ptr<connection<msgpack_decode>> sp, T r)
 {
 	//encode
-	//auto tp = std::make_tuple(0, r);
 	msgpack::sbuffer sbuf;
-	msgpack::pack(sbuf, "error");
+	msgpack::pack(sbuf, r);
 
-	sp->response(sbuf.data(), sbuf.size(), timax::rpc::result_code::FAIL);
+	sp->response(sbuf.data(), sbuf.size());
+}
+
+void after(std::shared_ptr<connection<msgpack_decode>> sp)
+{
+	//encode
 }
 
 int main()
 {
-	using namespace timax::rpc;
 	using timax::rpc::server;
 	using client::messenger;
 	using client::configure;
@@ -144,7 +153,8 @@ int main()
 	sp->register_handler("translate", &messenger::translate, &m, nullptr);
 	
 	file_manager fm;
-	sp->register_handler("add", &add, &after_add);
+	sp->register_handler("compose", &compose, &after);
+	sp->register_handler("add", &add, &after_add<int>);
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
 	/*sp->register_handler1("add", &client::add, [&s](int r) {});
 	sp->register_handler1("test", &client::test,&after);*/

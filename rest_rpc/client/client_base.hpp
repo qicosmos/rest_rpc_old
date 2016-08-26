@@ -129,6 +129,7 @@ namespace timax { namespace rpc
 			}
 		}
 
+
 		bool send(std::string const& handler_name, char const* data, size_t size)
 		{
 			head_t head =

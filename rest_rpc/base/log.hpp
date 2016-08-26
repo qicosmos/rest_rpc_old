@@ -86,17 +86,17 @@ namespace timax
 		log::get().get_log()->critical(fmt, args...);
 	}
 
-	template<typename... Args>
-	static inline void SPD_LOG_ALERT(const char* fmt, const Args&... args)
-	{
-		log::get().get_log()->alert(fmt, args...);
-	}
+	//template<typename... Args>
+	//static inline void SPD_LOG_ALERT(const char* fmt, const Args&... args)
+	//{
+	//	log::get().get_log()->alert(fmt, args...);
+	//}
 
-	template<typename... Args>
-	static inline void SPD_LOG_EMERG(const char* fmt, const Args&... args)
-	{
-		log::get().get_log()->emerg(fmt, args...);
-	}
+	//template<typename... Args>
+	//static inline void SPD_LOG_EMERG(const char* fmt, const Args&... args)
+	//{
+	//	log::get().get_log()->emerg(fmt, args...);
+	//}
 
 	template<typename... Args>
 	static inline void SPD_LOG_DEBUG(const char* fmt, const Args&... args)

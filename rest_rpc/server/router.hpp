@@ -49,7 +49,7 @@ namespace timax { namespace rpc
 			{
 				msgpack::unpacked msg;
 				auto length = func_name.length();
-				blob bl = { data + length + 1, size - length - 1 };
+				blob bl = { data + length + 1, static_cast<uint32_t>(size - length - 1) };
 				
 				it->second(conn, bl);
 			}		
@@ -86,12 +86,12 @@ namespace timax { namespace rpc
 				using tuple_type = typename function_traits<Function>::tuple_type;
 
 				Decode dr;
-				tuple_type tp = dr.unpack<tuple_type>(bl.ptr, bl.size);
+				tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
 				
 				call(func, afterfunc, conn, tp);
 			}
 
-			template<typename F, typename AfterFunction, typename ... Args>
+			template<typename F, typename ... Args>
 			static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
 				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
@@ -100,7 +100,7 @@ namespace timax { namespace rpc
 					af(conn);
 			}
 
-			template<typename F, typename AfterFunction, typename ... Args>
+			template<typename F, typename ... Args>
 			static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
 				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
@@ -120,13 +120,14 @@ namespace timax { namespace rpc
 			static inline void apply_member(const Function& func, Self* self, const AfterFunction& afterfunc, std::shared_ptr<connection_t> conn, blob bl)
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
-				tuple_type tp;
-				//o.convert(tp);
+
+				Decode dr;
+				tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
 
 				call_member(func, self, afterfunc, conn, tp);
 			}
 
-			template<typename F, typename AfterFunction, typename Self, typename ... Args>
+			template<typename F, typename Self, typename ... Args>
 			static inline std::enable_if_t<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
 				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{
@@ -134,7 +135,7 @@ namespace timax { namespace rpc
 				af(conn);
 			}
 
-			template<typename F, typename AfterFunction, typename Self, typename ... Args>
+			template<typename F, typename Self, typename ... Args>
 			static inline std::enable_if_t<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
 				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
 			{

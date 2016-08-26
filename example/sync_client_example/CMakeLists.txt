@@ -12,7 +12,7 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
     #)
 endif ()
 
-find_package(Boost COMPONENTS coroutine context system thread chrono REQUIRED)
+find_package(Boost 1.55 COMPONENTS coroutine context system thread chrono REQUIRED)
 
 set(REST_RPC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
@@ -20,7 +20,9 @@ include_directories(
 		${Boost_INCLUDE_DIRS}
 		${REST_RPC_PATH}
 		${REST_RPC_PATH}/Kapok
+		${REST_RPC_PATH}/Kapok/fmt
 		${REST_RPC_PATH}/spdlog/include
+		${REST_RPC_PATH}/msgpack/include
 		)
 SET(EXTRA_LIBS ${EXTRA_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
