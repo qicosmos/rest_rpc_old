@@ -5,21 +5,19 @@ namespace timax
 {
 	namespace rpc 
 	{
-		struct blob
-		{
-			const char* data;
-			size_t size;
-		};
+		using blob = msgpack::type::raw_ref;
 
 		struct msgpack_decode
 		{
 			template<typename T>
 			T unpack(blob bl)
 			{
-				msgpack::unpacked msg;
-				msgpack::unpack(&msg, bl.data, bl.size);
-				return msg.get().as<T>();
+				msgpack::unpack(&msg_, bl.ptr, bl.size);
+				return msg_.get().as<T>();
 			}
+
+		private:
+			msgpack::unpacked msg_;
 		};
 
 		struct kapok_decode
@@ -28,7 +26,7 @@ namespace timax
 			T unpack(blob bl)
 			{
 				DeSerializer dr;
-				dr.Parse(bl.data, bl.size);
+				dr.Parse(bl.ptr, bl.size);
 
 				T t;
 				dr.Deserialize(t);

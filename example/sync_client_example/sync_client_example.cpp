@@ -413,11 +413,13 @@ int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 	auto cfg = client::get_config();
-	test_add(cfg);
+	//test_add(cfg);
 
 	timax::rpc::unified_client uclient;
 	uclient.connect("127.0.0.1", "9000");
-	uclient.call("add", 1, 2);
+	const char* buf = "data";
+	blob bl = { buf, 4 };
+	uclient.call("compose", 1, "test", bl, 2.5);
 	//uclient.call(client::begin_upload.name(), "tempfile");
 	std::string s;
 	std::cin >> s;
