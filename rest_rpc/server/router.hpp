@@ -120,8 +120,9 @@ namespace timax { namespace rpc
 			static inline void apply_member(const Function& func, Self* self, const AfterFunction& afterfunc, std::shared_ptr<connection_t> conn, blob bl)
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
-				tuple_type tp;
-				//o.convert(tp);
+
+				Decode dr;
+				tuple_type tp = dr.unpack<tuple_type>(bl);
 
 				call_member(func, self, afterfunc, conn, tp);
 			}
