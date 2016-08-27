@@ -1,4 +1,13 @@
 #pragma once
+// boost libraries
+#include <boost/asio.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/noncopyable.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 // boost libraries
 #include <boost/asio.hpp>
