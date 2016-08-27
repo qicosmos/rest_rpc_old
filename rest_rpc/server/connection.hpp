@@ -26,10 +26,10 @@ namespace timax { namespace rpc
 		void start();
 		tcp::socket& socket();
 		//add timeout later
+
 		void response(const char* data, size_t size, result_code code = result_code::OK);
-
 	private:
-
+		friend class server<Decode>;
 		void read_head();
 		void read_body(head_t const& head);
 		void reset_timer();

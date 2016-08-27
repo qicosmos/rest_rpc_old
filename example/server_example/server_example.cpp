@@ -154,7 +154,7 @@ int main()
 	
 	file_manager fm;
 	sp->register_handler("compose", &compose, &after);
-	sp->register_handler("add", &add, &after_add<int>);
+	sp->register_handler("add", &add, nullptr);
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
 	/*sp->register_handler1("add", &client::add, [&s](int r) {});
 	sp->register_handler1("test", &client::test,&after);*/
