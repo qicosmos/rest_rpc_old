@@ -88,6 +88,17 @@ namespace timax { namespace rpc
 			socket_.close();
 		}
 
+		size_t receive()
+		{
+			receive_head();
+			receive_body();
+
+			if (!check_head())
+				return 0;
+
+			return head_t_->len;
+		}
+
 	protected:
 		const char* recv_data() const noexcept
 		{
@@ -100,7 +111,7 @@ namespace timax { namespace rpc
 				throw std::runtime_error("call failed");
 		}
 
-		void recieve_head()
+		void receive_head()
 		{
 			boost::system::error_code ec;
 			boost::asio::read(socket_, boost::asio::buffer(head_), ec);
@@ -115,7 +126,7 @@ namespace timax { namespace rpc
 			head_t_ = (head_t*)(head_.data());
 		}
 
-		void recieve_body()
+		void receive_body()
 		{
 			const size_t body_len = head_t_->len;
 			boost::system::error_code ec;
@@ -176,6 +187,11 @@ namespace timax { namespace rpc
 			socket_.set_option(option, ec);
 		}
 
+		bool check_head()
+		{
+			return (nullptr != head_t_) && (head_t_->code != 0);
+		}
+
 	protected:
 		io_service_t&					io_;
 		tcp::socket						socket_;
@@ -208,8 +224,8 @@ namespace timax { namespace rpc
 			// call the rpc
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
 
-			base_type::recieve_head();
-			base_type::recieve_body();
+			base_type::receive_head();
+			base_type::receive_body();
 			check_head();
 			// unpack the receive data
 			return protocol.unpack(marshal_, recv_data(), head_t_->len);
@@ -221,14 +237,14 @@ namespace timax { namespace rpc
 		{
 			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
-			base_type::recieve_head();
+			base_type::receive_head();
 			check_head();
 		}
 
 	private:
 		void check_head()
 		{
-			if (nullptr != head_t_ && head_t_->code != 0)
+			if (!base_type::check_head())
 			{
 				throw client_exception
 				{

@@ -44,6 +44,7 @@ namespace client
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
 }
 
 using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
