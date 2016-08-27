@@ -34,10 +34,10 @@ namespace timax { namespace rpc
 			return framework_type::DEFAULT;
 		}
 
-		template <typename Marshal>
-		auto pack_args(Marshal const& m, Args&& ... args) const
+		template <typename Marshal, typename ... Args_>
+		auto pack_args(Marshal const& m, Args_&& ... args) const
 		{
-			return m.pack_args(std::forward<Args>(args)...);
+			return m.pack_args(std::forward<Args_>(args)...);
 		}
 
 	private:
