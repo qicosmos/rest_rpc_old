@@ -40,7 +40,7 @@ namespace timax { namespace rpc
 		server_ptr				server_;
 		tcp::socket				socket_;
 		sarray<HEAD_LEN>		head_;
-		sarray<MAX_BUF_LEN>		data_;
+		std::vector<char>		data_;
 		sarray<106>				read_buf_;
 		message_t				message_;
 		deadline_timer_t		timer_;
