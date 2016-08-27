@@ -244,8 +244,8 @@ namespace timax { namespace rpc
 		{
 			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
-			base_type::receive_head();
-			check_head();
+			//base_type::receive_head();
+			//check_head();
 		}
 
 		template <typename Protocol, typename ... Args>
