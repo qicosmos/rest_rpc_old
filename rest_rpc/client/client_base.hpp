@@ -99,11 +99,12 @@ namespace timax { namespace rpc
 			return head_t_->len;
 		}
 
-	protected:
 		const char* recv_data() const noexcept
 		{
 			return recv_data_.data();
 		}
+
+	protected:
 
 		void call(std::string const& handle_name, char const* data, size_t size)
 		{
