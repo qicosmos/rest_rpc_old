@@ -88,6 +88,7 @@ namespace timax { namespace rpc
 			socket_.close();
 		}
 
+	protected:
 		const char* recv_data() const noexcept
 		{
 			return recv_data_.data();
@@ -97,12 +98,9 @@ namespace timax { namespace rpc
 		{
 			if (!send(handle_name, data, size))
 				throw std::runtime_error("call failed");
-
-			recieve();
 		}
 
-	protected:
-		void recieve()
+		void recieve_head()
 		{
 			boost::system::error_code ec;
 			boost::asio::read(socket_, boost::asio::buffer(head_), ec);
@@ -115,7 +113,12 @@ namespace timax { namespace rpc
 
 			const int64_t i = *(int64_t*)(head_.data());
 			head_t_ = (head_t*)(head_.data());
+		}
+
+		void recieve_body()
+		{
 			const size_t body_len = head_t_->len;
+			boost::system::error_code ec;
 
 			if (body_len <= 0 || body_len > MAX_BUF_LEN)
 			{
@@ -128,7 +131,6 @@ namespace timax { namespace rpc
 				throw std::runtime_error(ec.message());
 			}
 		}
-
 
 		bool send(std::string const& handler_name, char const* data, size_t size)
 		{
@@ -206,14 +208,9 @@ namespace timax { namespace rpc
 			// call the rpc
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
 
-			if (head_t_->code != 0)
-			{
-				throw client_exception
-				{ 
-					static_cast<result_code>(head_t_->code), 
-					std::move(marshal_.template unpack<std::string>(recv_data(), head_t_->len))
-				};
-			}
+			base_type::recieve_head();
+			base_type::recieve_body();
+			check_head();
 			// unpack the receive data
 			return protocol.unpack(marshal_, recv_data(), head_t_->len);
 		}
@@ -222,11 +219,23 @@ namespace timax { namespace rpc
 		auto call(Protocol const& protocol, Args&& ... args)
 			-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
 		{
-			//auto json_str = protocol.make_json(std::forward<Args>(args)...);
-			//auto result_str = client_base::call_json(json_str, protocol.get_type());
-			//bool r = protocol.get_result(result_str);
-			//if (!r)
-			//	throw std::domain_error("call faild");
+			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
+			base_type::call(protocol.name(), buffer.data(), buffer.size());
+			base_type::recieve_head();
+			check_head();
+		}
+
+	private:
+		void check_head()
+		{
+			if (nullptr != head_t_ && head_t_->code != 0)
+			{
+				throw client_exception
+				{
+					static_cast<result_code>(head_t_->code),
+					std::move(marshal_.template unpack<std::string>(recv_data(), head_t_->len))
+				};
+			}
 		}
 
 	private:
