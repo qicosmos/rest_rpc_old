@@ -30,6 +30,9 @@ namespace timax { namespace rpc
 	template <typename Decode>
 	void connection<Decode>::response(const char* data, size_t size, result_code code)
 	{
+		if (size > MAX_BUF_LEN - HEAD_LEN)
+			throw std::overflow_error("the size is too big");
+
 		auto self(this->shared_from_this());
 		head_t h = { (int16_t)code, 0, static_cast<int>(size) };
 		message_[0] = boost::asio::buffer(&h, HEAD_LEN);
@@ -95,6 +98,7 @@ namespace timax { namespace rpc
 	void connection<Decode>::read_body(head_t const& head)
 	{
 		auto self(this->shared_from_this());
+		data_.resize(head.len);
 		boost::asio::async_read(socket_, boost::asio::buffer(data_, head.len), [this, head, self](boost::system::error_code ec, std::size_t length)
 		{
 			cancel_timer();
