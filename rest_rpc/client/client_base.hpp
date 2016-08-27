@@ -190,7 +190,7 @@ namespace timax { namespace rpc
 
 		bool check_head()
 		{
-			return (nullptr != head_t_) && (head_t_->code != 0);
+			return (nullptr != head_t_) && (head_t_->code == (int16_t)result_code::OK);
 		}
 
 	protected:
