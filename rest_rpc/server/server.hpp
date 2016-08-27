@@ -80,6 +80,50 @@ namespace timax { namespace rpc
 			router<Decode>::get().remove_handler(name);
 		}
 
+		void pub(const std::string& topic, const char* data, size_t size)
+		{
+			decltype(conn_map_.equal_range(topic)) temp;
+			std::unique_lock<std::mutex> lock(mtx_);
+
+			auto range = conn_map_.equal_range(topic);
+			if (range.first == range.second)
+				return;
+
+			temp = range;
+			lock.unlock();
+
+			std::shared_ptr<char> share_data(new char[size], [](char*p) {delete p; });
+			memcpy(share_data.get(), data, size);
+
+			for (auto it = range.first; it != range.second;)
+			{
+				auto ptr = it->second.lock();
+				if (!ptr)
+					it = conn_map_.erase(it);
+				else
+				{
+					pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
+
+					++it;
+				}
+			}
+
+			lock.lock(); //clear invalid connection
+
+			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
+			{
+				auto ptr = it->second.lock();
+				if (!ptr)
+				{
+					it = conn_map_.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+		}
+
 	private:
 		void do_accept()
 		{
@@ -115,50 +159,6 @@ namespace timax { namespace rpc
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
 			return conn_map_.find(topic) != conn_map_.end();
-		}
-
-		void pub(const std::string& topic, const char* data, size_t size)
-		{
-			decltype(conn_map_.equal_range(topic)) temp;
-			std::unique_lock<std::mutex> lock(mtx_);
-
-			auto range = conn_map_.equal_range(topic);
-			if (range.first == range.second)
-				return;
-
-			temp = range;
-			lock.unlock();
-
-			std::shared_ptr<char> share_data(new char[size], [](char*p) {delete p; });
-			memcpy(share_data.get(), data, size);
-
-			for (auto it = range.first; it != range.second;)
-			{
-				auto ptr = it->second.lock();
-				if (!ptr)
-					it = conn_map_.erase(it);
-				else
-				{
-					pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
-					
-					++it;
-				}
-			}
-
-			lock.lock(); //clear invalid connection
-
-			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
-			{
-				auto ptr = it->second.lock();
-				if (!ptr)
-				{
-					it = conn_map_.erase(it);
-				}
-				else
-				{
-					++it;
-				}
-			}
 		}
 
 		void callback(std::shared_ptr<connection_t> conn, const char* data, size_t size)
