@@ -1,5 +1,15 @@
 #pragma once
 
+// boost libraries
+#include <boost/asio.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/noncopyable.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/enable_shared_from_this.hpp>
+
 // standard libraries
 #include <cstdint>
 #include <atomic>
@@ -19,16 +29,6 @@
 #include <map>
 #include <stdexcept>
 #include <type_traits>
-
-// boost libraries
-#include <boost/asio.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/bind.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/enable_shared_from_this.hpp>
 
 // third-party libraries
 #include <kapok/Kapok.hpp>

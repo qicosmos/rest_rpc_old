@@ -225,8 +225,8 @@ namespace timax { namespace rpc
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
 
 			base_type::receive_head();
-			base_type::receive_body();
 			check_head();
+			base_type::receive_body();
 			// unpack the receive data
 			return protocol.unpack(marshal_, recv_data(), head_t_->len);
 		}
@@ -239,6 +239,48 @@ namespace timax { namespace rpc
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
 			base_type::receive_head();
 			check_head();
+		}
+
+		template <typename Protocol, typename ... Args>
+		auto pub(Protocol const& protocol, Args&& ... args)
+		{
+			return call(protocol, std::forward<Args>(args)...);
+		}
+
+		template <typename Protocol, typename F>
+		auto sub(Protocol const& protocol, F&& f)
+			-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
+		{
+			if (!call(sub_topic, protocol.name()))
+			{
+				throw std::runtime_error{ "Failed to register topic." };
+			}
+
+			while (true)
+			{
+				base_type::receive_head();
+				check_head();
+				f();
+			}
+		}
+
+		template <typename Protocol, typename F>
+		auto sub(Protocol const& protocol, F&& f)
+			-> std::enable_if_t<!std::is_void<typename Protocol::result_type>::value>
+		{
+			if (!call(sub_topic, protocol.name()))
+			{
+				throw std::runtime_error{ "Failed to register topic." };
+			}
+
+			while (true)
+			{
+				base_type::receive_head();
+				check_head();
+				base_type::receive_body();
+				
+				f(protocol.unpack(marshal_, recv_data(), head_t_->len););
+			}
 		}
 
 	private:

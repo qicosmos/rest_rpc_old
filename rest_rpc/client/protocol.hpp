@@ -179,4 +179,6 @@ namespace timax { namespace rpc
 	public:
 		static constexpr bool value = result_type::value;
 	};
+
+	TIMAX_DEFINE_PROTOCOL(sub_topic, bool(std::string const&));
 } }
