@@ -6,6 +6,6 @@ namespace timax { namespace rpc
 	static const char* RESULT = "result";
 	static const char* CODE = "code";
 
-	static const int MAX_BUF_LEN = 8192;
+	static const int MAX_BUF_LEN = 1048576;
 	static const int HEAD_LEN = 8;
 } }

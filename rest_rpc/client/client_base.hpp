@@ -132,11 +132,12 @@ namespace timax { namespace rpc
 			const size_t body_len = head_t_->len;
 			boost::system::error_code ec;
 
-			if (body_len <= 0 || body_len > MAX_BUF_LEN)
+			if (body_len <= 0 || body_len > MAX_BUF_LEN - HEAD_LEN)
 			{
-				throw std::runtime_error("call failed");
+				throw std::overflow_error("Size too big!");
 			}
 
+			recv_data_.resize(body_len);
 			boost::asio::read(socket_, boost::asio::buffer(recv_data_.data(), body_len), ec);
 			if (ec)
 			{
@@ -151,6 +152,11 @@ namespace timax { namespace rpc
 				0, 0,
 				static_cast<int32_t>(size + handler_name.size() + 1)
 			};
+
+			if (head.len > MAX_BUF_LEN - HEAD_LEN)
+			{
+				throw std::overflow_error("Size too big!");
+			}
 
 			auto message = get_messages(head, handler_name, data, size);
 			return send_impl(message);
@@ -199,7 +205,7 @@ namespace timax { namespace rpc
 		std::string						address_;
 		std::string						port_;
 		std::array<char, HEAD_LEN>		head_;
-		std::array<char, MAX_BUF_LEN>	recv_data_;
+		std::vector<char>				recv_data_;
 		head_t*							head_t_;
 	};
 
