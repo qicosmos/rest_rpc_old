@@ -6,6 +6,7 @@ namespace timax { namespace rpc
 	class server : private boost::noncopyable, public std::enable_shared_from_this<server<Decode>>
 	{
 		using connection_t = connection<Decode>;
+		using connection_ptr = std::shared_ptr<connection_t>;
 	public:
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
@@ -142,8 +143,17 @@ namespace timax { namespace rpc
 	private:
 		void do_accept()
 		{
-			conn_.reset(new connection<Decode>(this->shared_from_this(), io_service_pool_.get_io_service(), timeout_milli_));  //how to pass server to the connection?
-			acceptor_.async_accept(conn_->socket(), [this](boost::system::error_code ec)
+			connection_ptr new_connection
+			{
+				new connection_t
+				{ 
+					this->shared_from_this(), 
+					io_service_pool_.get_io_service(), 
+					timeout_milli_ 
+				}
+			};
+
+			acceptor_.async_accept(new_connection->socket(), [this, new_connection](boost::system::error_code ec)
 			{
 				if (ec)
 				{
@@ -151,7 +161,7 @@ namespace timax { namespace rpc
 				}
 				else
 				{
-					conn_->start();
+					new_connection->start();
 				}
 
 				do_accept();

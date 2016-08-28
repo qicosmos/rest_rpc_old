@@ -23,6 +23,10 @@ namespace timax { namespace rpc
 
 	public:
 		connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli);
+		~connection()
+		{
+			std::cout << "~connection called" << std::endl;
+		}
 		void start();
 		tcp::socket& socket();
 		//add timeout later
