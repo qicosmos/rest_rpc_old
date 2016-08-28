@@ -18,13 +18,10 @@ int main(void)
 
 	try
 	{
-		int lhs = 1, rhs = 2;
-
-		while (true)
-		{
-			client.pub(client::add, lhs, rhs);
-			++rhs;
-		}
+		client.sub(client::add, [](int r) 
+		{ 
+			std::cout << r << std::endl; 
+		});
 	}
 	catch (timax::rpc::client_exception const& e)
 	{

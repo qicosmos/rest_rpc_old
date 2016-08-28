@@ -22,8 +22,12 @@ int main(void)
 
 		while (true)
 		{
+			using namespace std;
+
 			client.pub(client::add, lhs, rhs);
 			++rhs;
+
+			std::this_thread::sleep_for(1s);
 		}
 	}
 	catch (timax::rpc::client_exception const& e)

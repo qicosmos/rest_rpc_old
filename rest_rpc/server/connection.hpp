@@ -28,7 +28,7 @@ namespace timax { namespace rpc
 		//add timeout later
 
 		void response(const char* data, size_t size, result_code code = result_code::OK);
-	private:
+	public:  // private
 		friend class server<Decode>;
 		void read_head();
 		void read_body(head_t const& head);

@@ -289,7 +289,7 @@ namespace timax { namespace rpc
 				check_head();
 				base_type::receive_body();
 				
-				f(protocol.unpack(marshal_, recv_data(), head_t_->len););
+				f(protocol.unpack(marshal_, recv_data(), head_t_->len));
 			}
 		}
 

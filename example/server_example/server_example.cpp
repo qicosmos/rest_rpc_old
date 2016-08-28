@@ -138,7 +138,7 @@ int main()
 
 	timax::log::get().init("rest_rpc_server.lg");
 	auto cfg = client::get_config();
-	int port = 9000; 
+	int port = 9000;
 	int thread_num = std::thread::hardware_concurrency();
 	if (cfg.port != 0)
 	{
@@ -148,13 +148,19 @@ int main()
 
 	auto sp = std::make_shared<server<msgpack_codec>>(port, thread_num);
 	//server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
-	
+
 	messenger m;
 	sp->register_handler("translate", &messenger::translate, &m, nullptr);
-	
+
 	file_manager fm;
 	sp->register_handler("compose", &compose, &after);
-	sp->register_handler("add", &add, nullptr);
+	sp->register_handler("add", &add, [sp](std::shared_ptr<connection<msgpack_codec>> c, int r)
+	{
+		auto sb = msgpack_codec{}.pack(r);
+		sp->pub("add", sb.data(), sb.size());
+
+		c->read_head();
+	});
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
 	/*sp->register_handler1("add", &client::add, [&s](int r) {});
 	sp->register_handler1("test", &client::test,&after);*/
