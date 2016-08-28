@@ -14,6 +14,7 @@ namespace timax { namespace rpc
 			{
 				if (!topic.empty())
 				{
+					std::unique_lock<std::mutex> lock(mtx_);
 					conn_map_.emplace(topic, conn);
 				}
 
