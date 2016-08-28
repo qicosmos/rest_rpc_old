@@ -47,7 +47,7 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				SPD_LOG_INFO(ec.message().c_str());
+				SPD_LOG_ERROR(ec.message().c_str());
 			}
 		});
 	}
@@ -88,7 +88,9 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				SPD_LOG_INFO(ec.message().c_str());
+				//for test
+				std::cout << "客户端连接断开" << std::endl;
+				SPD_LOG_ERROR(ec.message().c_str());
 				cancel_timer();
 			}
 		});
@@ -128,7 +130,9 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				SPD_LOG_INFO(ec.message().c_str());
+				//for test
+				std::cout << "客户端连接断开" << std::endl;
+				SPD_LOG_ERROR(ec.message().c_str());
 			}
 		});
 	}
