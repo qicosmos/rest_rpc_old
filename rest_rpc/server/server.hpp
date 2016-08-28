@@ -242,7 +242,6 @@ namespace timax { namespace rpc
 		friend class connection<Decode>;
 		io_service_pool io_service_pool_;
 		tcp::acceptor acceptor_;
-		std::shared_ptr<connection_t> conn_;
 		std::shared_ptr<std::thread> thd_;
 		std::size_t timeout_milli_;
 
