@@ -88,8 +88,7 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				//for test
-				std::cout << "客户端连接断开" << std::endl;
+				server_->remove_sub_conn(self.get());
 				SPD_LOG_ERROR(ec.message().c_str());
 				cancel_timer();
 			}
@@ -110,28 +109,10 @@ namespace timax { namespace rpc
 
 			if (!ec)
 			{
-				//router& _router = router::get();
-				//if type is tag, need callback to client the tag
-				//bool round_trip = (head.framework_type == static_cast<int>(framework_type::ROUNDTRIP));
-				//server_.callback(self, data_, length);
-				//callback_(self, data_, length);
-				//_router.route(data_, length);
-				//if tag is binary, route_binary
-				/*bool binary_type = (head.data_type == static_cast<int>(data_type::BINARY));
-				if (!binary_type)
-				{
-				_router.route(data_, length, self, head.framework_type);
-				}
-				else
-				{
-				_router.route_binary(data_, length, self, head.framework_type);
-				}*/
 				server_->callback(self, data_.data(), length);
 			}
 			else
 			{
-				//for test
-				std::cout << "客户端连接断开" << std::endl;
 				SPD_LOG_ERROR(ec.message().c_str());
 			}
 		});
