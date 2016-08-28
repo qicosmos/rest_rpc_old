@@ -278,7 +278,8 @@ namespace timax { namespace rpc
 		auto sub(Protocol const& protocol, F&& f)
 			-> std::enable_if_t<!std::is_void<typename Protocol::result_type>::value>
 		{
-			if (!call(sub_topic, protocol.name()))
+			std::string result = call(sub_topic, protocol.name());
+			if (result.empty())
 			{
 				throw std::runtime_error{ "Failed to register topic." };
 			}

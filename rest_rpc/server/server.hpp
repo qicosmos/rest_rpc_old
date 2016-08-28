@@ -10,7 +10,15 @@ namespace timax { namespace rpc
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 		{
-			register_handler(SUB_TOPIC, &server::sub, this, nullptr);
+			register_handler(SUB_TOPIC, &server::sub, this, [this](auto conn, const std::string& topic) 
+			{
+				if (!topic.empty())
+				{
+					conn_map_.emplace(topic, conn);
+				}
+
+				default_after(conn, topic);
+			});
 		}
 
 		~server()
@@ -109,26 +117,22 @@ namespace timax { namespace rpc
 			std::shared_ptr<char> share_data(new char[size], [](char*p) {delete p; });
 			memcpy(share_data.get(), data, size);
 
-			for (auto it = range.first; it != range.second;)
+			for (auto it = range.first; it != range.second; ++it)
 			{
 				auto ptr = it->second.lock();
-				if (!ptr)
-					it = conn_map_.erase(it);
-				else
-				{
+				if(ptr)
 					ptr->response(share_data.get(), size);
-					//pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
-
-					++it;
-				}
+				//pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
 			}
+		}
 
-			lock.lock(); //clear invalid connection
-
+		void remove_sub_conn(connection<Decode>* conn)
+		{
+			std::unique_lock<std::mutex> lock(mtx_);
 			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
 			{
 				auto ptr = it->second.lock();
-				if (!ptr)
+				if (!ptr||ptr.get()==conn)
 				{
 					it = conn_map_.erase(it);
 				}
@@ -159,15 +163,13 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		bool sub(const std::string& topic)
+		std::string sub(const std::string& topic)
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
 			if (!router<Decode>::get().has_handler(topic))
-				return false;
+				return "";
 
-			conn_map_.emplace(topic, conn_);
-
-			return true;
+			return topic;
 		}
 
 		bool is_subscriber_exsit(const std::string& topic)
