@@ -116,7 +116,8 @@ namespace timax { namespace rpc
 					it = conn_map_.erase(it);
 				else
 				{
-					pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
+					ptr->response(share_data.get(), size);
+					//pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
 
 					++it;
 				}
