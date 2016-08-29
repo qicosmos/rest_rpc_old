@@ -403,9 +403,6 @@ int main(void)
 	{
 		auto result = client.call(client::add, 1, 2);
 		assert(result == 3);
-
-		client.pub(client::madoka, 1, 2);
-		client.sub(client::madoka, [] {});
 	}
 	catch (timax::rpc::client_exception const& e)
 	{
