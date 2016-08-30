@@ -46,7 +46,7 @@ namespace timax { namespace rpc
 					return;
 				}
 
-				boost::asio::async_write(socket_, boost::asio::buffer(g_str), [this, self](boost::system::error_code ec, std::size_t length) {
+				boost::asio::async_write(socket_, boost::asio::buffer(g_str, g_str.size()), [this, self](boost::system::error_code ec, std::size_t length) {
 					if (ec)
 					{
 						close();
