@@ -219,7 +219,7 @@ namespace timax { namespace rpc
 			return [this](connection_ptr conn)
 			{
 				default_after(conn);
-			}
+			};
 		}
 
 		template <typename Ret>
@@ -252,38 +252,6 @@ namespace timax { namespace rpc
 			_router.route(conn, data, size);
 		}
 
-		//this callback from router, tell the server which connection sub the topic and the result of handler
-		void callback1(const std::string& topic, const char* result, connection_ptr conn, int16_t ftype, bool has_error = false)
-		{
-			if (has_error)
-			{
-				SPD_LOG_ERROR(result);
-				return;
-			}
-
-			framework_type type = (framework_type)ftype;
-			if (type == framework_type::DEFAULT)
-			{
-				conn->response(result, strlen(result));
-				return;
-			}
-			else if (type == framework_type::SUB)
-			{
-				rapidjson::Document doc;
-				doc.Parse(result);
-				auto handler_name = doc[RESULT].GetString();
-				std::unique_lock<std::mutex> lock(mtx_);
-				conn_map_.emplace(handler_name, conn);
-				lock.unlock();
-				conn->response(result, strlen(result));
-			}
-			else if (type == framework_type::PUB)
-			{
-				pub(topic, result, strlen(result));
-				conn->read_head();
-			}
-		}
-
 		friend class connection<Decode>;
 		io_service_pool io_service_pool_;
 		tcp::acceptor acceptor_;
@@ -292,7 +260,7 @@ namespace timax { namespace rpc
 
 		std::multimap<std::string, std::weak_ptr<connection_t>> conn_map_;
 		std::mutex mtx_;
-		ThreadPool pool_;
+		//ThreadPool pool_;
 	};
 
 } }

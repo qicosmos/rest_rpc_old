@@ -11,9 +11,6 @@ namespace timax { namespace rpc
 	template <typename Decode>
 	class connection : public std::enable_shared_from_this<connection<Decode>>, private boost::noncopyable
 	{
-		//friend class template router<Decode>;
-		//friend class template server<Decode>;
-
 		using server_ptr = std::shared_ptr<server<Decode>>;
 		using message_t  = std::array<boost::asio::mutable_buffer, 2>;
 		using deadline_timer_t = boost::asio::deadline_timer;
@@ -23,16 +20,11 @@ namespace timax { namespace rpc
 
 	public:
 		connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli);
-		~connection()
-		{
-			std::cout << "~connection called" << std::endl;
-		}
+		
 		void start();
 		tcp::socket& socket();
-		//add timeout later
 
-		void response(const char* data, size_t size, result_code code = result_code::OK);
-	public:  // private
+	private:
 		friend class server<Decode>;
 		void read_head();
 		void read_body(head_t const& head);
@@ -40,12 +32,40 @@ namespace timax { namespace rpc
 		void cancel_timer();
 		void close();
 		void set_no_delay();
+		void response(const char* data, size_t size, result_code code = result_code::OK);
+
+		//just for ab test.
+		void do_read()
+		{
+			auto self(this->shared_from_this());
+			boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
+			{
+				if (ec)
+				{
+					close();
+					return;
+				}
+
+				boost::asio::async_write(socket_, boost::asio::buffer(g_str), [this, self](boost::system::error_code ec, std::size_t length) {
+					if (ec)
+					{
+						close();
+						return;
+					}
+
+					do_read();
+				});
+				//boost::system::error_code ec1;
+				//boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
+				//do_read();
+			});
+		}
 
 		server_ptr				server_;
 		tcp::socket				socket_;
 		sarray<HEAD_LEN>		head_;
 		std::vector<char>		data_;
-		sarray<106>				read_buf_;
+		sarray<106>				read_buf_; //for ab test
 		message_t				message_;
 		deadline_timer_t		timer_;
 		std::size_t				timeout_milli_;

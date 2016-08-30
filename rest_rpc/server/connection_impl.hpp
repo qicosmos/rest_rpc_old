@@ -18,7 +18,8 @@ namespace timax { namespace rpc
 	void connection<Decode>::start()
 	{
 		set_no_delay();
-		read_head();
+		do_read();//for ab test
+		//read_head();
 	}
 
 	template <typename Decode>
