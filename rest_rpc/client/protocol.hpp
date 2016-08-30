@@ -48,6 +48,7 @@ namespace timax { namespace rpc
 	struct protocol_define<Ret(Args...)> : protocol_define_base<Ret(Args...)>
 	{
 		using base_type = protocol_define_base<Ret(Args...)>;
+		using result_type = typename base_type::result_type;
 
 		explicit protocol_define(std::string name)
 			: base_type(std::move(name))
