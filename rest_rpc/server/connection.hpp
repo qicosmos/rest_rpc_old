@@ -35,37 +35,37 @@ namespace timax { namespace rpc
 		void response(const char* data, size_t size, result_code code = result_code::OK);
 
 		//just for ab test.
-		void do_read()
-		{
-			auto self(this->shared_from_this());
-			boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
-			{
-				if (ec)
-				{
-					close();
-					return;
-				}
+		//void do_read()
+		//{
+		//	auto self(this->shared_from_this());
+		//	boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
+		//	{
+		//		if (ec)
+		//		{
+		//			close();
+		//			return;
+		//		}
 
-				boost::asio::async_write(socket_, boost::asio::buffer(g_str, g_str.size()), [this, self](boost::system::error_code ec, std::size_t length) {
-					if (ec)
-					{
-						close();
-						return;
-					}
+		//		boost::asio::async_write(socket_, boost::asio::buffer(g_str, g_str.size()), [this, self](boost::system::error_code ec, std::size_t length) {
+		//			if (ec)
+		//			{
+		//				close();
+		//				return;
+		//			}
 
-					do_read();
-				});
-				//boost::system::error_code ec1;
-				//boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
-				//do_read();
-			});
-		}
+		//			do_read();
+		//		});
+		//		//boost::system::error_code ec1;
+		//		//boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
+		//		//do_read();
+		//	});
+		//}
 
 		server_ptr				server_;
 		tcp::socket				socket_;
 		sarray<HEAD_LEN>		head_;
 		std::vector<char>		data_;
-		sarray<106>				read_buf_; //for ab test
+//		sarray<106>				read_buf_; //for ab test
 		message_t				message_;
 		deadline_timer_t		timer_;
 		std::size_t				timeout_milli_;
