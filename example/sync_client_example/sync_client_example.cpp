@@ -1,5 +1,4 @@
 #include <rest_rpc/client.hpp>
-#include "unified_client.hpp"
 
 namespace client
 {
@@ -45,7 +44,7 @@ namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
-	TIMAX_DEFINE_PROTOCOL(compose, void(int, const std::string&, blob, double));
+	TIMAX_DEFINE_PROTOCOL(compose, void(int, const std::string&, timax::rpc::blob, double));
 }
 
 using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
