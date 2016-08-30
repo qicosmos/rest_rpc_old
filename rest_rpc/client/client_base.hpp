@@ -257,35 +257,36 @@ namespace timax { namespace rpc
 			//base_type::call(protocol.name(), buffer.data(), buffer.size());
 		}
 
-		template <typename Protocol, typename F>
-		auto sub(Protocol const& protocol, F&& f)
-			-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
-		{
-			std::string result = call(sub_topic, protocol.name());
-			if (result.empty())
-			{
-				throw std::runtime_error{ "Failed to register topic." };
-			}
+		//template <typename Protocol, typename F>
+		//auto sub(Protocol const& protocol, F&& f)
+		//	-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
+		//{
+		//	std::string result = call(sub_topic, protocol.name());
+		//	if (result.empty())
+		//	{
+		//		throw std::runtime_error{ "Failed to register topic." };
+		//	}
 
-			while (true)
-			{
-				base_type::receive_head();
-				check_head();
-				f();
-			}
-		}
+		//	while (true)
+		//	{
+		//		base_type::receive_head();
+		//		check_head();
+		//		f();
+		//	}
+		//}
 
 		template <typename Protocol, typename F>
-		auto sub(Protocol const& protocol, F&& f)
+		auto sub(Protocol const& protocol, F&& f, std::function<bool()> pred = [] { return false; })
 			-> std::enable_if_t<!std::is_void<typename Protocol::result_type>::value>
 		{
 			std::string result = call(sub_topic, protocol.name());
+			
 			if (result.empty())
 			{
 				throw std::runtime_error{ "Failed to register topic." };
 			}
 
-			while (true)
+			while (!pred())
 			{
 				base_type::receive_head();
 				check_head();
@@ -293,6 +294,8 @@ namespace timax { namespace rpc
 				
 				f(protocol.unpack(marshal_, recv_data(), head_t_->len));
 			}
+
+			call(cancel_sub);
 		}
 
 	private:

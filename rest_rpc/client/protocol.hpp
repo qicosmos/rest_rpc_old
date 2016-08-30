@@ -188,4 +188,5 @@ namespace timax { namespace rpc
 	};
 
 	TIMAX_DEFINE_PROTOCOL(sub_topic, std::string(std::string const&));
+	TIMAX_DEFINE_PROTOCOL(cancel_sub, void());
 } }
