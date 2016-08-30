@@ -34,6 +34,7 @@ namespace timax { namespace rpc
 		void set_no_delay();
 		void response(const char* data, size_t size, result_code code = result_code::OK);
 
+		//just for ab test.
 		void do_read()
 		{
 			auto self(this->shared_from_this());
@@ -45,9 +46,18 @@ namespace timax { namespace rpc
 					return;
 				}
 
-				boost::system::error_code ec1;
-				boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
-				do_read();
+				boost::asio::async_write(socket_, boost::asio::buffer(g_str), [this](boost::system::error_code ec, std::size_t length) {
+					if (ec)
+					{
+						close();
+						return;
+					}
+
+					do_read();
+				});
+				//boost::system::error_code ec1;
+				//boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
+				//do_read();
 			});
 		}
 
