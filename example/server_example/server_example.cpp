@@ -150,7 +150,7 @@ int main()
 	//server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 
 	messenger m;
-	sp->register_handler("translate", &messenger::translate, &m, nullptr);
+	sp->register_handler("translate", &messenger::translate, &m);
 
 	file_manager fm;
 	sp->register_handler("compose", &compose, &after);
@@ -158,12 +158,8 @@ int main()
 	{
 		auto sb = msgpack_codec{}.pack(r);
 		sp->pub("add", sb.data(), sb.size());
-
-		c->read_head();
 	});
-	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
-	/*sp->register_handler1("add", &client::add, [&s](int r) {});
-	sp->register_handler1("test", &client::test,&after);*/
+	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm);
 
 	sp->run();
 
