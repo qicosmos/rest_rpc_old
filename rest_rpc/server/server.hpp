@@ -219,7 +219,7 @@ namespace timax { namespace rpc
 			return [this](connection_ptr conn)
 			{
 				default_after(conn);
-			}
+			};
 		}
 
 		template <typename Ret>
