@@ -399,11 +399,15 @@ int main(void)
 	sync_client client{ io };
 	client.connect("127.0.0.1", "9000");
 
+	while (true)
+	{
+		client.call(client::add, 1, 2);
+	}
+
 	try
 	{
 		auto result = client.call(client::add, 1, 2);
 		assert(result == 3);
-		
 	}
 	catch (timax::rpc::client_exception const& e)
 	{
