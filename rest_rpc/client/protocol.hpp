@@ -8,6 +8,9 @@
 
 namespace timax { namespace rpc
 {
+	template <typename ... Args>
+	using make_args_tuple = std::tuple<std::remove_reference_t<std::remove_cv_t<Args>>...>;
+
 	template <typename Func>
 	struct protocol_define;
 
@@ -34,10 +37,13 @@ namespace timax { namespace rpc
 			return framework_type::DEFAULT;
 		}
 
-		template <typename Marshal, typename ... Args_>
-		auto pack_args(Marshal const& m, Args_&& ... args) const
+		template <typename Marshal, typename ... TArgs>
+		auto pack_args(Marshal const& m, TArgs&& ... args) const
 		{
-			return m.pack_args(std::forward<Args_>(args)...);
+			static_assert(std::is_same<make_args_tuple<Args...>, 
+				make_args_tuple<TArgs...>>::value, "TArgs type don`t match the protocol!");
+
+			return m.pack_args(std::forward<TArgs>(args)...);
 		}
 
 	private:
