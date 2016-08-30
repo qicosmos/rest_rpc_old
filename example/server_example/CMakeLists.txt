@@ -14,7 +14,7 @@ endif ()
 
 add_definitions(-DFMT_HEADER_ONLY)
 
-find_package(Boost 1.55 COMPONENTS coroutine context system thread chrono REQUIRED)
+find_package(Boost 1.55 COMPONENTS coroutine context system thread chrono serialization REQUIRED)
 
 set(REST_RPC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
