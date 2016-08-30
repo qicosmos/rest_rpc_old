@@ -33,7 +33,7 @@ namespace timax { namespace rpc
 			this->invokers_.erase(name);
 		}
 
-		bool has_handler(const std::string func_name)
+		bool has_handler(std::string const& func_name)
 		{
 			return invokers_.find(func_name) != invokers_.end();
 		}
@@ -44,7 +44,6 @@ namespace timax { namespace rpc
 			auto it = invokers_.find(func_name);
 			if (it != invokers_.end())
 			{
-				msgpack::unpacked msg;
 				auto length = func_name.length();
 				blob bl = { data + length + 1, static_cast<uint32_t>(size - length - 1) };
 				

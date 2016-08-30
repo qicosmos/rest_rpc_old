@@ -219,6 +219,8 @@ namespace timax { namespace rpc
 			return{ proto, task, shared_from_this() };
 		}
 
+		//template <typename Protocol, typename 
+
 		void cancel(task_ptr task)
 		{
 			task->timer.cancel();
