@@ -251,10 +251,10 @@ namespace timax { namespace rpc
 		template <typename Protocol, typename ... Args>
 		auto pub(Protocol const& protocol, Args&& ... args)
 		{
-			//return call(protocol, std::forward<Args>(args)...);
+			return call(protocol, std::forward<Args>(args)...);
 
-			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
-			base_type::call(protocol.name(), buffer.data(), buffer.size());
+			//auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
+			//base_type::call(protocol.name(), buffer.data(), buffer.size());
 		}
 
 		template <typename Protocol, typename F>

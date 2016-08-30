@@ -8,30 +8,6 @@ namespace timax { namespace rpc
 		using connection_t = connection<Decode>;
 		using connection_ptr = std::shared_ptr<connection_t>;
 
-		template <typename Ret>
-		struct wrap_after
-		{
-			template <typename AF>
-			static void apply(AF af, connection_ptr conn, Ret r)
-			{
-				af(conn, std::forward<Ret>(r));
-				Decode codec;
-				auto buf = codec.pack(r);
-				conn->response(buf.data(), buf.size());
-			}
-		};
-
-		template <>
-		struct wrap_after<void>
-		{
-			template <typename AF>
-			static void apply(AF&& af, connection_ptr conn)
-			{
-				af(conn);
-				conn->read_head();
-			}
-		};
-
 	public:
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
@@ -87,7 +63,7 @@ namespace timax { namespace rpc
 			}
 		}
 
-		void remove_sub_conn(connection<Decode>* conn)
+		void remove_sub_conn(connection_t* conn)
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
 			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
@@ -138,16 +114,8 @@ namespace timax { namespace rpc
 	private:
 		void do_accept()
 		{
-			connection_ptr new_connection
-			{
-				new connection_t
-				{ 
-					this->shared_from_this(), 
-					io_service_pool_.get_io_service(), 
-					timeout_milli_ 
-				}
-			};
-
+			auto new_connection = std::make_shared<connection_t>(
+				this->shared_from_this(), io_service_pool_.get_io_service(), timeout_milli_);
 			acceptor_.async_accept(new_connection->socket(), [this, new_connection](boost::system::error_code ec)
 			{
 				if (ec)
@@ -180,16 +148,30 @@ namespace timax { namespace rpc
 		}
 
 		template<typename R>
-		void default_after(std::shared_ptr<connection_t> conn, std::add_lvalue_reference_t<std::add_const_t<R>> r)
+		void default_after(connection_ptr conn, std::add_lvalue_reference_t<std::add_const_t<R>> r)
 		{
 			Decode codec;
 			auto buf = codec.pack(r);
 			conn->response(buf.data(), buf.size());
 		}
 
-		void default_after(std::shared_ptr<connection_t> conn)
+		void default_after(connection_ptr conn)
 		{
 			conn->read_head();
+		}
+
+		template <typename Ret, typename AF>
+		void wrap_default_after(AF&& af, connection_ptr conn, std::add_lvalue_reference_t<std::add_const_t<Ret>> ret)
+		{
+			af(conn, ret);
+			default_after<Ret>(conn, ret);
+		}
+
+		template <typename AF>
+		void wrap_default_after(AF&& af, connection_ptr conn)
+		{
+			af(conn);
+			default_after(conn);
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////////////
@@ -204,21 +186,21 @@ namespace timax { namespace rpc
 
 		template <typename Ret, typename AF>
 		auto wrap_after_function_impl(AF&& af, std::true_type)
-			-> std::function<void(std::shared_ptr<connection_t>)>
+			-> std::function<void(connection_ptr)>
 		{
-			return [af](std::shared_ptr<connection_t> conn)
+			return [this, af](connection_ptr conn)
 			{
-				wrap_after<Ret>::apply(af, conn);
+				wrap_default_after(af, conn);
 			};
 		}
 
 		template <typename Ret, typename AF>
 		auto wrap_after_function_impl(AF&& af, std::false_type)
-			-> std::function<void(std::shared_ptr<connection_t>, std::add_lvalue_reference_t<std::add_const_t<Ret>>)>
+			-> std::function<void(connection_ptr, std::add_lvalue_reference_t<std::add_const_t<Ret>>)>
 		{
-			return [af](std::shared_ptr<connection_t> conn, std::add_lvalue_reference_t<std::add_const_t<Ret>> r)
+			return [this, af](connection_ptr conn, std::add_lvalue_reference_t<std::add_const_t<Ret>> r)
 			{
-				wrap_after<Ret>::apply(af, conn, r);
+				wrap_default_after<Ret>(af, conn, r);
 			};
 		}
 
@@ -234,7 +216,7 @@ namespace timax { namespace rpc
 		auto wrap_after_function_impl(std::true_type)
 			-> std::function<void(std::shared_ptr<connection_t>)>
 		{
-			return [this](std::shared_ptr<connection_t> conn)
+			return [this](connection_ptr conn)
 			{
 				default_after(conn);
 			}
@@ -244,7 +226,7 @@ namespace timax { namespace rpc
 		auto wrap_after_function_impl(std::false_type)
 			-> std::function<void(std::shared_ptr<connection_t>, std::add_lvalue_reference_t<std::add_const_t<Ret>>)>
 		{
-			return [this](std::shared_ptr<connection_t> conn, std::add_lvalue_reference_t<std::add_const_t<Ret>> r)
+			return [this](connection_ptr conn, std::add_lvalue_reference_t<std::add_const_t<Ret>> r)
 			{
 				default_after<Ret>(conn, r);
 			};
@@ -264,14 +246,14 @@ namespace timax { namespace rpc
 
 		/////////////////////////////////////////////////////////////////////////////////////////////
 
-		void callback(std::shared_ptr<connection_t> conn, const char* data, size_t size)
+		void callback(connection_ptr conn, const char* data, size_t size)
 		{
 			auto& _router = router<Decode>::get();
 			_router.route(conn, data, size);
 		}
 
 		//this callback from router, tell the server which connection sub the topic and the result of handler
-		void callback1(const std::string& topic, const char* result, std::shared_ptr<connection_t> conn, int16_t ftype, bool has_error = false)
+		void callback1(const std::string& topic, const char* result, connection_ptr conn, int16_t ftype, bool has_error = false)
 		{
 			if (has_error)
 			{
