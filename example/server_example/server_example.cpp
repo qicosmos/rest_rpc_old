@@ -110,12 +110,12 @@ int add(int a, int b)
 	return a + b;
 }
 
+using codec_type = boost_codec;
+
 void compose(int i, const std::string& str, blob bl, double d)
 {
 	std::cout << i << " " << str << " " << bl.ptr << " " << d << std::endl;;
 }
-
-using codec_type = msgpack_codec;
 
 template<typename T>
 void after_add(std::shared_ptr<connection<codec_type>> sp, T r)
@@ -132,8 +132,20 @@ void after(std::shared_ptr<connection<codec_type>> sp)
 	//encode
 }
 
+void test_boost_codec()
+{
+	std::tuple<int, std::string, int> tp(1, "test", 2);
+	boost_codec codec;
+	auto ss = codec.pack(tp);
+	std::cout << ss.data() << std::endl;
+
+	auto tp1 = codec.unpack<std::tuple<int, std::string, int>>(ss.data(), ss.size());
+	std::cout << std::get<1>(tp1) << std::endl;
+}
+
 int main()
 {
+	test_boost_codec();
 	using timax::rpc::server;
 	using client::messenger;
 	using client::configure;
@@ -156,13 +168,14 @@ int main()
 
 	file_manager fm;
 //	sp->register_handler("compose", &compose, &after);
-	sp->register_handler("add", &add, [sp](std::shared_ptr<connection<codec_type>> c, int r)
-	{
-		auto sb = codec_type{}.pack(r);
-		sp->pub("add", sb.data(), sb.size());
+	sp->register_handler("add", &add, nullptr);
+	//sp->register_handler("add", &add, [sp](std::shared_ptr<connection<codec_type>> c, int r)
+	//{
+	//	auto sb = codec_type{}.pack(r);
+	//	sp->pub("add", sb.data(), sb.size());
 
-		c->read_head();
-	});
+	//	c->read_head();
+	//});
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm, nullptr);
 	/*sp->register_handler1("add", &client::add, [&s](int r) {});
 	sp->register_handler1("test", &client::test,&after);*/
