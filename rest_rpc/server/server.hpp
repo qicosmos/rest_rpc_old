@@ -7,19 +7,42 @@ namespace timax { namespace rpc
 	{
 		using connection_t = connection<Decode>;
 		using connection_ptr = std::shared_ptr<connection_t>;
+
+		template <typename Ret>
+		struct wrap_after
+		{
+			template <typename AF>
+			static void apply(AF af, connection_ptr conn, Ret r)
+			{
+				af(conn, std::forward<Ret>(r));
+				Decode codec;
+				auto buf = codec.pack(r);
+				conn->response(buf.data(), buf.size());
+			}
+		};
+
+		template <>
+		struct wrap_after<void>
+		{
+			template <typename AF>
+			static void apply(AF&& af, connection_ptr conn)
+			{
+				af(conn);
+				conn->read_head();
+			}
+		};
+
 	public:
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
 			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
 		{
-			register_handler(SUB_TOPIC, &server::sub, this, [this](auto conn, const std::string& topic) 
+			register_handler(SUB_TOPIC, &server::sub, this, [this](auto conn, std::string const& topic)
 			{
 				if (!topic.empty())
 				{
 					std::unique_lock<std::mutex> lock(mtx_);
 					conn_map_.emplace(topic, conn);
 				}
-
-				default_after(conn, topic);
 			});
 		}
 
@@ -33,70 +56,6 @@ namespace timax { namespace rpc
 		{
 			do_accept();
 			thd_ = std::make_shared<std::thread>([this] {io_service_pool_.run(); });
-		}
-
-		template<typename Function>
-		void register_handler(std::string const & name, const Function& f)
-		{
-			router<Decode>::get().register_handler(name, f);
-		}
-
-		template<typename Function>
-		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
-		{
-			if (af == nullptr)
-			{
-				using return_type = typename function_traits<Function>::return_type;
-				std::function<void(std::shared_ptr<connection_t> conn, return_type)> fn = std::bind(&server<Decode>::default_after<return_type>, this, std::placeholders::_1, std::placeholders::_2);
-				router<Decode>::get().register_handler(name, f, fn);
-			}
-			else
-			{
-				router<Decode>::get().register_handler(name, f, af);
-			}
-		}
-
-		template<typename Function>
-		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>)>& af)
-		{
-			if (af == nullptr)
-			{
-				std::function<void(std::shared_ptr<connection_t> conn)> fn = std::bind(&server<Decode>::default_after, this, std::placeholders::_1);
-				router<Decode>::get().register_handler(name, f, fn);
-			}
-			else
-			{
-				router<Decode>::get().register_handler(name, f, af);
-			}
-		}
-
-		template<typename Function, typename Self>
-		std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
-		{
-			if (af == nullptr)
-			{
-				using return_type = typename function_traits<Function>::return_type;
-				std::function<void(std::shared_ptr<connection_t> conn, return_type)> fn = std::bind(&server<Decode>::default_after<return_type>, this, std::placeholders::_1, std::placeholders::_2);
-				router<Decode>::get().register_handler(name, f, self, fn);	
-			}
-			else
-			{
-				router<Decode>::get().register_handler(name, f, self, af);
-			}
-		}
-
-		template<typename Function, typename Self>
-		std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>)>& af)
-		{
-			if (af == nullptr)
-			{
-				std::function<void(std::shared_ptr<connection_t> conn)> fn = std::bind(&server<Decode>::default_after, this, std::placeholders::_1);
-				router<Decode>::get().register_handler(name, f, self, fn);
-			}
-			else
-			{
-				router<Decode>::get().register_handler(name, f, self, af);
-			}
 		}
 
 		void remove_handler(std::string const& name)
@@ -145,6 +104,37 @@ namespace timax { namespace rpc
 			}
 		}
 
+		// test ...... 
+		template <typename F, typename AF>
+		void register_handler(std::string const& name, F&& f, AF&& af)
+		{
+			using return_type = typename function_traits<std::remove_reference_t<F>>::return_type;
+			auto after_wrapper = wrap_after_function<return_type>(std::forward<AF>(af));
+			register_handler_impl(name, std::forward<F>(f), std::move(after_wrapper));
+		}
+
+		template <typename F>
+		void register_handler(std::string const& name, F&& f)
+		{
+			using return_type = typename function_traits<std::remove_reference_t<F>>::return_type;
+			auto after_wrapper = wrap_after_function<return_type>();
+			register_handler_impl(name, std::forward<F>(f), std::move(after_wrapper));
+		}
+
+		template <typename AF, typename T, typename Ret, typename ... Args>
+		void register_handler(std::string const& name, Ret(T::*f)(Args...), T* ptr, AF&& af)
+		{
+			auto after_wrapper = wrap_after_function<Ret>(std::forward<AF>(af));
+			register_handler_impl(name, f, ptr, std::move(after_wrapper));
+		}
+
+		template <typename T, typename Ret, typename ... Args>
+		void register_handler(std::string const& name, Ret(T::*f)(Args...), T* ptr)
+		{
+			auto after_wrapper = wrap_after_function<Ret>();
+			register_handler_impl(name, f, ptr, std::move(after_wrapper));
+		}
+		// test ......
 	private:
 		void do_accept()
 		{
@@ -190,7 +180,7 @@ namespace timax { namespace rpc
 		}
 
 		template<typename R>
-		void default_after(std::shared_ptr<connection_t> conn, R r)
+		void default_after(std::shared_ptr<connection_t> conn, std::add_lvalue_reference_t<std::add_const_t<R>> r)
 		{
 			Decode codec;
 			auto buf = codec.pack(r);
@@ -201,6 +191,78 @@ namespace timax { namespace rpc
 		{
 			conn->read_head();
 		}
+
+		/////////////////////////////////////////////////////////////////////////////////////////////
+		// wrap after function
+		template <typename Ret, typename AF>
+		auto wrap_after_function(AF&& af)
+		{
+			return wrap_after_function_impl<Ret>(af,
+				std::conditional_t<std::is_void<Ret>::value,
+				std::true_type, std::false_type>{});
+		}
+
+		template <typename Ret, typename AF>
+		auto wrap_after_function_impl(AF&& af, std::true_type)
+			-> std::function<void(std::shared_ptr<connection_t>)>
+		{
+			return [af](std::shared_ptr<connection_t> conn)
+			{
+				wrap_after<Ret>::apply(af, conn);
+			};
+		}
+
+		template <typename Ret, typename AF>
+		auto wrap_after_function_impl(AF&& af, std::false_type)
+			-> std::function<void(std::shared_ptr<connection_t>, std::add_lvalue_reference_t<std::add_const_t<Ret>>)>
+		{
+			return [af](std::shared_ptr<connection_t> conn, std::add_lvalue_reference_t<std::add_const_t<Ret>> r)
+			{
+				wrap_after<Ret>::apply(af, conn, r);
+			};
+		}
+
+		template <typename Ret>
+		auto wrap_after_function()
+		{
+			return wrap_after_function_impl<Ret>(
+				std::conditional_t<std::is_void<Ret>::value,
+				std::true_type, std::false_type>{});
+		}
+
+		template <typename Ret>
+		auto wrap_after_function_impl(std::true_type)
+			-> std::function<void(std::shared_ptr<connection_t>)>
+		{
+			return [this](std::shared_ptr<connection_t> conn)
+			{
+				default_after(conn);
+			}
+		}
+
+		template <typename Ret>
+		auto wrap_after_function_impl(std::false_type)
+			-> std::function<void(std::shared_ptr<connection_t>, std::add_lvalue_reference_t<std::add_const_t<Ret>>)>
+		{
+			return [this](std::shared_ptr<connection_t> conn, std::add_lvalue_reference_t<std::add_const_t<Ret>> r)
+			{
+				default_after<Ret>(conn, r);
+			};
+		}
+
+		template <typename F, typename AF>
+		void register_handler_impl(std::string const& name, F&& f, AF&& af)
+		{
+			router<Decode>::get().register_handler(name, std::forward<F>(f), std::forward<AF>(af));
+		}
+
+		template <typename AF, typename T, typename Ret, typename ... Args>
+		void register_handler_impl(std::string const& name, Ret(T::*f)(Args...), T* ptr, AF&& af)
+		{
+			router<Decode>::get().register_handler(name, f, ptr, std::forward<AF>(af));
+		}
+
+		/////////////////////////////////////////////////////////////////////////////////////////////
 
 		void callback(std::shared_ptr<connection_t> conn, const char* data, size_t size)
 		{
@@ -252,3 +314,68 @@ namespace timax { namespace rpc
 	};
 
 } }
+
+
+//template<typename Function>
+//void register_handler(std::string const & name, const Function& f)
+//{
+//	router<Decode>::get().register_handler(name, f);
+//}
+//
+//template<typename Function>
+//std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
+//{
+//	if (af == nullptr)
+//	{
+//		using return_type = typename function_traits<Function>::return_type;
+//		std::function<void(std::shared_ptr<connection_t> conn, return_type)> fn = std::bind(&server<Decode>::default_after<return_type>, this, std::placeholders::_1, std::placeholders::_2);
+//		router<Decode>::get().register_handler(name, f, fn);
+//	}
+//	else
+//	{
+//		router<Decode>::get().register_handler(name, f, af);
+//	}
+//}
+//
+//template<typename Function>
+//std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>)>& af)
+//{
+//	if (af == nullptr)
+//	{
+//		std::function<void(std::shared_ptr<connection_t> conn)> fn = std::bind(&server<Decode>::default_after, this, std::placeholders::_1);
+//		router<Decode>::get().register_handler(name, f, fn);
+//	}
+//	else
+//	{
+//		router<Decode>::get().register_handler(name, f, af);
+//	}
+//}
+//
+//template<typename Function, typename Self>
+//std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
+//{
+//	if (af == nullptr)
+//	{
+//		using return_type = typename function_traits<Function>::return_type;
+//		std::function<void(std::shared_ptr<connection_t> conn, return_type)> fn = std::bind(&server<Decode>::default_after<return_type>, this, std::placeholders::_1, std::placeholders::_2);
+//		router<Decode>::get().register_handler(name, f, self, fn);	
+//	}
+//	else
+//	{
+//		router<Decode>::get().register_handler(name, f, self, af);
+//	}
+//}
+//
+//template<typename Function, typename Self>
+//std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>)>& af)
+//{
+//	if (af == nullptr)
+//	{
+//		std::function<void(std::shared_ptr<connection_t> conn)> fn = std::bind(&server<Decode>::default_after, this, std::placeholders::_1);
+//		router<Decode>::get().register_handler(name, f, self, fn);
+//	}
+//	else
+//	{
+//		router<Decode>::get().register_handler(name, f, self, af);
+//	}
+//}
