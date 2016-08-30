@@ -48,7 +48,7 @@ namespace client
 	TIMAX_DEFINE_PROTOCOL(compose, void(int, const std::string&, blob, double));
 }
 
-using sync_client = timax::rpc::sync_client<timax::rpc::boost_codec>;
+using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
 
 //void test_translate(const client::configure& cfg)
 //{

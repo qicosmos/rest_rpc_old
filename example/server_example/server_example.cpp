@@ -110,7 +110,7 @@ int add(int a, int b)
 	return a + b;
 }
 
-using codec_type = boost_codec;
+using codec_type = msgpack_codec;
 
 void compose(int i, const std::string& str, blob bl, double d)
 {
