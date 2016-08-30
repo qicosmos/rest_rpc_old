@@ -110,13 +110,15 @@ int add(int a, int b)
 	return a + b;
 }
 
+using codec_type = msgpack_codec;
+
 void compose(int i, const std::string& str, blob bl, double d)
 {
 	std::cout << i << " " << str << " " << bl.ptr << " " << d << std::endl;;
 }
 
 template<typename T>
-void after_add(std::shared_ptr<connection<msgpack_codec>> sp, T r)
+void after_add(std::shared_ptr<connection<codec_type>> sp, T r)
 {
 	//encode
 	msgpack::sbuffer sbuf;
@@ -125,13 +127,25 @@ void after_add(std::shared_ptr<connection<msgpack_codec>> sp, T r)
 	sp->response(sbuf.data(), sbuf.size());
 }
 
-void after(std::shared_ptr<connection<msgpack_codec>> sp)
+void after(std::shared_ptr<connection<codec_type>> sp)
 {
 	//encode
 }
 
+void test_boost_codec()
+{
+	std::tuple<int, std::string, int> tp(1, "test", 2);
+	boost_codec codec;
+	auto ss = codec.pack(tp);
+	std::cout << ss.data() << std::endl;
+
+	auto tp1 = codec.unpack<std::tuple<int, std::string, int>>(ss.data(), ss.size());
+	std::cout << std::get<1>(tp1) << std::endl;
+}
+
 int main()
 {
+	test_boost_codec();
 	using timax::rpc::server;
 	using client::messenger;
 	using client::configure;
@@ -146,7 +160,7 @@ int main()
 		thread_num = cfg.thread_num;
 	}
 
-	auto sp = std::make_shared<server<msgpack_codec>>(port, thread_num);
+	auto sp = std::make_shared<server<codec_type>>(port, thread_num);
 	//server s(port, thread_num); //if you fill the last param, the server will remove timeout connections. default never timeout.
 
 	messenger m;

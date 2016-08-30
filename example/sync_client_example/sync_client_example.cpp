@@ -45,6 +45,7 @@ namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
+	TIMAX_DEFINE_PROTOCOL(compose, void(int, const std::string&, blob, double));
 }
 
 using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
@@ -403,9 +404,7 @@ int main(void)
 	{
 		auto result = client.call(client::add, 1, 2);
 		assert(result == 3);
-
-		client.pub(client::madoka, 1, 2);
-		client.sub(client::madoka, [] {});
+		
 	}
 	catch (timax::rpc::client_exception const& e)
 	{
