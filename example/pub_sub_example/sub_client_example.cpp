@@ -3,6 +3,7 @@
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
 }
 
@@ -17,16 +18,18 @@ int main(void)
 	sync_client client{ io };
 	client.connect("127.0.0.1", "9000");
 
-	std::thread thd([] {std::this_thread::sleep_for(std::chrono::seconds(3)); g_flag = true; });
+	std::thread thd([&client] {std::this_thread::sleep_for(std::chrono::seconds(3)); client.cancel_sub_topic(client::sub_add.name()); });
 
 	try
 	{
 		client.sub(client::sub_add, [](int r)
 		{
 			std::cout << r << std::endl;
-		},
-			[] { return g_flag.load(); }
+		}
 		);
+
+		auto r = client.call(client::add, 1, 2);
+		std::cout << r << std::endl;
 	}
 	catch (timax::rpc::client_exception const& e)
 	{
@@ -34,5 +37,6 @@ int main(void)
 	}
 
 	thd.join();
+	getchar();
 	return 0;
 }

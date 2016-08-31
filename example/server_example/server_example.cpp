@@ -174,10 +174,6 @@ int main()
 	});
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm);
 
-	sp->register_handler("cancel_sub", []{}, [sp](auto conn) { 
-		sp->remove_sub_conn(conn.get()); 
-	});
-
 	sp->run();
 
 	getchar();

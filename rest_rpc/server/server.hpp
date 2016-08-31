@@ -63,6 +63,26 @@ namespace timax { namespace rpc
 			}
 		}
 
+		void remove_sub_conn_by_topic(const std::string topic, connection_t* conn)
+		{
+			std::unique_lock<std::mutex> lock(mtx_);
+			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
+			{
+				auto ptr = it->second.lock();
+				if (!ptr || ptr.get() == conn)
+				{
+					if (topic == it->first)
+					{
+						it = conn_map_.erase(it);
+					}						
+				}
+				else
+				{
+					++it;
+				}
+			}
+		}
+
 		void remove_sub_conn(connection_t* conn)
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
