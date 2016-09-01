@@ -68,7 +68,7 @@ namespace timax { namespace rpc
 
 			if (!ec)
 			{
-				head_t h = *(head_t*)(head_.data());
+				head_t& h = *(head_t*)(head_.data());
 				//const int body_len = i & int{-1};
 				//const int type = i << 32;
 				if (h.len > 0 && h.len < MAX_BUF_LEN)

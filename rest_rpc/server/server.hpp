@@ -5,6 +5,7 @@ namespace timax { namespace rpc
 	template<typename Decode>
 	class server : private boost::noncopyable, public std::enable_shared_from_this<server<Decode>>
 	{
+	public:
 		using connection_t = connection<Decode>;
 		using connection_ptr = std::shared_ptr<connection_t>;
 

@@ -1,5 +1,89 @@
 #pragma once
 
+#include "../forward.hpp"
+
+namespace timax { namespace rpc { namespace detail 
+{
+	using deadline_timer_t = boost::asio::deadline_timer;
+	using io_service_t = boost::asio::io_service;
+	using tcp = boost::asio::ip::tcp;
+
+	template <typename Marshal>
+	class async_client : public boost::enable_shared_from_this<async_client<Marshal>>
+	{
+		using client_ptr = boost::shared_ptr<async_client>;
+		using marshal_policy = Marshal;
+
+		/************************* context data for rpc *****************************/
+		struct rpc_context
+		{
+			using function_t = std::function<void(char const*, size_t)>;
+			enum class status_t
+			{
+				established,
+				processing,
+				accomplished,
+				aborted,
+			};
+
+			status_t				status;
+			deadline_timer_t		timeout;
+			head_t					head;
+			std::vector<char>		req;		// request buffer
+			std::vector<char>		rep;		// response buffer
+
+			function_t				func;
+		};
+
+		using context_t = rpc_context;
+		using context_ptr = boost::shared_ptr<context_t>;
+		/************************* context data for rpc *****************************/
+
+		/******************* wrap context with type information *********************/
+		template <typename T>
+		class type_rpc_context
+		{
+		public:
+			using result_type = T;
+		public:
+			explicit type_rpc_context(context_ptr ctx)
+				: ctx_(ctx)
+			{
+			}
+
+			template <typename F>
+			void then(F&& f)
+			{
+				ctx_->func = [f](char const* data, size_t len)
+				{
+					f(marshal_policy{}.template unpack<result_type>(data, len));
+				};
+			}
+
+		private:
+			context_ptr		ctx_;
+		};
+		/******************* wrap context with type information *********************/
+
+	public:
+
+		template <typename Protocol, typename ... Args>
+		auto call(Protocol const& protocol, Args&& .. args)
+		{
+
+		}
+
+		//template <typename F, typename Protocol, typename ... Args>
+		//void call(F&& f, Protocol const& protocol, Args&& ... args)
+		//{
+		//
+		//}
+
+	private:
+		std::map<uint32_t, 
+	};
+} } }
+
 // task
 namespace timax { namespace rpc 
 {

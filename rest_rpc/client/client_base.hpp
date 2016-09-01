@@ -1,5 +1,9 @@
 #pragma once
 
+// develop
+#include "../forward.hpp"
+// develop
+
 namespace timax { namespace rpc 
 {
 	class client_exception

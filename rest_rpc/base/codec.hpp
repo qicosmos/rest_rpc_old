@@ -25,124 +25,158 @@ namespace boost {
 	} // end serialization namespace
 } // end boost namespace
 
-namespace timax {
-	namespace rpc
+namespace timax { namespace rpc
+{
+	using blob = msgpack::type::raw_ref;
+
+	struct msgpack_codec
 	{
-		using blob = msgpack::type::raw_ref;
-
-		struct msgpack_codec
+		//using buffer_type = msgpack::sbuffer;
+		using buffer_type = std::vector<char>;
+		class buffer_t
 		{
-			using buffer_type = msgpack::sbuffer;
+		public:
+			buffer_t()
+				: buffer_t(0)
+			{ }
 
-			template <typename ... Args>
-			buffer_type pack_args(Args&& ... args) const
+			explicit buffer_t(size_t len)
+				: buffer_(len, 0)
+				, offset_(0)
+			{ }
+
+			buffer_t(buffer_t const&) = default;
+			buffer_t(buffer_t &&) = default;
+			buffer_t& operator= (buffer_t const&) = default;
+			buffer_t& operator= (buffer_t &&) = default;
+
+			void write(char const* data, size_t length)
 			{
-				buffer_type buffer;
-				auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
-				msgpack::pack(buffer, args_tuple);
-				return buffer;
+				if (buffer_.size() - offset_ < length)
+					buffer_.resize(length + offset_);
+
+				std::memcpy(buffer_.data() + offset_, data, length);
+				offset_ += length;
 			}
 
-			template <typename T>
-			buffer_type pack(T&& t) const
+			std::vector<char> release() const noexcept
 			{
-				buffer_type buffer;
-				msgpack::pack(buffer, std::forward<T>(t));
-				return buffer;
-			}
-
-			template <typename T>
-			T unpack(char const* data, size_t length)
-			{
-				msgpack::unpack(&msg_, data, length);
-				return msg_.get().as<T>();
+				return std::move(buffer_);
 			}
 
 		private:
-			msgpack::unpacked msg_;
+			std::vector<char>	buffer_;
+			size_t				offset_;
 		};
 
-		struct kapok_codec
+		template <typename ... Args>
+		buffer_type pack_args(Args&& ... args) const
 		{
-			template<typename T>
-			T unpack(char const* data, size_t length)
-			{
-				DeSerializer dr;
-				dr.Parse(data, length);
+			buffer_t buffer;
+			auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
+			msgpack::pack(buffer, args_tuple);
+			return std::move(buffer.release());
+		}
 
-				T t;
-				dr.Deserialize(t);
-				return t;
-			}
-
-			using buffer_type = std::string;
-
-			template <typename ... Args>
-			buffer_type pack_args(Args&& ... args) const
-			{
-				auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
-				Serializer sr;
-				sr.Serialize(args_tuple);
-				return sr.GetString();
-			}
-
-			template <typename T>
-			buffer_type pack(T&& t) const
-			{
-				Serializer sr;
-				sr.Serialize(std::forward<T>(t));
-				return sr.GetString();
-			}
-		};
-
-		struct boost_codec
+		template <typename T>
+		buffer_type pack(T&& t) const
 		{
-			template<typename T>
-			T unpack(char const* data, size_t length)
-			{
-				std::stringstream ss;
-				ss.write(data, length);
-				boost::archive::text_iarchive ia(ss);
-				T t;
-				ia >> t;
-				return t;
-			}
+			buffer_t buffer;
+			msgpack::pack(buffer, std::forward<T>(t));
+			return std::move(buffer.release());
+		}
 
-			using buffer_type = std::vector<char>;
+		template <typename T>
+		T unpack(char const* data, size_t length)
+		{
+			msgpack::unpack(&msg_, data, length);
+			return msg_.get().as<T>();
+		}
 
-			template <typename ... Args>
-			buffer_type pack_args(Args&& ... args) const
-			{
-				auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
-				std::stringstream ss;
-				boost::archive::text_oarchive oa(ss);
-				oa << args_tuple;
+	private:
+		msgpack::unpacked msg_;
+	};
 
-				return assign(ss);
-			}
+	struct kapok_codec
+	{
+		template<typename T>
+		T unpack(char const* data, size_t length)
+		{
+			DeSerializer dr;
+			dr.Parse(data, length);
 
-			template <typename T>
-			buffer_type pack(T&& t)
-			{
-				std::stringstream ss;
-				boost::archive::text_oarchive oa(ss);
-				oa << std::forward<T>(t);
+			T t;
+			dr.Deserialize(t);
+			return t;
+		}
 
-				return assign(ss);
-			}
+		using buffer_type = std::string;
 
-			vector<char> assign(std::stringstream& ss) const
-			{
-				vector<char> vec;
-				std::streampos beg = ss.tellg();
-				ss.seekg(0, std::ios_base::end);
-				std::streampos end = ss.tellg();
-				ss.seekg(0, std::ios_base::beg);
-				vec.reserve(end - beg);
+		template <typename ... Args>
+		buffer_type pack_args(Args&& ... args) const
+		{
+			auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
+			Serializer sr;
+			sr.Serialize(args_tuple);
+			return sr.GetString();
+		}
 
-				vec.assign(std::istreambuf_iterator<char>(ss), std::istreambuf_iterator<char>());
-				return vec;
-			}
-		};
-	}
-}
+		template <typename T>
+		buffer_type pack(T&& t) const
+		{
+			Serializer sr;
+			sr.Serialize(std::forward<T>(t));
+			return sr.GetString();
+		}
+	};
+
+	struct boost_codec
+	{
+		template<typename T>
+		T unpack(char const* data, size_t length)
+		{
+			std::stringstream ss;
+			ss.write(data, length);
+			boost::archive::text_iarchive ia(ss);
+			T t;
+			ia >> t;
+			return t;
+		}
+
+		using buffer_type = std::vector<char>;
+
+		template <typename ... Args>
+		buffer_type pack_args(Args&& ... args) const
+		{
+			auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
+			std::stringstream ss;
+			boost::archive::text_oarchive oa(ss);
+			oa << args_tuple;
+
+			return assign(ss);
+		}
+
+		template <typename T>
+		buffer_type pack(T&& t)
+		{
+			std::stringstream ss;
+			boost::archive::text_oarchive oa(ss);
+			oa << std::forward<T>(t);
+
+			return assign(ss);
+		}
+
+		vector<char> assign(std::stringstream& ss) const
+		{
+			vector<char> vec;
+			std::streampos beg = ss.tellg();
+			ss.seekg(0, std::ios_base::end);
+			std::streampos end = ss.tellg();
+			ss.seekg(0, std::ios_base::beg);
+			vec.reserve(end - beg);
+
+			vec.assign(std::istreambuf_iterator<char>(ss), std::istreambuf_iterator<char>());
+			return vec;
+		}
+	};
+} }

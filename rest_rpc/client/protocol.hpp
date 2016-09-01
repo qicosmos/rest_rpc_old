@@ -21,6 +21,7 @@ namespace timax { namespace rpc
 	struct protocol_define_base<Ret(Args...)>
 	{
 		using result_type = typename boost::function_traits<Ret(Args...)>::result_type;
+		using signature_type = Ret(Args...);
 
 		explicit protocol_define_base(std::string name)
 			: name_(std::move(name))
@@ -55,6 +56,7 @@ namespace timax { namespace rpc
 	{
 		using base_type = protocol_define_base<Ret(Args...)>;
 		using result_type = typename base_type::result_type;
+		using signature_type = typename base_type::signature_type;
 
 		explicit protocol_define(std::string name)
 			: base_type(std::move(name))
@@ -64,13 +66,13 @@ namespace timax { namespace rpc
 		template <typename Marshal, typename = std::enable_if_t<!std::is_void<result_type>::value>>
 		auto pack_result(Marshal const& m, result_type&& ret) const
 		{
-			return m.pack(std::forward<Ret>(ret));
+			return m.pack(std::forward<result_type>(ret));
 		}
 
 		template <typename Marshal, typename = std::enable_if_t<!std::is_void<result_type>::value>>
 		result_type unpack(Marshal& m, char const* data, size_t length) const
 		{
-			return m.unpack<result_type>(data, length);
+			return m.template unpack<result_type>(data, length);
 		}
 	};
 
@@ -78,6 +80,8 @@ namespace timax { namespace rpc
 	struct protocol_define<void(Args...)> : protocol_define_base<void(Args...)>
 	{
 		using base_type = protocol_define_base<void(Args...)>;
+		using result_type = typename base_type::result_type;
+		using signature_type = typename base_type::signature_type;
 
 		explicit protocol_define(std::string name)
 			: base_type(std::move(name))
@@ -85,31 +89,31 @@ namespace timax { namespace rpc
 		}
 	};
 
-	template <typename Func>
-	struct sub_protocol_define : protocol_define<Func>
-	{
-		explicit sub_protocol_define(std::string name)
-			: protocol_define<Func>(std::move(name))
-		{}
-
-		framework_type get_type() const noexcept
-		{
-			return framework_type::SUB;
-		}
-	};
-
-	template <typename Func>
-	struct pub_protocol_define : protocol_define<Func>
-	{
-		explicit pub_protocol_define(std::string name)
-			: protocol_define<Func>(std::move(name))
-		{}
-
-		framework_type get_type() const noexcept
-		{
-			return framework_type::PUB;
-		}
-	};
+	//template <typename Func>
+	//struct sub_protocol_define : protocol_define<Func>
+	//{
+	//	explicit sub_protocol_define(std::string name)
+	//		: protocol_define<Func>(std::move(name))
+	//	{}
+	//
+	//	framework_type get_type() const noexcept
+	//	{
+	//		return framework_type::SUB;
+	//	}
+	//};
+	//
+	//template <typename Func>
+	//struct pub_protocol_define : protocol_define<Func>
+	//{
+	//	explicit pub_protocol_define(std::string name)
+	//		: protocol_define<Func>(std::move(name))
+	//	{}
+	//
+	//	framework_type get_type() const noexcept
+	//	{
+	//		return framework_type::PUB;
+	//	}
+	//};
 
 	//template <typename Ret, typename ... Args, typename Tag, typename TagPolicy>
 	//struct protocol_with_tag<Ret(Args...), Tag, TagPolicy>
