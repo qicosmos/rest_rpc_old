@@ -45,14 +45,26 @@ namespace timax { namespace rpc { namespace detail
 				aborted,
 			};
 
-			explicit rpc_context()
+			explicit rpc_context(std::string const& name)
 				: status(status_t::established)
+				, name(name)
 			{
+			}
+
+			std::vector<boost::asio::const_buffer> get_message() const
+			{
+				return
+				{
+					boost::asio::buffer(&head, sizeof(head_t)),
+					boost::asio::buffer(name.c_str(), name.length() + 1),
+					boost::asio::buffer(req)
+				};
 			}
 
 			status_t							status;
 			//deadline_timer_t					timeout;	// 先不管超时
 			head_t								head;
+			std::string							name;
 			std::vector<char>					req;		// request buffer
 			std::vector<char>					rep;		// response buffer
 			std::function<void()>				func;
@@ -164,6 +176,7 @@ namespace timax { namespace rpc { namespace detail
 			, status_(conn_status::disconnected)
 			, address_(std::move(address))
 			, port_(std::move(port))
+			, call_running_flag_(false)
 		{
 			start();
 		}
@@ -189,7 +202,9 @@ namespace timax { namespace rpc { namespace detail
 		void call_impl(context_ptr context)
 		{
 			lock_t locker{ call_mutex_ };
-			call_map_.emplace(call_id_.fetch_add(1), context);
+			auto call_id = call_id_.fetch_add(1);
+			call_map_.emplace(call_id, context);
+			call_list_.emplace(call_id, context);
 		}
 
 		void start()
@@ -201,7 +216,23 @@ namespace timax { namespace rpc { namespace detail
 
 		void start_send_recv()
 		{
+			call_running_flag_.store(true);
+			read_thread_ = std::move(std::thread{ [this]() { read_thread_function(); } });
 
+			recv_rcp();
+		}
+
+		void send_rpc(context_ptr ctx)
+		{
+			auto message = ctx->get_message();
+			boost::asio::async_write(socket_, message, boost::bind(&async_client::handle_send,
+				shared_from_this(), boost::asio::placeholders::error));
+		}
+
+		void recv_rcp()
+		{
+			boost::asio::async_read(socket_, boost::asio::buffer(&head_, sizeof(head_t)),
+				boost::bind(&async_client::handle_read_head, shared_from_this(), boost::asio::placeholders::error));
 		}
 
 		/* handle resolve */
@@ -215,29 +246,83 @@ namespace timax { namespace rpc { namespace detail
 		/* handle connect */
 		void handle_connect(boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
 		{
-			//TIMAX_ERROR_THROW_CANCEL_RETURN(error);
-			//start_send_recv();
 			if (error)
 			{
-
+				SPD_LOG_ERROR("Connect error: {}. Retrying....", error.message());
+				start();
 			}
 			else
 			{
-
+				start_send_recv();
 			}
 		}
 
 		/* handle send */
-		void handle_send()
+		void handle_send(boost::system::error_code const& error)
 		{
-
-
+			if (error)
+			{
+				SPD_LOG_ERROR("boost::asio::async_write error: {}. Stopping write thread", error.message());
+				call_running_flag_.store(false);
+				read_thread_.join();
+			}
 		}
 
 		/* handle write */
-		void handle_recv()
+		void handle_read_head(boost::system::error_code const& error)
 		{
+			if (!error)
+			{
+				auto call_id = static_cast<uint32_t>(head_.framework_type);
+				
+				lock_t locker{ call_mutex_ };
+				auto itr = call_map_.find(call_id);
+				if (itr != call_map_.end())
+				{
+					auto ctx = itr->second;
+					locker.unlock();
 
+					ctx->rep.resize(head_.len);
+
+					boost::asio::async_read(socket_, boost::asio::buffer(ctx->rep),
+						boost::bind(&async_client::handle_read_body, shared_from_this(), boost::asio::placeholders::error));
+				}
+			}
+		}
+
+		void handle_read_body(boost::system::error_code const& error)
+		{
+			if (!error)
+			{
+				lock_t locker{ call_mutex_ };
+				auto itr = call_map_.find(call_id);
+				if (itr != call_map_.end())
+				{
+					auto ctx = itr->second;
+					locker.unlock();
+
+					if (ctx->func)
+						ctx->func();
+
+					locker.lock();
+					call_map_.remove(itr);		// todo  这里有迭代器失效的问题
+				}
+			}
+		}
+
+		void read_thread_function()
+		{
+			while (call_running_flag_.load())
+			{
+				lock_t lock{ call_mutex_ };
+				call_cond_var_.wait(lock, [this]() { return !call_list_.empty(); });
+
+				auto to_call = std::move(call_list_.front());
+				call_list_.pop_front();
+				lock.unlock();
+
+				send_rpc(to_call);
+			}
 		}
 
 	private:
@@ -247,17 +332,20 @@ namespace timax { namespace rpc { namespace detail
 		using work_ptr = std::unique_ptr<io_service_t::work>;
 
 		// system variables
-		io_service_t				ios_;
-		work_ptr					ios_work_;
-		std::thread					thread_;
-		std::thread					read_thread_;
-		tcp::socket					socket_;
-		tcp::resolver				resolver_;
-		std::atomic<uint32_t>		call_id_;
-		call_map_t					call_map_;
-		call_list_t					call_list_;
-		mutable std::mutex			call_mutex_;
-		conn_status					status_;
+		io_service_t						ios_;
+		work_ptr							ios_work_;
+		std::thread							thread_;
+		std::thread							read_thread_;
+		tcp::socket							socket_;
+		tcp::resolver						resolver_;
+		std::atomic<uint32_t>				call_id_;
+		call_map_t							call_map_;
+		call_list_t							call_list_;
+		mutable std::mutex					call_mutex_;
+		mutable std::condition_variable		call_cond_var_;
+		std::atomic<bool>					call_running_flag_;
+		conn_status							status_;
+		head_t								head_;
 
 		// user configuration variables
 		std::string					address_;
