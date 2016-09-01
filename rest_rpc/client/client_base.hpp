@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 
 // develop
 #include "../forward.hpp"
@@ -84,12 +85,21 @@ namespace timax { namespace rpc
 			tcp::resolver::query query(tcp::v4(), address, port);
 			tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 			boost::asio::connect(socket_, endpoint_iterator);
+			address_ = address;
+			port_ = port;
+			is_connected_ = true;
 		}
 
 		void disconnect()
 		{
 			socket_.shutdown(boost::asio::socket_base::shutdown_both);
 			socket_.close();
+			is_connected_ = false;
+		}
+
+		bool is_connected() const
+		{
+			return is_connected_;
 		}
 
 		size_t receive()
@@ -211,6 +221,7 @@ namespace timax { namespace rpc
 		std::array<char, HEAD_LEN>		head_;
 		std::vector<char>				recv_data_;
 		head_t*							head_t_;
+		bool is_connected_ = false;
 	};
 
 	template <typename Marshal>
@@ -229,6 +240,9 @@ namespace timax { namespace rpc
 		auto call(Protocol const& protocol, Args&& ... args)
 			-> std::enable_if_t<!std::is_void<typename Protocol::result_type>::value, typename Protocol::result_type>
 		{
+			if (!is_connected())
+				connect(address_, port_);
+
 			// pack arguments to buffer
 			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
 
@@ -246,6 +260,9 @@ namespace timax { namespace rpc
 		auto call(Protocol const& protocol, Args&& ... args)
 			-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
 		{
+			if (!is_connected())
+				connect(address_, port_);
+
 			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
 			//base_type::receive_head();
@@ -255,41 +272,48 @@ namespace timax { namespace rpc
 		template <typename Protocol, typename ... Args>
 		auto pub(Protocol const& protocol, Args&& ... args)
 		{
+			if (!is_connected())
+				connect(address_, port_);
+
 			return call(protocol, std::forward<Args>(args)...);
 
 			//auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
 			//base_type::call(protocol.name(), buffer.data(), buffer.size());
 		}
 
-		template <typename Protocol, typename F>
-		auto sub(Protocol const& protocol, F&& f)
-			-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
-		{
-			std::string result = call(sub_topic, protocol.name());
-			if (result.empty())
-			{
-				throw std::runtime_error{ "Failed to register topic." };
-			}
+		//template <typename Protocol, typename F>
+		//auto sub(Protocol const& protocol, F&& f)
+		//	-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
+		//{
+		//	std::string result = call(sub_topic, protocol.name());
+		//	if (result.empty())
+		//	{
+		//		throw std::runtime_error{ "Failed to register topic." };
+		//	}
 
-			while (true)
-			{
-				base_type::receive_head();
-				check_head();
-				f();
-			}
-		}
+		//	while (true)
+		//	{
+		//		base_type::receive_head();
+		//		check_head();
+		//		f();
+		//	}
+		//}
 
 		template <typename Protocol, typename F>
 		auto sub(Protocol const& protocol, F&& f)
 			-> std::enable_if_t<!std::is_void<typename Protocol::result_type>::value>
 		{
+			if (!is_connected())
+				connect(address_, port_);
+
 			std::string result = call(sub_topic, protocol.name());
+			
 			if (result.empty())
 			{
 				throw std::runtime_error{ "Failed to register topic." };
 			}
 
-			while (true)
+			while (!need_cancel_)
 			{
 				base_type::receive_head();
 				check_head();
@@ -297,6 +321,13 @@ namespace timax { namespace rpc
 				
 				f(protocol.unpack(marshal_, recv_data(), head_t_->len));
 			}
+
+			disconnect();
+		}
+
+		void cancel_sub_topic(const std::string& topic)
+		{
+			need_cancel_ = true;
 		}
 
 	private:
@@ -314,6 +345,7 @@ namespace timax { namespace rpc
 
 	private:
 		Marshal		marshal_;
+		std::atomic<bool> need_cancel_ = false;		
 	};
 
 } }

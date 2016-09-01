@@ -6,7 +6,7 @@ namespace timax { namespace rpc
 	connection<Decode>::connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli)
 		: server_(server)
 		, socket_(io_service)
-		, head_(), data_(), read_buf_()
+		, head_(), data_()
 		, message_{ boost::asio::buffer(head_), boost::asio::buffer(data_) }
 		, timer_(io_service)
 		, timeout_milli_(timeout_milli)
@@ -18,8 +18,8 @@ namespace timax { namespace rpc
 	void connection<Decode>::start()
 	{
 		set_no_delay();
-		do_read();//for ab test
-		//read_head();
+		//do_read();//for ab test
+		read_head();
 	}
 
 	template <typename Decode>

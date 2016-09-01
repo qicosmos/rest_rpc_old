@@ -2,7 +2,7 @@
 
 namespace client
 {
-	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
 }
 
@@ -24,7 +24,7 @@ int main(void)
 		{
 			using namespace std;
 
-			client.pub(client::add, lhs, rhs);
+			client.pub(client::sub_add, lhs, rhs);
 			++rhs;
 
 			std::this_thread::sleep_for(1s);
