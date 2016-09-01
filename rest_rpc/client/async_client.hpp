@@ -67,11 +67,11 @@ namespace timax { namespace rpc { namespace detail
 
 	public:
 
-		template <typename Protocol, typename ... Args>
-		auto call(Protocol const& protocol, Args&& .. args)
-		{
+		//template <typename Protocol, typename ... Args>
+		//auto call(Protocol const& protocol, Args&& .. args)
+		//{
 
-		}
+		//}
 
 		//template <typename F, typename Protocol, typename ... Args>
 		//void call(F&& f, Protocol const& protocol, Args&& ... args)
@@ -80,7 +80,7 @@ namespace timax { namespace rpc { namespace detail
 		//}
 
 	private:
-		std::map<uint32_t, 
+		//std::map<uint32_t, 
 	};
 } } }
 
