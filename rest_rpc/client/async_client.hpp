@@ -231,6 +231,7 @@ namespace timax { namespace rpc { namespace detail
 		void handle_send()
 		{
 
+
 		}
 
 		/* handle write */
@@ -240,6 +241,7 @@ namespace timax { namespace rpc { namespace detail
 		}
 
 	private:
+
 		using call_list_t = std::list<std::pair<uint32_t, context_ptr>>;
 		using call_map_t = std::map<uint32_t, context_ptr>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
@@ -260,6 +262,7 @@ namespace timax { namespace rpc { namespace detail
 		// user configuration variables
 		std::string					address_;
 		std::string					port_;
+
 	};
 } } }
 
