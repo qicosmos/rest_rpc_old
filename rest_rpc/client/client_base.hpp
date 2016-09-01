@@ -231,7 +231,7 @@ namespace timax { namespace rpc
 
 	public:
 		sync_client(io_service_t& io)
-			: client_base(io)
+			: client_base(io), need_cancel_(false)
 		{
 
 		}
@@ -345,7 +345,7 @@ namespace timax { namespace rpc
 
 	private:
 		Marshal		marshal_;
-		std::atomic<bool> need_cancel_ = false;		
+		std::atomic<bool> need_cancel_;		
 	};
 
 } }
