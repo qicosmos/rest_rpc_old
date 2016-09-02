@@ -264,6 +264,31 @@ namespace timax { namespace rpc
 			//check_head();
 		}
 
+		template <typename T=void, typename ... Args>
+		auto call(const string& rpc_service, Args&& ... args)
+		{
+			if (!is_connected())
+				connect(address_, port_);
+
+			auto buffer = marshal_.pack_args(std::forward<Args>(args)...);
+			base_type::call(rpc_service, buffer.data(), buffer.size());
+			base_type::receive_head();
+			check_head();
+			base_type::receive_body();
+			// unpack the receive data
+			return marshal_.unpack<T>(recv_data(), head_t_->len);
+		}
+
+		template <typename ... Args>
+		void call_void(const string& rpc_service, Args&& ... args)
+		{
+			if (!is_connected())
+				connect(address_, port_);
+
+			auto buffer = marshal_.pack_args(std::forward<Args>(args)...);
+			base_type::call(rpc_service, buffer.data(), buffer.size());
+		}
+
 		template <typename Protocol, typename ... Args>
 		auto pub(Protocol const& protocol, Args&& ... args)
 		{
