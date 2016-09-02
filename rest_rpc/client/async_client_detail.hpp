@@ -1,5 +1,9 @@
 #pragma once
 
+// develop
+#include "../forward.hpp"
+// develop
+
 namespace timax { namespace rpc { namespace detail 
 {
 	struct call_context
@@ -185,14 +189,22 @@ namespace timax { namespace rpc { namespace detail
 		using conn_ptr = boost::shared_ptr<tcp::socket>;
 		struct conn_context
 		{
-			conn_context(conn_ptr ptr)
+			conn_context(conn_ptr ptr, std::function<void(char const*, size_t)> f)
 				: conn(ptr)
+				, func(std::move(f))
 			{
+			}
+
+			void apply()
+			{
+				if (func)
+					func(buffer.data(), buffer.size());
 			}
 
 			conn_ptr			conn;
 			head_t				head;
 			std::vector<char>	buffer;
+			std::function<void(char const*, size_t)> func;
 		};
 		using conn_ctx_ptr = boost::shared_ptr<conn_context>;
 		using channel_map_t = std::map<std::string, conn_ctx_ptr>;

@@ -148,7 +148,12 @@ namespace timax { namespace rpc { namespace detail
 		template <typename Protocol, typename F> 
 		void sub(Protocol const& protocol, F&& f)
 		{
+			using result_type = typename Protocol::result_type;
 
+			std::function<void(char const*, size_t)> func = [f](char const* data, size_t size)
+			{
+				f(marshal_policy{}.template unpack<result_type>(data, size));
+			};
 		}
 
 	private:
@@ -275,7 +280,6 @@ namespace timax { namespace rpc { namespace detail
 		/* for sub */
 		void handle_subscription(std::string const& top)
 		{
-			auto conn_ptr = boost::make_shared<tcp::socket>(ios_);
 		}
 
 	private:
