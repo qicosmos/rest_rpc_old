@@ -2,6 +2,17 @@
 
 #include "../forward.hpp"
 
+#define TIMAX_ERROR_THROW_CANCEL_RETURN(e) \
+if(e)\
+{\
+	if (boost::system::errc::operation_canceled == e)\
+	{\
+		SPD_LOG_INFO(e.message().c_str()); return;\
+	}\
+	SPD_LOG_ERROR(e.message().c_str());\
+	throw boost::system::system_error{ e };\
+}
+
 namespace timax { namespace rpc { namespace detail 
 {
 	using deadline_timer_t = boost::asio::deadline_timer;
@@ -12,12 +23,20 @@ namespace timax { namespace rpc { namespace detail
 	class async_client : public boost::enable_shared_from_this<async_client<Marshal>>
 	{
 		using client_ptr = boost::shared_ptr<async_client>;
+		using client_weak = boost::weak_ptr<async_client>;
 		using marshal_policy = Marshal;
+		using lock_t = std::unique_lock<std::mutex>;
+
+		enum class conn_status
+		{
+			disconnected,
+			connecting,
+			connected,
+		};
 
 		/************************* context data for rpc *****************************/
 		struct rpc_context
 		{
-			using function_t = std::function<void(char const*, size_t)>;
 			enum class status_t
 			{
 				established,
@@ -26,13 +45,31 @@ namespace timax { namespace rpc { namespace detail
 				aborted,
 			};
 
-			status_t				status;
-			deadline_timer_t		timeout;
-			head_t					head;
-			std::vector<char>		req;		// request buffer
-			std::vector<char>		rep;		// response buffer
+			explicit rpc_context(std::string const& name)
+				: status(status_t::established)
+				, name(name)
+			{
+			}
 
-			function_t				func;
+			std::vector<boost::asio::const_buffer> get_message() const
+			{
+				return
+				{
+					boost::asio::buffer(&head, sizeof(head_t)),
+					boost::asio::buffer(name.c_str(), name.length() + 1),
+					boost::asio::buffer(req)
+				};
+			}
+
+			status_t							status;
+			//deadline_timer_t					timeout;	// 先不管超时
+			head_t								head;
+			std::string							name;
+			std::vector<char>					req;		// request buffer
+			std::vector<char>					rep;		// response buffer
+			std::function<void()>				func;
+			mutable	std::mutex					mutex;
+			mutable std::condition_variable		cond;
 		};
 
 		using context_t = rpc_context;
@@ -40,47 +77,280 @@ namespace timax { namespace rpc { namespace detail
 		/************************* context data for rpc *****************************/
 
 		/******************* wrap context with type information *********************/
-		template <typename T>
+		template <typename Ret>
+		friend class type_rpc_context;
+
+		template <typename Ret>
 		class type_rpc_context
 		{
-		public:
-			using result_type = T;
-		public:
-			explicit type_rpc_context(context_ptr ctx)
-				: ctx_(ctx)
-			{
-			}
+			template <typename Ret0>
+			friend class type_rpc_context;
 
-			template <typename F>
-			void then(F&& f)
+		public:
+			using result_type = Ret;
+			using funtion_t = std::function<result_type(void)>;
+		public:
+			explicit type_rpc_context(client_ptr client, context_ptr ctx)
+				: client_(client)
+				, ctx_(ctx)
+				, dismiss_(false)
 			{
-				ctx_->func = [f](char const* data, size_t len)
+				func_ = [ctx]()
 				{
-					f(marshal_policy{}.template unpack<result_type>(data, len));
+					auto result = marshal_policy{}.template unpack<result_type>(ctx->rep.data(), ctx->rep.size());
+					return result;
 				};
 			}
 
+			template <typename Ret0, typename F>
+			type_rpc_context(type_rpc_context<Ret0>& other, F&& f)
+				: client_(other.client_)
+				, ctx_(other.ctx_)
+				, dismiss_(false)
+			{
+				auto inner_f = std::move(other.func_);
+				func_ = [inner_f, f]()
+				{
+					return f(inner_f());
+				};
+			}
+
+			~type_rpc_context()
+			{
+				if (!dismiss_)
+				{
+					do_call_managed();
+				}
+			}
+		
+			template <typename F>
+			auto then(F&& f)
+			{
+				using next_triats_type = function_traits<std::remove_reference_t<F>>;
+				using next_result_type = typename next_triats_type::return_type;
+				using next_context_type = type_rpc_context<next_result_type>;
+		
+				dismiss_ = true;
+				return next_context_type(*this, std::forward<F>(f));
+			}
+		
 		private:
+		
+			void do_call_managed()
+			{
+				auto client = client_.lock();
+				if (client)
+				{
+					auto f = std::move(func_);
+					ctx_->func = [f]() { f(); };
+					client->call_impl(ctx_);
+				}
+			}
+
+			void do_call_direct()
+			{
+				//auto client = client_.lock();
+				//if (client)
+				//{
+				//	ctx_->func = [this]() { func_(); };
+				//	client->call_impl(ctx_);
+				//}
+			}
+
+		private:
+			client_weak		client_;
 			context_ptr		ctx_;
+			funtion_t		func_;
+			bool			dismiss_;
 		};
 		/******************* wrap context with type information *********************/
 
 	public:
+		async_client(std::string address, std::string port)
+			: ios_()
+			, ios_work_(new work_ptr{ ios_ })
+			, thread_(std::bind(&io_service_t::run, &ios_))
+			, socket_(ios_)
+			, resolver_(ios_)
+			, call_id_(0)
+			, status_(conn_status::disconnected)
+			, address_(std::move(address))
+			, port_(std::move(port))
+			, call_running_flag_(false)
+		{
+			start();
+		}
 
-		//template <typename Protocol, typename ... Args>
-		//auto call(Protocol const& protocol, Args&& .. args)
-		//{
+		~async_client()
+		{
+			ios_work_.reset();
+			ios_.stop();
+			if (thread_.joinable())
+				thread_.join();
+		}
 
-		//}
-
-		//template <typename F, typename Protocol, typename ... Args>
-		//void call(F&& f, Protocol const& protocol, Args&& ... args)
-		//{
-		//
-		//}
+		template <typename Protocol, typename ... Args>
+		auto call(Protocol const& protocol, Args&& ... args)
+		{
+			using result_type = typename Protocol::result_type;
+			context_ptr ctx = boost::make_shared<context_t>();
+			ctx->req = marshal_policy{}.pack_args(std::forward<Args>(args)...);
+			return type_rpc_context<result_type>{ shared_from_this(), ctx };
+		}
 
 	private:
-		//std::map<uint32_t, 
+		void call_impl(context_ptr context)
+		{
+			lock_t locker{ call_mutex_ };
+			auto call_id = call_id_.fetch_add(1);
+			call_map_.emplace(call_id, context);
+			call_list_.emplace(call_id, context);
+		}
+
+		void start()
+		{
+			tcp::resolver::query q = { tcp::v4(), address_, port_ };
+			resolver_.async_resolve(q, boost::bind(&async_client::handle_resolve, shared_from_this(),
+				boost::asio::placeholders::error, boost::asio::placeholders::iterator));
+		}
+
+		void start_send_recv()
+		{
+			call_running_flag_.store(true);
+			read_thread_ = std::move(std::thread{ [this]() { read_thread_function(); } });
+
+			recv_rcp();
+		}
+
+		void send_rpc(context_ptr ctx)
+		{
+			auto message = ctx->get_message();
+			boost::asio::async_write(socket_, message, boost::bind(&async_client::handle_send,
+				shared_from_this(), boost::asio::placeholders::error));
+		}
+
+		void recv_rcp()
+		{
+			boost::asio::async_read(socket_, boost::asio::buffer(&head_, sizeof(head_t)),
+				boost::bind(&async_client::handle_read_head, shared_from_this(), boost::asio::placeholders::error));
+		}
+
+		/* handle resolve */
+		void handle_resolve(boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
+		{
+			TIMAX_ERROR_THROW_CANCEL_RETURN(error);
+			boost::asio::async_connect(socket_, endpoint_iterator, boost::bind(&async_client::handle_connect, shared_from_this(),
+				boost::asio::placeholders::error, boost::asio::placeholders::iterator));
+		}
+
+		/* handle connect */
+		void handle_connect(boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
+		{
+			if (error)
+			{
+				SPD_LOG_ERROR("Connect error: {}. Retrying....", error.message());
+				start();
+			}
+			else
+			{
+				start_send_recv();
+			}
+		}
+
+		/* handle send */
+		void handle_send(boost::system::error_code const& error)
+		{
+			if (error)
+			{
+				SPD_LOG_ERROR("boost::asio::async_write error: {}. Stopping write thread", error.message());
+				call_running_flag_.store(false);
+				read_thread_.join();
+			}
+		}
+
+		/* handle write */
+		void handle_read_head(boost::system::error_code const& error)
+		{
+			if (!error)
+			{
+				auto call_id = static_cast<uint32_t>(head_.framework_type);
+				
+				lock_t locker{ call_mutex_ };
+				auto itr = call_map_.find(call_id);
+				if (itr != call_map_.end())
+				{
+					auto ctx = itr->second;
+					locker.unlock();
+
+					ctx->rep.resize(head_.len);
+
+					boost::asio::async_read(socket_, boost::asio::buffer(ctx->rep),
+						boost::bind(&async_client::handle_read_body, shared_from_this(), boost::asio::placeholders::error));
+				}
+			}
+		}
+
+		void handle_read_body(boost::system::error_code const& error)
+		{
+			if (!error)
+			{
+				lock_t locker{ call_mutex_ };
+				auto itr = call_map_.find(call_id);
+				if (itr != call_map_.end())
+				{
+					auto ctx = itr->second;
+					locker.unlock();
+
+					if (ctx->func)
+						ctx->func();
+
+					locker.lock();
+					call_map_.remove(itr);		// todo  这里有迭代器失效的问题
+				}
+			}
+		}
+
+		void read_thread_function()
+		{
+			while (call_running_flag_.load())
+			{
+				lock_t lock{ call_mutex_ };
+				call_cond_var_.wait(lock, [this]() { return !call_list_.empty(); });
+
+				auto to_call = std::move(call_list_.front());
+				call_list_.pop_front();
+				lock.unlock();
+
+				send_rpc(to_call);
+			}
+		}
+
+	private:
+
+		using call_list_t = std::list<std::pair<uint32_t, context_ptr>>;
+		using call_map_t = std::map<uint32_t, context_ptr>;
+		using work_ptr = std::unique_ptr<io_service_t::work>;
+
+		// system variables
+		io_service_t						ios_;
+		work_ptr							ios_work_;
+		std::thread							thread_;
+		std::thread							read_thread_;
+		tcp::socket							socket_;
+		tcp::resolver						resolver_;
+		std::atomic<uint32_t>				call_id_;
+		call_map_t							call_map_;
+		call_list_t							call_list_;
+		mutable std::mutex					call_mutex_;
+		mutable std::condition_variable		call_cond_var_;
+		std::atomic<bool>					call_running_flag_;
+		conn_status							status_;
+		head_t								head_;
+
+		// user configuration variables
+		std::string					address_;
+		std::string					port_;
+
 	};
 } } }
 
@@ -206,16 +476,16 @@ namespace timax { namespace rpc
 	};
 } }
 
-#define TIMAX_ERROR_THROW_CANCEL_RETURN(e) \
-if(e)\
-{\
-	if (boost::system::errc::operation_canceled == e)\
-	{\
-		SPD_LOG_INFO(e.message().c_str()); return;\
-	}\
-	SPD_LOG_ERROR(e.message().c_str());\
-	throw boost::system::system_error{ e };\
-}
+//#define TIMAX_ERROR_THROW_CANCEL_RETURN(e) \
+//if(e)\
+//{\
+//	if (boost::system::errc::operation_canceled == e)\
+//	{\
+//		SPD_LOG_INFO(e.message().c_str()); return;\
+//	}\
+//	SPD_LOG_ERROR(e.message().c_str());\
+//	throw boost::system::system_error{ e };\
+//}
 
 // implement async_client
 namespace timax { namespace rpc
