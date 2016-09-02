@@ -397,7 +397,7 @@ int main(void)
 	auto cfg = client::get_config();
 	boost::asio::io_service io;
 	sync_client client{ io };
-	client.connect("127.0.0.1", "9000");
+	client.connect(cfg.hostname, cfg.port);
 
 	while (true) //just for test performance
 	{
