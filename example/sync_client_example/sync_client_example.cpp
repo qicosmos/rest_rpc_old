@@ -395,9 +395,10 @@ int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 	auto cfg = client::get_config();
-	boost::asio::io_service io;
-	sync_client client{ io };
-	client.connect("127.0.0.1", "9000");
+
+	sync_client client;
+	client.connect(cfg.hostname, cfg.port);
+	auto r = client.call<int>("add", 1, 2);
 
 	while (true) //just for test performance
 	{

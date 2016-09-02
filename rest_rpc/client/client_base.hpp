@@ -57,16 +57,12 @@ namespace timax { namespace rpc
 		using tcp = boost::asio::ip::tcp;
 
 	protected:
-		client_base(io_service_t& io)
-			: io_(io)
-			, socket_(io)
+		client_base() : socket_(io_)
 		{
 
 		}
 
-		client_base(io_service_t& io, std::string address, std::string port)
-			: io_(io)
-			, socket_(io)
+		client_base(std::string address, std::string port) : socket_(io_)
 			, address_(std::move(address))
 			, port_(std::move(port))
 			, head_t_(nullptr)
@@ -211,7 +207,7 @@ namespace timax { namespace rpc
 		}
 
 	protected:
-		io_service_t&					io_;
+		io_service_t					io_;
 		tcp::socket						socket_;
 		std::string						address_;
 		std::string						port_;
@@ -228,8 +224,7 @@ namespace timax { namespace rpc
 		using marshal_policy = Marshal;
 
 	public:
-		sync_client(io_service_t& io)
-			: client_base(io), need_cancel_(false)
+		sync_client() : need_cancel_(false)
 		{
 
 		}
@@ -265,6 +260,31 @@ namespace timax { namespace rpc
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
 			//base_type::receive_head();
 			//check_head();
+		}
+
+		template <typename T=void, typename ... Args>
+		auto call(const string& rpc_service, Args&& ... args)
+		{
+			if (!is_connected())
+				connect(address_, port_);
+
+			auto buffer = marshal_.pack_args(std::forward<Args>(args)...);
+			base_type::call(rpc_service, buffer.data(), buffer.size());
+			base_type::receive_head();
+			check_head();
+			base_type::receive_body();
+			// unpack the receive data
+			return marshal_.unpack<T>(recv_data(), head_t_->len);
+		}
+
+		template <typename ... Args>
+		void call_void(const string& rpc_service, Args&& ... args)
+		{
+			if (!is_connected())
+				connect(address_, port_);
+
+			auto buffer = marshal_.pack_args(std::forward<Args>(args)...);
+			base_type::call(rpc_service, buffer.data(), buffer.size());
 		}
 
 		template <typename Protocol, typename ... Args>

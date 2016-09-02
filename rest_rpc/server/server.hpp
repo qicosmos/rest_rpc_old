@@ -40,6 +40,13 @@ namespace timax { namespace rpc
 			router<Decode>::get().remove_handler(name);
 		}
 
+		template<typename Result>
+		void pub(const std::string& topic, Result&& result)
+		{
+			auto r = codec_type().pack(std::forward<Result>(result));
+			pub(topic, r.data(), r.size());
+		}
+
 		void pub(const std::string& topic, const char* data, size_t size)
 		{
 			decltype(conn_map_.equal_range(topic)) temp;

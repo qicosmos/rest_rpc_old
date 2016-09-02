@@ -12,8 +12,7 @@ int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 
-	boost::asio::io_service io;
-	sync_client client{ io };
+	sync_client client;
 	client.connect("127.0.0.1", "9000");
 
 	try
