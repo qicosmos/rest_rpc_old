@@ -61,16 +61,12 @@ namespace timax { namespace rpc
 		using tcp = boost::asio::ip::tcp;
 
 	protected:
-		client_base(io_service_t& io)
-			: io_(io)
-			, socket_(io)
+		client_base() : socket_(io_)
 		{
 
 		}
 
-		client_base(io_service_t& io, std::string address, std::string port)
-			: io_(io)
-			, socket_(io)
+		client_base(std::string address, std::string port) : socket_(io_)
 			, address_(std::move(address))
 			, port_(std::move(port))
 			, head_t_(nullptr)
@@ -214,7 +210,7 @@ namespace timax { namespace rpc
 		}
 
 	protected:
-		io_service_t&					io_;
+		io_service_t					io_;
 		tcp::socket						socket_;
 		std::string						address_;
 		std::string						port_;
@@ -230,8 +226,7 @@ namespace timax { namespace rpc
 		using base_type = client_base;
 
 	public:
-		sync_client(io_service_t& io)
-			: client_base(io), need_cancel_(false)
+		sync_client() : need_cancel_(false)
 		{
 
 		}

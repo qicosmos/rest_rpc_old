@@ -14,8 +14,7 @@ int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 
-	boost::asio::io_service io;
-	sync_client client{ io };
+	sync_client client;
 	client.connect("127.0.0.1", "9000");
 
 //	std::thread thd([&client] {std::this_thread::sleep_for(std::chrono::seconds(3)); client.cancel_sub_topic(client::sub_add.name()); });
