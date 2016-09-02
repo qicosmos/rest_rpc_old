@@ -1,10 +1,6 @@
 #pragma once
 #include <atomic>
 
-// develop
-#include "../forward.hpp"
-// develop
-
 namespace timax { namespace rpc 
 {
 	class client_exception
@@ -163,12 +159,13 @@ namespace timax { namespace rpc
 		{
 			head_t head =
 			{
-				0, 0,
-				static_cast<int32_t>(size + handler_name.size() + 1)
+				0, 0, 0,
+				static_cast<uint32_t>(size + handler_name.size() + 1)
 			};
 
 			if (head.len > MAX_BUF_LEN - HEAD_LEN)
 			{
+				// TODO throw a right exception
 				throw std::overflow_error("Size too big!");
 			}
 
@@ -228,6 +225,7 @@ namespace timax { namespace rpc
 	class sync_client : public client_base
 	{
 		using base_type = client_base;
+		using marshal_policy = Marshal;
 
 	public:
 		sync_client(io_service_t& io)
@@ -344,8 +342,8 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		Marshal		marshal_;
-		std::atomic<bool> need_cancel_;		
+		marshal_policy		marshal_;
+		std::atomic<bool>	need_cancel_;		
 	};
 
 } }

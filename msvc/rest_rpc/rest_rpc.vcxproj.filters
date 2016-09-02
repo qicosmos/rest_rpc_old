@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="base">
+      <UniqueIdentifier>{24e37928-1991-4dc3-ba22-e1520441ec16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="server">
+      <UniqueIdentifier>{d4ce1e0f-96bd-4ce4-ab64-1698ae255233}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="client">
+      <UniqueIdentifier>{fd5429ba-5c93-48cd-ab60-b1f749ce23c1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\rest_rpc\base\base64.hpp">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\bin_escape.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\codec.hpp">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\common.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\consts.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\function_traits.hpp">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\invoker.hpp">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\json_hex16.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\log.hpp">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\utils.hpp">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\async_client.hpp">
+      <Filter>client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\async_client_detail.hpp">
+      <Filter>client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\client_base.hpp">
+      <Filter>client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\client_proxy.hpp">
+      <Filter>client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\protocol.hpp">
+      <Filter>client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\connection.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\connection_impl.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\io_service_pool.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\router.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\server.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\token_parser.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client.hpp" />
+    <ClInclude Include="..\..\rest_rpc\forward.hpp" />
+    <ClInclude Include="..\..\rest_rpc\rpc.hpp" />
+    <ClInclude Include="..\..\rest_rpc\server.hpp" />
+  </ItemGroup>
+</Project>

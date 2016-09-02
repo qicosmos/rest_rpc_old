@@ -24,9 +24,10 @@ namespace timax{ namespace rpc
 
 	struct head_t
 	{
-		int16_t code;
-		int16_t	framework_type;
-		int32_t len;
+		int16_t		code;
+		int16_t		reserve;
+		uint32_t	id;
+		uint32_t	len;
 	};
 
 	enum class result_code : int16_t

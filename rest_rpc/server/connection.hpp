@@ -12,7 +12,6 @@ namespace timax { namespace rpc
 	class connection : public std::enable_shared_from_this<connection<Decode>>, private boost::noncopyable
 	{
 		using server_ptr = std::shared_ptr<server<Decode>>;
-		using message_t  = std::array<boost::asio::mutable_buffer, 2>;
 		using deadline_timer_t = boost::asio::deadline_timer;
 
 		template <size_t Size>
@@ -27,46 +26,21 @@ namespace timax { namespace rpc
 	private:
 		friend class server<Decode>;
 		void read_head();
-		void read_body(head_t const& head);
+		void read_body();
 		void reset_timer();
 		void cancel_timer();
 		void close();
 		void set_no_delay();
 		void response(const char* data, size_t size, result_code code = result_code::OK);
-
-		//just for ab test.
-		//void do_read()
-		//{
-		//	auto self(this->shared_from_this());
-		//	boost::asio::async_read(socket_, boost::asio::buffer(read_buf_), [this, self](boost::system::error_code ec, std::size_t length)
-		//	{
-		//		if (ec)
-		//		{
-		//			close();
-		//			return;
-		//		}
-
-		//		boost::asio::async_write(socket_, boost::asio::buffer(g_str, g_str.size()), [this, self](boost::system::error_code ec, std::size_t length) {
-		//			if (ec)
-		//			{
-		//				close();
-		//				return;
-		//			}
-
-		//			do_read();
-		//		});
-		//		//boost::system::error_code ec1;
-		//		//boost::asio::write(socket_, boost::asio::buffer(g_str), ec1);
-		//		//do_read();
-		//	});
-		//}
+		void response(std::string const& topic, char const* data, size_t size, result_code code = result_code::OK);
+		auto get_message(char const* data, size_t size, result_code code)->std::vector<boost::asio::const_buffer>;
+		auto get_message(std::string const& topic, const char* data, size_t size, result_code code)->std::vector<boost::asio::const_buffer>;
+		void write(std::vector<boost::asio::const_buffer> const& message);
 
 		server_ptr				server_;
 		tcp::socket				socket_;
-		sarray<HEAD_LEN>		head_;
+		head_t					head_;				
 		std::vector<char>		data_;
-//		sarray<106>				read_buf_; //for ab test
-		message_t				message_;
 		deadline_timer_t		timer_;
 		std::size_t				timeout_milli_;
 	};
