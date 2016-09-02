@@ -399,7 +399,7 @@ int main(void)
 	sync_client client;
 	client.connect(cfg.hostname, cfg.port);
 	auto r = client.call<int>("add", 1, 2);
-	client.call_void("add", 1, 2);
+
 	while (true) //just for test performance
 	{
 		client.call(client::add, 1, 2);
