@@ -18,7 +18,7 @@ int main(void)
 	sync_client client{ io };
 	client.connect("127.0.0.1", "9000");
 
-	std::thread thd([&client] {std::this_thread::sleep_for(std::chrono::seconds(3)); client.cancel_sub_topic(client::sub_add.name()); });
+//	std::thread thd([&client] {std::this_thread::sleep_for(std::chrono::seconds(3)); client.cancel_sub_topic(client::sub_add.name()); });
 
 	try
 	{
@@ -36,7 +36,7 @@ int main(void)
 		std::cout << e.what() << std::endl;
 	}
 
-	thd.join();
+//	thd.join();
 	getchar();
 	return 0;
 }

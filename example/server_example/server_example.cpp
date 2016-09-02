@@ -169,9 +169,9 @@ int main()
 	sp->register_handler("compose", &compose, &after);
 	sp->register_handler("add", &add);
 	sp->register_handler("sub_add", &add, [sp](auto conn, auto r) {
-		auto result = codec_type().pack(r);
-		sp->pub("sub_add", result.data(), result.size());
+		sp->pub("sub_add", r);
 	});
+
 	sp->register_handler("begin_upload", &file_manager::begin_upload, &fm);
 
 	sp->run();
