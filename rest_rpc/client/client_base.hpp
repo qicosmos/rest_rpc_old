@@ -331,6 +331,13 @@ namespace timax { namespace rpc
 				throw std::runtime_error{ "Failed to register topic." };
 			}
 
+			std::string result_confirm = call(sub_confirm, protocol.name());
+
+			if (result_confirm.empty())
+			{
+				throw std::runtime_error{ "Failed to register confirm." };
+			}
+
 			while (!need_cancel_)
 			{
 				base_type::receive_head();

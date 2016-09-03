@@ -22,7 +22,24 @@ namespace timax { namespace rpc
 				}
 			});
 
-			register_handler(SUB_CONFIRM, &server::sub_confirm, this);
+			register_handler(SUB_CONFIRM, &server::sub, this, [this](auto conn, std::string const& topic)
+			{
+				if (!topic.empty())
+				{
+					std::unique_lock<std::mutex> lock(mtx_);
+					auto range = conn_map_.equal_range(topic);
+
+					for (auto it = range.first; it != range.second; ++it)
+					{
+						auto ptr = it->second.wp.lock();
+						if (!ptr || ptr.get() == conn.get())
+						{
+							it->second.has_confirm = true;
+							break;
+						}
+					}
+				}
+			});
 		}
 
 		~server()
@@ -154,17 +171,17 @@ namespace timax { namespace rpc
 			return topic;
 		}
 
-		std::string sub_confirm(const std::string& topic)
-		{
-			std::unique_lock<std::mutex> lock(mtx_);
-			auto it = conn_map_.find(topic);
-			if (it == conn_map_.end())
-				return "";
+		//std::string sub_confirm(const std::string& topic)
+		//{
+		//	std::unique_lock<std::mutex> lock(mtx_);
+		//	auto it = conn_map_.find(topic);
+		//	if (it == conn_map_.end())
+		//		return "";
 
-			it->second.has_confirm = true;
-			
-			return topic;
-		}
+		//	it->second.has_confirm = true;
+		//	
+		//	return topic;
+		//}
 
 		bool is_subscriber_exsit(const std::string& topic)
 		{
