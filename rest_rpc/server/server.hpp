@@ -18,9 +18,11 @@ namespace timax { namespace rpc
 				if (!topic.empty())
 				{
 					std::unique_lock<std::mutex> lock(mtx_);
-					conn_map_.emplace(topic, conn);
+					conn_map_.emplace(topic, sub_connection{ false, conn });
 				}
 			});
+
+			register_handler(SUB_CONFIRM, &server::sub_confirm, this);
 		}
 
 		~server()
@@ -64,30 +66,13 @@ namespace timax { namespace rpc
 
 			for (auto it = range.first; it != range.second; ++it)
 			{
-				auto ptr = it->second.lock();
+				if (!it->second.has_confirm)
+					continue;
+
+				auto ptr = it->second.wp.lock();
 				if(ptr)
 					ptr->response(share_data.get(), size);
 				//pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
-			}
-		}
-
-		void remove_sub_conn_by_topic(const std::string topic, connection_t* conn)
-		{
-			std::unique_lock<std::mutex> lock(mtx_);
-			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
-			{
-				auto ptr = it->second.lock();
-				if (!ptr || ptr.get() == conn)
-				{
-					if (topic == it->first)
-					{
-						it = conn_map_.erase(it);
-					}						
-				}
-				else
-				{
-					++it;
-				}
 			}
 		}
 
@@ -96,7 +81,7 @@ namespace timax { namespace rpc
 			std::unique_lock<std::mutex> lock(mtx_);
 			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
 			{
-				auto ptr = it->second.lock();
+				auto ptr = it->second.wp.lock();
 				if (!ptr||ptr.get()==conn)
 				{
 					it = conn_map_.erase(it);
@@ -166,6 +151,18 @@ namespace timax { namespace rpc
 			if (!router<Decode>::get().has_handler(topic))
 				return "";
 
+			return topic;
+		}
+
+		std::string sub_confirm(const std::string& topic)
+		{
+			std::unique_lock<std::mutex> lock(mtx_);
+			auto it = conn_map_.find(topic);
+			if (it == conn_map_.end())
+				return "";
+
+			it->second.has_confirm = true;
+			
 			return topic;
 		}
 
@@ -280,80 +277,21 @@ namespace timax { namespace rpc
 			_router.route(conn, data, size);
 		}
 
+		struct sub_connection
+		{
+			bool has_confirm;
+			std::weak_ptr<connection_t> wp;
+		};
+
 		friend class connection<Decode>;
 		io_service_pool io_service_pool_;
 		tcp::acceptor acceptor_;
 		std::shared_ptr<std::thread> thd_;
 		std::size_t timeout_milli_;
 
-		std::multimap<std::string, std::weak_ptr<connection_t>> conn_map_;
+		std::multimap<std::string, sub_connection> conn_map_;
 		std::mutex mtx_;
 		//ThreadPool pool_;
 	};
 
 } }
-
-
-//template<typename Function>
-//void register_handler(std::string const & name, const Function& f)
-//{
-//	router<Decode>::get().register_handler(name, f);
-//}
-//
-//template<typename Function>
-//std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
-//{
-//	if (af == nullptr)
-//	{
-//		using return_type = typename function_traits<Function>::return_type;
-//		std::function<void(std::shared_ptr<connection_t> conn, return_type)> fn = std::bind(&server<Decode>::default_after<return_type>, this, std::placeholders::_1, std::placeholders::_2);
-//		router<Decode>::get().register_handler(name, f, fn);
-//	}
-//	else
-//	{
-//		router<Decode>::get().register_handler(name, f, af);
-//	}
-//}
-//
-//template<typename Function>
-//std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, const std::function<void(std::shared_ptr<connection_t>)>& af)
-//{
-//	if (af == nullptr)
-//	{
-//		std::function<void(std::shared_ptr<connection_t> conn)> fn = std::bind(&server<Decode>::default_after, this, std::placeholders::_1);
-//		router<Decode>::get().register_handler(name, f, fn);
-//	}
-//	else
-//	{
-//		router<Decode>::get().register_handler(name, f, af);
-//	}
-//}
-//
-//template<typename Function, typename Self>
-//std::enable_if_t<!std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>, typename function_traits<Function>::return_type)>& af)
-//{
-//	if (af == nullptr)
-//	{
-//		using return_type = typename function_traits<Function>::return_type;
-//		std::function<void(std::shared_ptr<connection_t> conn, return_type)> fn = std::bind(&server<Decode>::default_after<return_type>, this, std::placeholders::_1, std::placeholders::_2);
-//		router<Decode>::get().register_handler(name, f, self, fn);	
-//	}
-//	else
-//	{
-//		router<Decode>::get().register_handler(name, f, self, af);
-//	}
-//}
-//
-//template<typename Function, typename Self>
-//std::enable_if_t<std::is_void<typename function_traits<Function>::return_type>::value> register_handler(std::string const & name, const Function& f, Self* self, const std::function<void(std::shared_ptr<connection_t>)>& af)
-//{
-//	if (af == nullptr)
-//	{
-//		std::function<void(std::shared_ptr<connection_t> conn)> fn = std::bind(&server<Decode>::default_after, this, std::placeholders::_1);
-//		router<Decode>::get().register_handler(name, f, self, fn);
-//	}
-//	else
-//	{
-//		router<Decode>::get().register_handler(name, f, self, af);
-//	}
-//}
