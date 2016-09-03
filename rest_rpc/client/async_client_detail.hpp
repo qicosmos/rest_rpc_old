@@ -6,61 +6,37 @@
 
 namespace timax { namespace rpc { namespace detail 
 {
-	struct call_context
+	struct sub_context
 	{
-		enum class status_t
-		{
-			established,
-			processing,
-			accomplished,
-			aborted,
-		};
+		using conn_ptr = boost::shared_ptr<tcp::socket>;
 
-		call_context(
-			std::string const& name,
-			std::vector<char> req)
-			: status(status_t::established)
-			, name(name)
-			, req(std::move(req))
+		sub_context(conn_ptr ptr, std::string topic, std::function<void(char const*, size_t)> f)
+			: conn(ptr)
+			, topic(std::move(topic))
+			, func(std::move(f))
 		{
-			head.len = static_cast<uint32_t>(req.size() + name.length() + 1);
 		}
 
-		head_t& get_head()
+		void apply()
 		{
-			return head;
+			if (func)
+				func(buffer.data(), buffer.size());
 		}
 
-		std::vector<boost::asio::const_buffer> get_send_message() const
+		void resize()
 		{
-			return
-			{
-				boost::asio::buffer(&head, sizeof(head_t)),
-				boost::asio::buffer(name.c_str(), name.length() + 1),
-				boost::asio::buffer(req)
-			};
+			buffer.resize(head.len);
 		}
 
-		boost::asio::mutable_buffer get_recv_message(size_t size)
-		{
-			rep.resize(size);
-			return boost::asio::buffer(rep);
-		}
-
-		status_t							status;
-		//deadline_timer_t					timeout;	// 先不管超时
-		head_t								head;
-		std::string							name;
-		std::vector<char>					req;		// request buffer
-		std::vector<char>					rep;		// response buffer
-		std::function<void()>				func;
-		mutable	std::mutex					mutex;
-		mutable std::condition_variable		cond;
+		conn_ptr			conn;
+		head_t				head;
+		std::string			topic;
+		std::vector<char>	buffer;
+		std::function<void(char const*, size_t)> func;
 	};
 
-	using context_t = call_context;
-	using context_ptr = boost::shared_ptr<context_t>;
-	using lock_t = std::unique_lock<std::mutex>;
+	using sub_context_t = sub_context;
+	using sub_context_ptr = boost::shared_ptr<sub_context_t>;
 
 	class call_container
 	{
@@ -186,28 +162,7 @@ namespace timax { namespace rpc { namespace detail
 	class sub_manager
 	{
 	public:
-		using conn_ptr = boost::shared_ptr<tcp::socket>;
-		struct conn_context
-		{
-			conn_context(conn_ptr ptr, std::function<void(char const*, size_t)> f)
-				: conn(ptr)
-				, func(std::move(f))
-			{
-			}
-
-			void apply()
-			{
-				if (func)
-					func(buffer.data(), buffer.size());
-			}
-
-			conn_ptr			conn;
-			head_t				head;
-			std::vector<char>	buffer;
-			std::function<void(char const*, size_t)> func;
-		};
-		using conn_ctx_ptr = boost::shared_ptr<conn_context>;
-		using channel_map_t = std::map<std::string, conn_ctx_ptr>;
+		using channel_map_t = std::map<std::string, sub_context_ptr>;
 
 		sub_manager(io_service_t& ios)
 			: ios_(ios)
@@ -221,55 +176,55 @@ namespace timax { namespace rpc { namespace detail
 			return channels_.find(top) == channels_.end();
 		}
 
-		void add_topic(std::string const& topic, conn_ptr ptr, std::string const& address, std::string const& port)
+		void add_topic(sub_context_ptr ctx, std::string const& address, std::string const& port)
 		{
 			tcp::resolver::query q = { tcp::v4(), address, port };
-			resolver_.async_resolve(q, boost::bind(&sub_manager::handle_resolve, this, topic,
-				ptr, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
+			resolver_.async_resolve(q, boost::bind(&sub_manager::handle_resolve, this,
+				ctx, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
 		}
 
-		void start_read(conn_ctx_ptr conn_ctx)
+		void sub_topic()
+
+		void start_read(sub_context_ptr ctx)
 		{
-			boost::asio::async_read(*conn_ctx->conn, boost::asio::buffer(&conn_ctx->head, sizeof(head_t)),
-				boost::bind(&sub_manager::handle_read_head, this, conn_ctx, boost::asio::placeholders::error));
+			boost::asio::async_read(*ctx->conn, boost::asio::buffer(&ctx->head, sizeof(head_t)),
+				boost::bind(&sub_manager::handle_read_head, this, ctx, boost::asio::placeholders::error));
 		}
 
-		void handle_resolve(std::string const& topic, conn_ptr ptr, boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
+		void handle_resolve(sub_context_ptr ctx, boost::system::error_code const& error, tcp::resolver::iterator endpoint_iterator)
 		{
 			if (!error)
 			{
-				boost::asio::async_connect(*ptr, endpoint_iterator, boost::bind(&sub_manager::handle_connect,
-					this, ptr, boost::asio::placeholders::error/*, boost::asio::placeholders::iterator*/));
+				boost::asio::async_connect(*ctx->conn, endpoint_iterator, boost::bind(&sub_manager::handle_connect,
+					this, ctx, boost::asio::placeholders::error/*, boost::asio::placeholders::iterator*/));
 			}
 			// TODO handle error
 		}
 
-		void handle_connect(std::string const& topic, conn_ptr ptr, boost::system::error_code const& error)
+		void handle_connect(sub_context_ptr ctx, boost::system::error_code const& error)
 		{
 			if (!error)
 			{
-				auto conn_ctx = boost::make_shared<conn_context>(ptr);
-
 				lock_t locker{ mutex_ };
-				auto result = channels_.emplace(topic, conn_ctx);
+				auto result = channels_.emplace(ctx->topic, ctx);
 				if(result.second)
-					start_read(conn_ctx);
+					start_read(ctx);
 				locker.unlock();
 			}
 		}
 
-		void handle_read_head(conn_ctx_ptr conn_ctx, boost::system::error_code const& error)
+		void handle_read_head(sub_context_ptr ctx, boost::system::error_code const& error)
 		{
 			if (!error)
 			{
-				conn_ctx->buffer.resize(conn_ctx->head.len);
+				ctx->resize();
 
-				boost::asio::async_read(*conn_ctx->conn, boost::asio::buffer(conn_ctx->buffer),
-					boost::bind(&sub_manager::handle_read_body, this, conn_ctx, boost::asio::placeholders::error));
+				boost::asio::async_read(*ctx->conn, boost::asio::buffer(ctx->buffer),
+					boost::bind(&sub_manager::handle_read_body, this, ctx, boost::asio::placeholders::error));
 			}
 		}
 
-		void handle_read_body(conn_ctx_ptr conn_ctx, boost::system::error_code const& error)
+		void handle_read_body(sub_context_ptr ctx, boost::system::error_code const& error)
 		{
 
 		}
