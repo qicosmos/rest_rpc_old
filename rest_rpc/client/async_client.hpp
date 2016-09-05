@@ -136,7 +136,7 @@ namespace timax { namespace rpc
 		async_client(std::string address, std::string port)
 			: ios_()
 			, ios_work_(std::make_unique<io_service_t::work>(ios_))
-			, ios_run_thread_(boost::bind(&io_service_t::run, &ios_))
+			, ios_run_thread_([this] { ios_.run(); })
 			, address_(std::move(address))
 			, port_(std::move(port))
 			, rpc_session_(ios_, address_, port_)
