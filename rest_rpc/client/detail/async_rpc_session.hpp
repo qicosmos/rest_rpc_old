@@ -136,6 +136,8 @@ namespace timax { namespace rpc { namespace detail
 		{
 			lock_t locker{ mutex_ };
 			calls_.push_call(ctx);
+			locker.unlock();
+			cond_var_.notify_one();
 		}
 
 	private:

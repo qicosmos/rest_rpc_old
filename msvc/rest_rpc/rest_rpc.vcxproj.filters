@@ -10,6 +10,9 @@
     <Filter Include="client">
       <UniqueIdentifier>{fd5429ba-5c93-48cd-ab60-b1f749ce23c1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="client\detail">
+      <UniqueIdentifier>{bed6d52d-9edd-4bbb-a143-6923fd90b181}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\rest_rpc\base\base64.hpp">
@@ -45,9 +48,6 @@
     <ClInclude Include="..\..\rest_rpc\client\async_client.hpp">
       <Filter>client</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\client\async_client_detail.hpp">
-      <Filter>client</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client\client_base.hpp">
       <Filter>client</Filter>
     </ClInclude>
@@ -79,5 +79,17 @@
     <ClInclude Include="..\..\rest_rpc\forward.hpp" />
     <ClInclude Include="..\..\rest_rpc\rpc.hpp" />
     <ClInclude Include="..\..\rest_rpc\server.hpp" />
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session.hpp">
+      <Filter>client\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_sub_session.hpp">
+      <Filter>client\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\detail\connection.hpp">
+      <Filter>client\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\detail\wait_barrier.hpp">
+      <Filter>client\detail</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

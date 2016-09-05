@@ -26,5 +26,8 @@ int main()
 		return 0.0;
 	});
 
+	task.wait();
+	auto result = task.get();
+
 	return 0;
 }
