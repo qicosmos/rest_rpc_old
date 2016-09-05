@@ -159,6 +159,12 @@ namespace timax { namespace rpc
 			return rpc_task<result_type>(this->shared_from_this(), ctx);
 		}
 
+		template <typename Protocol, typename F>
+		void sub(Protocol const& protocol, F&& f)
+		{
+			auto buffer = marshal_policy{}.pack_args(protocol.name());
+		}
+
 	private:
 		void call_impl(boost::shared_ptr<rpc_context> ctx)
 		{

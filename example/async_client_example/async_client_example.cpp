@@ -3,6 +3,7 @@
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(cnn, bool(std::string const&, std::string const&, int));
 }
 
 void test_atomic()
@@ -19,10 +20,12 @@ int main()
 
 	auto client = boost::make_shared<client_type>("127.0.0.1", "9000");
 
-	auto task = client->call(client::add, 1, 2).then([](int r)
+	auto task = client->call(client::add, 1, 2l).then([](int r)
 	{
 		std::cout << r << std::endl;
 	});
+
+	client->call(client::cnn, "", std::string{ "sdfsdfsdf" });
 
 	task.wait();
 
