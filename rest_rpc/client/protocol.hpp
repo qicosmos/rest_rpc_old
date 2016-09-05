@@ -72,9 +72,8 @@ namespace timax { namespace rpc
 
 		template <typename Marshal, typename ... TArgs>
 		auto pack_args(Marshal const& m, TArgs&& ... args) const
-			-> std::enable_if_t<is_argument_match<signature_type, TArgs...>::value, typename Marshal::buffer_type>
 		{
-
+			static_assert(is_argument_match<signature_type, TArgs...>::value, "Arguments` types don`t match the protocol!");
 			return m.pack_args(std::move(Args{ std::forward<TArgs>(args) })...);
 		}
 
