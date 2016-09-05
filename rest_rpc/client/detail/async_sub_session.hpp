@@ -18,13 +18,13 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		auto get_send_message(std::string const& call) const -> std::array<boost::asio::const_buffer, 3>
+		auto get_send_message(std::string const& call) -> std::array<boost::asio::const_buffer, 3>
 		{
-			//head_ =
-			//{
-			//	0, 0, 0,
-			//	static_cast<uint32_t>(sizeof(head_t) + call.size() + request_.size() + 1)
-			//};
+			head_ =
+			{
+				0, 0, 0,
+				static_cast<uint32_t>(sizeof(head_t) + call.size() + request_.size() + 1)
+			};
 
 			return
 			{
@@ -41,14 +41,11 @@ namespace timax { namespace rpc
 				&sub_session::handle_request_sub, this, boost::asio::placeholders::error));
 		}
 
-		void confirm_sub(boost::system::error_code const& error)
+		void confirm_sub()
 		{
-			if (!error)
-			{
-				auto message = get_send_message(sub_confirm.name());
-				async_write(connection_.socket(), message, boost::bind(
-					&sub_session::handle_confirm_sub, this, boost::asio::placeholders::error));
-			}
+			auto message = get_send_message(sub_confirm.name());
+			async_write(connection_.socket(), message, boost::bind(
+				&sub_session::handle_confirm_sub, this, boost::asio::placeholders::error));
 		}
 
 	private:
@@ -67,7 +64,15 @@ namespace timax { namespace rpc
 			{
 				response_.resize(head_.len);
 				async_read(connection_.socket(), boost::asio::buffer(response_), boost::bind(
-					&sub_session::confirm_sub, this, boost::asio::placeholders::error));
+					&sub_session::handle_response_sub_body, this, boost::asio::placeholders::error));
+			}
+		}
+
+		void handle_response_sub_body(boost::system::error_code const& error)
+		{
+			if (!error)
+			{
+				confirm_sub();
 			}
 		}
 
