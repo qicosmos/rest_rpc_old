@@ -6,11 +6,33 @@
 #define TIMAX_DEFINE_PUB_PROTOCOL(handler, func_type) static const ::timax::rpc::pub_protocol_define<func_type> handler{ #handler }
 #define TIMAX_DEFINE_SUB_PROTOCOL(handler, func_type) static const ::timax::rpc::sub_protocol_define<func_type> handler{ #handler }
 
-namespace timax { namespace rpc
+namespace timax{ namespace mpl 
 {
 	template <typename ... Args>
-	using make_args_tuple = std::tuple<std::remove_reference_t<std::remove_cv_t<Args>>...>;
+	struct and;
 
+	template <typename Arg>
+	struct and<Arg>
+	{
+		static constexpr bool value = Arg::value;
+	};
+
+	template <typename Arg, typename ... Args>
+	struct and<Arg, Args ...>
+	{
+		static constexpr bool value = Arg::value &&
+			and<Args...>::value;
+	};
+
+	template <typename To, typename From>
+	struct is_assignable
+	{
+		
+	};
+} }
+
+namespace timax { namespace rpc
+{
 	template <typename Func>
 	struct protocol_define;
 
@@ -40,11 +62,9 @@ namespace timax { namespace rpc
 
 		template <typename Marshal, typename ... TArgs>
 		auto pack_args(Marshal const& m, TArgs&& ... args) const
+			-> std::enable_if_t<sizeof...(TArgs) == sizeof...(Args)>
 		{
-			static_assert(std::is_same<make_args_tuple<Args...>, 
-				make_args_tuple<TArgs...>>::value, "TArgs type don`t match the protocol!");
-
-			return m.pack_args(std::forward<TArgs>(args)...);
+			return m.pack_args(std::move(Args{ std::forward<TArgs>(args) })...);
 		}
 
 	private:
