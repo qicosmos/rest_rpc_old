@@ -17,10 +17,10 @@ namespace timax { namespace rpc { namespace detail
 
 		rpc_context(
 			std::string const& name,
-			std::vector<char> req)
+			std::vector<char>&& request)
 			: status(status_t::established)
 			, name(name)
-			, req(std::move(req))
+			, req(std::move(request))
 		{
 			head.len = static_cast<uint32_t>(req.size() + name.length() + 1);
 		}

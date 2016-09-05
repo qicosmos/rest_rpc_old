@@ -42,7 +42,7 @@ namespace timax { namespace rpc { namespace detail
 				func_ = [ctx] 
 				{
 					auto result = marshal_policy{}.template unpack<result_type>(ctx->rep.data(), ctx->rep.size());
-					return result_type{}; 
+					return result;
 				};
 			}
 
@@ -84,7 +84,7 @@ namespace timax { namespace rpc { namespace detail
 			}
 
 			template <typename = std::enable_if_t<!std::is_same<result_type, void>::value>>
-			result_type const& get()
+			auto const& get()
 			{
 				if (!result_barrier_->complete())
 					do_call_and_wait();
@@ -113,10 +113,10 @@ namespace timax { namespace rpc { namespace detail
 					result_barrier_->apply(func_);
 				};
 
+				dismiss_ = true;
 				auto client = client_.lock();
 				if (client)
 				{
-					dismiss_ = true;
 					ctx_->func = std::move(f);
 					client->call_impl(ctx_);
 					result_barrier_->wait();
@@ -141,6 +141,13 @@ namespace timax { namespace rpc { namespace detail
 			, port_(std::move(port))
 			, rpc_session_(ios_, address_, port_)
 		{
+		}
+
+		~async_client()
+		{
+			ios_work_.reset();
+			if (ios_run_thread_.joinable())
+				ios_run_thread_.join();
 		}
 
 		template <typename Protocol, typename ... Args>

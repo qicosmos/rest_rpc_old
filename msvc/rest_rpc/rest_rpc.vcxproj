@@ -25,7 +25,6 @@
     <ClInclude Include="..\..\rest_rpc\base\common.h" />
     <ClInclude Include="..\..\rest_rpc\base\consts.h" />
     <ClInclude Include="..\..\rest_rpc\base\function_traits.hpp" />
-    <ClInclude Include="..\..\rest_rpc\base\invoker.hpp" />
     <ClInclude Include="..\..\rest_rpc\base\json_hex16.h" />
     <ClInclude Include="..\..\rest_rpc\base\log.hpp" />
     <ClInclude Include="..\..\rest_rpc\base\utils.hpp" />

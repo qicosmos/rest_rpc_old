@@ -33,9 +33,6 @@
     <ClInclude Include="..\..\rest_rpc\base\function_traits.hpp">
       <Filter>base</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\base\invoker.hpp">
-      <Filter>base</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\base\json_hex16.h">
       <Filter>base</Filter>
     </ClInclude>

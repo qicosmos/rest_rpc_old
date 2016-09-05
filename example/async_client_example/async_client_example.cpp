@@ -19,15 +19,14 @@ int main()
 
 	auto client = boost::make_shared<client_type>("127.0.0.1", "9000");
 
-	auto task = client->call(client::add, 1, 2).then([](int r) -> double 
+	auto task = client->call(client::add, 1, 2).then([](int r)
 	{
-		if (r == 3)
-			return 1.0;
-		return 0.0;
+		std::cout << r << std::endl;
 	});
 
 	task.wait();
-	auto result = task.get();
+
+	std::getchar();
 
 	return 0;
 }
