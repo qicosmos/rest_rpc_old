@@ -111,7 +111,7 @@ namespace timax { namespace rpc
 			}
 
 			SPD_LOG_INFO("connection timeout");
-
+			server_->remove_sub_conn(self.get());
 			close();
 		});
 	}
