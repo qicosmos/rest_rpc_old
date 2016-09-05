@@ -23,16 +23,26 @@ namespace timax{ namespace mpl
 		static constexpr bool value = Arg::value &&
 			and<Args...>::value;
 	};
-
-	template <typename To, typename From>
-	struct is_assignable
-	{
-		
-	};
 } }
 
 namespace timax { namespace rpc
 {
+	template <typename Func, typename ... Args>
+	struct is_argument_match
+	{
+	private:
+		template <typename T>
+		static std::false_type test(...);
+
+		template <typename T, typename =
+			decltype(std::declval<T>()(std::declval<Args>()...))>
+		static std::true_type test(int);
+
+		using result_type = decltype(test<Func>(0));
+	public:
+		static constexpr bool value = result_type::value;
+	};
+
 	template <typename Func>
 	struct protocol_define;
 
@@ -62,8 +72,9 @@ namespace timax { namespace rpc
 
 		template <typename Marshal, typename ... TArgs>
 		auto pack_args(Marshal const& m, TArgs&& ... args) const
-			-> std::enable_if_t<sizeof...(TArgs) == sizeof...(Args)>
+			-> std::enable_if_t<is_argument_match<signature_type, TArgs...>::value, typename Marshal::buffer_type>
 		{
+
 			return m.pack_args(std::move(Args{ std::forward<TArgs>(args) })...);
 		}
 
@@ -194,22 +205,6 @@ namespace timax { namespace rpc
 	//	using protoco_with_tag_t = protocol_with_tag<Func, tag_t, std::equal_to<tag_t>>;
 	//	return protoco_with_tag_t{ protocol, std::forward<Tag>(tag) };
 	//}
-
-	template <typename Func, typename ... Args>
-	struct is_argument_match
-	{
-	private:
-		template <typename T>
-		static std::false_type test(...);
-
-		template <typename T, typename =
-			decltype(std::declval<T>()(std::declval<Args>()...))>
-			static std::true_type test(int);
-
-		using result_type = decltype(test<Func>(0));
-	public:
-		static constexpr bool value = result_type::value;
-	};
 
 	TIMAX_DEFINE_PROTOCOL(sub_topic, std::string(std::string const&));
 	TIMAX_DEFINE_PROTOCOL(sub_confirm, std::string(std::string const&));
