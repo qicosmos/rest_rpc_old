@@ -81,10 +81,21 @@ namespace timax { namespace rpc
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
 
-				Decode dr;
-				tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
-				
-				call(func, afterfunc, conn, tp);
+				try
+				{
+					Decode dr;
+					tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
+					call(func, afterfunc, conn, tp);
+				}
+				catch (const std::exception& ex)
+				{
+					SPD_LOG_ERROR(ex.what());
+					conn->close();
+				}
+				catch (...)
+				{
+					conn->close();
+				}
 			}
 
 			template<typename F, typename ... Args>
@@ -117,10 +128,22 @@ namespace timax { namespace rpc
 			{
 				using tuple_type = typename function_traits<Function>::tuple_type;
 
-				Decode dr;
-				tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
+				try
+				{
+					Decode dr;
+					tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
 
-				call_member(func, self, afterfunc, conn, tp);
+					call_member(func, self, afterfunc, conn, tp);
+				}
+				catch (const std::exception& ex)
+				{
+					SPD_LOG_ERROR(ex.what());
+					conn->close();
+				}
+				catch (...)
+				{
+					conn->close();
+				}
 			}
 
 			template<typename F, typename Self, typename ... Args>

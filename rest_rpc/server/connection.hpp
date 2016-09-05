@@ -22,14 +22,13 @@ namespace timax { namespace rpc
 		
 		void start();
 		tcp::socket& socket();
-
+		void close();
 	private:
 		friend class server<Decode>;
 		void read_head();
 		void read_body();
 		void reset_timer();
-		void cancel_timer();
-		void close();
+		void cancel_timer();		
 		void set_no_delay();
 		void response(const char* data, size_t size, result_code code = result_code::OK);
 		void response(std::string const& topic, char const* data, size_t size, result_code code = result_code::OK);
