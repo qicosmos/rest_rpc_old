@@ -41,8 +41,8 @@ namespace timax { namespace rpc
 			{
 				func_ = [ctx] 
 				{
-					auto result = marshal_policy{}.template unpack<result_type>(ctx->rep.data(), ctx->rep.size());
-					return result;
+					marshal_policy mp;
+					return mp.template unpack<result_type>(ctx->rep.data(), ctx->rep.size());
 				};
 			}
 
