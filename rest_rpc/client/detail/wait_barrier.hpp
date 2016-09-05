@@ -2,7 +2,7 @@
 
 #include "../../forward.hpp"
 
-namespace timax { namespace rpc  { namespace detail 
+namespace timax { namespace rpc
 {
 	class result_barrier_base
 	{
@@ -73,4 +73,4 @@ namespace timax { namespace rpc  { namespace detail
 			base_type::notify();
 		}
 	};
-} } }
+} }

@@ -3,7 +3,7 @@
 #include "../../forward.hpp"
 #include "connection.hpp"
 
-namespace timax { namespace rpc { namespace detail 
+namespace timax { namespace rpc
 {
 	struct rpc_context
 	{
@@ -235,4 +235,4 @@ namespace timax { namespace rpc { namespace detail
 		mutable std::mutex					mutex_;
 		mutable std::condition_variable		cond_var_;
 	};
-} } }
+} }

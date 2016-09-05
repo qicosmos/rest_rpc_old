@@ -15,7 +15,7 @@ int main()
 {
 	test_atomic();
 
-	using client_type = timax::rpc::detail::async_client<timax::rpc::msgpack_codec>;
+	using client_type = timax::rpc::async_client<timax::rpc::msgpack_codec>;
 
 	auto client = boost::make_shared<client_type>("127.0.0.1", "9000");
 

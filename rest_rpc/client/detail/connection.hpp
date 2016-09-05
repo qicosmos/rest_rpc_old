@@ -2,7 +2,7 @@
 
 #include "../../forward.hpp"
 
-namespace timax{ namespace rpc { namespace detail 
+namespace timax{ namespace rpc 
 {
 	class async_connection
 	{
@@ -80,4 +80,4 @@ namespace timax{ namespace rpc { namespace detail
 		tcp::resolver			resolver_;
 		tcp::resolver::query	query_;
 	};
-} } }
+} }
