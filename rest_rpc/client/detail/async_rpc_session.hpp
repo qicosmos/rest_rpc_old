@@ -53,8 +53,6 @@ namespace timax { namespace rpc
 		std::vector<char>					req;		// request buffer
 		std::vector<char>					rep;		// response buffer
 		std::function<void()>				func;
-		mutable	std::mutex					mutex;
-		mutable std::condition_variable		cond;
 	};
 
 	class rpc_call_manager

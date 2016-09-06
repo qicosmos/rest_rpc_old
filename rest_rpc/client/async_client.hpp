@@ -34,16 +34,12 @@ namespace timax { namespace rpc
 			using result_barrier_ptr = boost::shared_ptr<result_barrier_t>;
 
 		public:
-			explicit rpc_task(client_ptr client, context_ptr ctx)
+			rpc_task(client_ptr client, context_ptr ctx)
 				: client_(client)
 				, ctx_(ctx)
 				, dismiss_(false)
 			{
-				func_ = [ctx] 
-				{
-					marshal_policy mp;
-					return mp.template unpack<result_type>(ctx->rep.data(), ctx->rep.size());
-				};
+				set_function<result_type>();
 			}
 
 			template <typename Ret0, typename F>
@@ -56,6 +52,20 @@ namespace timax { namespace rpc
 				func_ = [inner_f, f]()
 				{
 					return f(inner_f());
+				};
+			}
+
+			template <typename F>
+			rpc_task(rpc_task<void>& other, F&& f)
+				: client_(other.client_)
+				, ctx_(other.ctx_)
+				, dismiss_(false)
+			{
+				auto inner_f = std::move(other.func_);
+				func_ = [inner_f, f]()
+				{
+					inner_f();
+					return f();
 				};
 			}
 
@@ -123,6 +133,23 @@ namespace timax { namespace rpc
 				}
 			}
 
+			template <typename Ret0>
+			auto set_function() -> std::enable_if_t<!std::is_same<void, Ret0>::value>
+			{
+				auto ctx = ctx_;
+				func_ = [ctx]
+				{
+					marshal_policy mp;
+					return mp.template unpack<result_type>(ctx->rep.data(), ctx->rep.size());
+				};
+			}
+
+			template <typename Ret0>
+			auto set_function() ->std::enable_if_t<std::is_same<void, Ret0>::value>
+			{
+				func_ = [] {};
+			}
+
 		private:
 			client_weak				client_;
 			context_ptr				ctx_;
@@ -157,6 +184,12 @@ namespace timax { namespace rpc
 			auto buffer = marshal_policy{}.pack_args(std::forward<Args>(args)...);
 			auto ctx = boost::make_shared<rpc_context>(protocol.name(), std::move(buffer));
 			return rpc_task<result_type>(this->shared_from_this(), ctx);
+		}
+
+		template <typename Protocol, typename F>
+		void sub(Protocol const& protocol, F&& f)
+		{
+			auto buffer = marshal_policy{}.pack_args(protocol.name());
 		}
 
 	private:
