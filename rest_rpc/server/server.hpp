@@ -40,6 +40,8 @@ namespace timax { namespace rpc
 					}
 				}
 			});
+
+			register_handler(HEART_BEAT, [] {});
 		}
 
 		~server()
@@ -140,7 +142,7 @@ namespace timax { namespace rpc
 			auto after_wrapper = wrap_after_function<Ret>();
 			register_handler_impl(name, f, ptr, std::move(after_wrapper));
 		}
-		// test ......
+
 	private:
 		void do_accept()
 		{

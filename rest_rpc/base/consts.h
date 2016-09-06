@@ -4,6 +4,7 @@ namespace timax { namespace rpc
 {
 	static const char* SUB_TOPIC = "sub_topic";
 	static const char* SUB_CONFIRM = "sub_confirm";
+	static const char* HEART_BEAT = "heart_beat";
 	static const char* RESULT = "result";
 	static const char* CODE = "code";
 
