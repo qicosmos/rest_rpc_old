@@ -22,7 +22,17 @@ namespace timax { namespace rpc
 			, name(name)
 			, req(std::move(request))
 		{
-			head.len = static_cast<uint32_t>(req.size() + name.length() + 1);
+			head =
+			{
+				0, 0, 0,
+				static_cast<uint32_t>(req.size() + name.length() + 1)
+			};
+		}
+
+		rpc_context()
+			: status(status_t::established)
+		{
+			std::memset(&head, 0, sizeof(head_t));
 		}
 
 		head_t& get_head()
@@ -32,12 +42,17 @@ namespace timax { namespace rpc
 
 		std::vector<boost::asio::const_buffer> get_send_message() const
 		{
-			return
+			if (head.len > 0)
 			{
-				boost::asio::buffer(&head, sizeof(head_t)),
-				boost::asio::buffer(name.c_str(), name.length() + 1),
-				boost::asio::buffer(req)
-			};
+				return
+				{
+					boost::asio::buffer(&head, sizeof(head_t)),
+					boost::asio::buffer(name.c_str(), name.length() + 1),
+					boost::asio::buffer(req)
+				};
+			}
+			
+			return{ boost::asio::buffer(&head, sizeof(head_t)) };
 		}
 
 		auto get_recv_message(size_t size)
@@ -119,8 +134,7 @@ namespace timax { namespace rpc
 			io_service_t& ios,
 			std::string const& address,
 			std::string const& port)
-			: ios_(ios)
-			, connection_(ios, address, port, [this] { start_rpc_service(); })
+			: connection_(ios, address, port, [this] { start_rpc_service(); })
 			, running_flag_(false)
 		{
 		}
@@ -165,6 +179,11 @@ namespace timax { namespace rpc
 					return;
 
 				auto to_call = calls_.pop_call();
+
+				// is this necessary?
+				locker.unlock();
+				// is this necessary?
+
 				call_impl(to_call);
 			}
 		}
@@ -187,11 +206,27 @@ namespace timax { namespace rpc
 			lock_t locker{ mutex_ };
 			auto call_ctx = calls_.get_call(call_id);
 			locker.unlock();
-			if (nullptr != call_ctx && head_.len > 0)
+			if (nullptr != call_ctx)
 			{
-				async_read(connection_.socket(), call_ctx->get_recv_message(head_.len), boost::bind(&rpc_session::handle_recv_body,
-					this, call_id, call_ctx, boost::asio::placeholders::error));
+				if (0 == head_.len)
+				{
+					call_complete(call_id, call_ctx);
+				}
+				else
+				{
+					async_read(connection_.socket(), call_ctx->get_recv_message(head_.len), boost::bind(&rpc_session::handle_recv_body,
+						this, call_id, call_ctx, boost::asio::placeholders::error));
+				}
 			}
+		}
+
+		void call_complete(uint32_t call_id, context_ptr ctx)
+		{
+			if (ctx->func)
+				ctx->func();
+
+			lock_t locker{ mutex_ };
+			calls_.remove_call(call_id);
 		}
 
 	private:  // handlers
@@ -215,16 +250,11 @@ namespace timax { namespace rpc
 		{
 			if (!error)
 			{
-				if (ctx->func)
-					ctx->func();
-
-				lock_t locker{ mutex_ };
-				calls_.remove_call(call_id);
+				call_complete(call_id, ctx);
 			}
 		}
 
 	private:
-		io_service_t&						ios_;
 		async_connection					connection_;
 		rpc_call_manager					calls_;	
 		std::thread							thread_;
