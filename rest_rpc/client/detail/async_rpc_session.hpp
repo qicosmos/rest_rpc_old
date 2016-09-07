@@ -92,6 +92,11 @@ namespace timax { namespace rpc
 			call_list_.push_back(ctx);
 		}
 
+		void push_void_call(context_ptr ctx)
+		{
+			call_list_.push_back(ctx);
+		}
+
 		context_ptr pop_call()
 		{
 			auto to_call = call_list_.front();
@@ -128,15 +133,19 @@ namespace timax { namespace rpc
 	class rpc_session
 	{
 	public:
-		using context_ptr = rpc_call_manager::context_ptr;
+		using context_t = rpc_call_manager::context_t;
+		using context_ptr = rpc_call_manager::context_ptr;	
+
 	public:
 		rpc_session(
 			io_service_t& ios,
 			std::string const& address,
 			std::string const& port)
-			: connection_(ios, address, port, [this] { start_rpc_service(); })
+			: hb_timer_(ios)
+			, connection_(ios, address, port)
 			, running_flag_(false)
 		{
+			connection_.start([this] { start_rpc_service(); });
 		}
 
 		~rpc_session()
@@ -148,6 +157,14 @@ namespace timax { namespace rpc
 		{
 			lock_t locker{ mutex_ };
 			calls_.push_call(ctx);
+			locker.unlock();
+			cond_var_.notify_one();
+		}
+
+		void call_void(context_ptr ctx)
+		{
+			lock_t locker{ mutex_ };
+			calls_.push_void_call(ctx);
 			locker.unlock();
 			cond_var_.notify_one();
 		}
@@ -164,6 +181,7 @@ namespace timax { namespace rpc
 		void start_rpc_service()
 		{
 			recv_head();
+			setup_heartbeat_timer();
 			running_flag_.store(true);
 			thread_ = std::move(std::thread{ [this] { send_thread(); } });
 		}
@@ -229,6 +247,12 @@ namespace timax { namespace rpc
 			calls_.remove_call(call_id);
 		}
 
+		void setup_heartbeat_timer()
+		{
+			hb_timer_.expires_from_now(boost::posix_time::seconds{ 15 });
+			hb_timer_.async_wait(boost::bind(&rpc_session::handle_heartbeat, this, boost::asio::placeholders::error));
+		}
+
 	private:  // handlers
 		void handle_send(boost::system::error_code const& error)
 		{
@@ -254,7 +278,20 @@ namespace timax { namespace rpc
 			}
 		}
 
+		void handle_heartbeat(boost::system::error_code const& error)
+		{
+			if (!error)
+			{
+				lock_t locker{ mutex_ };
+				if (calls_.call_empty())
+					calls_.push_void_call(boost::make_shared<context_t>());
+
+				setup_heartbeat_timer();
+			}
+		}
+
 	private:
+		deadline_timer_t					hb_timer_;
 		async_connection					connection_;
 		rpc_call_manager					calls_;	
 		std::thread							thread_;

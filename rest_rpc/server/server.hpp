@@ -22,22 +22,35 @@ namespace timax { namespace rpc
 				}
 			});
 
-			register_handler(SUB_CONFIRM, &server::sub, this, [this](auto conn, std::string const& topic)
+			register_handler(SUB_CONFIRM, [] {}, [this](auto conn)
 			{
-				if (!topic.empty())
-				{
-					std::unique_lock<std::mutex> lock(mtx_);
-					auto range = conn_map_.equal_range(topic);
+				//conn->has
+				//if (!topic.empty())
+				//{
+				//	std::unique_lock<std::mutex> lock(mtx_);
+				//	auto range = conn_map_.equal_range(topic);
+				//
+				//	for (auto it = range.first; it != range.second; ++it)
+				//	{
+				//		auto ptr = it->second.wp.lock();
+				//		if (!ptr || ptr.get() == conn.get())
+				//		{
+				//			it->second.has_confirm = true;
+				//			break;
+				//		}
+				//	}
+				//}
 
-					for (auto it = range.first; it != range.second; ++it)
-					{
-						auto ptr = it->second.wp.lock();
-						if (!ptr || ptr.get() == conn.get())
-						{
-							it->second.has_confirm = true;
-							break;
-						}
-					}
+				std::unique_lock<std::mutex> lock(mtx_);
+				auto itr = std::find_if(conn_map_.begin(), conn_map_.end(), [conn](auto const& elem)
+				{
+					auto ptr = elem.second.wp.lock();
+					return ptr && ptr.get() == conn.get();
+				});
+
+				if (itr != conn_map_.end())
+				{
+					itr->second.has_confirm = true;
 				}
 			});
 		}

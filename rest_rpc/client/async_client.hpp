@@ -15,19 +15,21 @@ namespace timax { namespace rpc
 		using marshal_policy = Marshal;
 		using lock_t = std::unique_lock<std::mutex>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
+		using sub_session_container = std::map<std::string, std::shared_ptr<sub_session>>;
 
 		/******************* wrap context with type information *********************/
-		template <typename Ret>
+		template <typename Ret, typename ProtoRet>
 		friend class rpc_task;
 
-		template <typename Ret>
+		template <typename Ret, typename ProtoRet>
 		class rpc_task
 		{
-			template <typename Ret0>
+			template <typename Ret0, typename ProtoRet0>
 			friend class rpc_task;
 
 		public:
 			using result_type = Ret;
+			using protocol_result_type = ProtoRet;
 			using funtion_t = std::function<result_type(void)>;
 			using context_ptr = rpc_session::context_ptr;
 			using result_barrier_t = result_barrier<result_type>;
@@ -43,7 +45,7 @@ namespace timax { namespace rpc
 			}
 
 			template <typename Ret0, typename F>
-			rpc_task(rpc_task<Ret0>& other, F&& f)
+			rpc_task(rpc_task<Ret0, protocol_result_type>& other, F&& f)
 				: client_(other.client_)
 				, ctx_(other.ctx_)
 				, dismiss_(false)
@@ -56,7 +58,7 @@ namespace timax { namespace rpc
 			}
 
 			template <typename F>
-			rpc_task(rpc_task<void>& other, F&& f)
+			rpc_task(rpc_task<void, protocol_result_type>& other, F&& f)
 				: client_(other.client_)
 				, ctx_(other.ctx_)
 				, dismiss_(false)
@@ -82,7 +84,7 @@ namespace timax { namespace rpc
 			{
 				using next_triats_type = function_traits<std::remove_reference_t<F>>;
 				using next_result_type = typename next_triats_type::return_type;
-				using next_rpc_task = rpc_task<next_result_type>;
+				using next_rpc_task = rpc_task<next_result_type, protocol_result_type>;
 		
 				dismiss_ = true;
 				return next_rpc_task{ *this, std::forward<F>(f) };
@@ -110,7 +112,7 @@ namespace timax { namespace rpc
 				{
 					auto f = std::move(func_);
 					ctx_->func = [f]() { f(); };
-					client->call_impl(ctx_);
+					client->template call_impl<protocol_result_type>(ctx_);
 				}
 			}
 
@@ -128,7 +130,7 @@ namespace timax { namespace rpc
 				if (client)
 				{
 					ctx_->func = std::move(f);
-					client->call_impl(ctx_);
+					client->template call_impl<protocol_result_type>(ctx_);
 					result_barrier_->wait();
 				}
 			}
@@ -147,7 +149,6 @@ namespace timax { namespace rpc
 			template <typename Ret0>
 			auto set_function() ->std::enable_if_t<std::is_same<void, Ret0>::value>
 			{
-				func_ = [] {};
 			}
 
 		private:
@@ -163,7 +164,7 @@ namespace timax { namespace rpc
 		async_client(std::string address, std::string port)
 			: ios_()
 			, ios_work_(std::make_unique<io_service_t::work>(ios_))
-			, ios_run_thread_([this] { ios_.run(); })
+			, ios_run_thread_(boost::bind(&io_service_t::run, &ios_))
 			, address_(std::move(address))
 			, port_(std::move(port))
 			, rpc_session_(ios_, address_, port_)
@@ -173,6 +174,8 @@ namespace timax { namespace rpc
 		~async_client()
 		{
 			ios_work_.reset();
+			if (!ios_.stopped())
+				ios_.stop();
 			if (ios_run_thread_.joinable())
 				ios_run_thread_.join();
 		}
@@ -181,29 +184,68 @@ namespace timax { namespace rpc
 		auto call(Protocol const& protocol, Args&& ... args)
 		{
 			using result_type = typename Protocol::result_type;
-			auto buffer = marshal_policy{}.pack_args(std::forward<Args>(args)...);
+			auto buffer = protocol.pack_args(marshal_policy{}, std::forward<Args>(args)...);
 			auto ctx = boost::make_shared<rpc_context>(protocol.name(), std::move(buffer));
-			return rpc_task<result_type>(this->shared_from_this(), ctx);
+			return rpc_task<result_type, result_type>(this->shared_from_this(), ctx);
 		}
 
 		template <typename Protocol, typename F>
 		void sub(Protocol const& protocol, F&& f)
 		{
-			auto buffer = marshal_policy{}.pack_args(protocol.name());
+			using result_type = typename Protocol::result_type;
+			static_assert(!std::is_same<void, result_type>::value, "Can`t subscribe for a topic with void return type!");
+
+			auto buffer = sub_topic.pack_args(marshal_policy{}, protocol.name());
+
+			lock_t locker{ sub_mutex_ };
+			if (sub_sessions_.end() == sub_sessions_.find(protocol.name()))
+			{
+				auto new_sub_session = std::make_shared<sub_session>(
+					ios_, std::move(buffer), address_, port_, [f](char const* data, size_t size)
+				{
+					marshal_policy mp;
+					f(mp.template unpack<result_type>(data, size));
+				});
+				new_sub_session->start();
+				sub_sessions_.emplace(protocol.name(), std::move(new_sub_session));
+			}
+		}
+
+		template <typename Protocol>
+		void cancle_sub(Protocol const& protocol)
+		{
+			lock_t locker{ sub_mutex_ };
+			auto itr = sub_sessions_.find(protocol.name());
+			if (sub_sessions_.end() != itr)
+			{
+				itr->second->stop();
+				sub_sessions_.erase(itr);
+			}
 		}
 
 	private:
-		void call_impl(boost::shared_ptr<rpc_context> ctx)
+		template <typename Ret>
+		auto call_impl(boost::shared_ptr<rpc_context> ctx) 
+			-> std::enable_if_t<!std::is_same<void, Ret>::value>
 		{
 			rpc_session_.call(ctx);
 		}
 
+		template <typename Ret>
+		auto call_impl(boost::shared_ptr<rpc_context> ctx)
+			-> std::enable_if_t<std::is_same<void, Ret>::value>
+		{
+			rpc_session_.call_void(ctx);
+		}
+
 	private:
-		io_service_t		ios_;
-		work_ptr			ios_work_;
-		std::thread			ios_run_thread_;
-		std::string			address_;
-		std::string			port_;
-		rpc_session			rpc_session_;
+		io_service_t				ios_;
+		work_ptr					ios_work_;
+		std::thread					ios_run_thread_;
+		std::string					address_;
+		std::string					port_;
+		rpc_session					rpc_session_;
+		sub_session_container		sub_sessions_;
+		std::mutex					sub_mutex_;
 	};
 } }

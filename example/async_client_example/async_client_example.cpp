@@ -3,33 +3,27 @@
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
-	TIMAX_DEFINE_PROTOCOL(cnn, bool(std::string const&, std::string const&, int));
+	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(foo, void(std::string, double));
 }
 
-void test_atomic()
-{
-	std::atomic<int> call_id = 0;
-	auto result = call_id.fetch_add(1);
-}
 
 int main()
 {
-	test_atomic();
-
 	using client_type = timax::rpc::async_client<timax::rpc::msgpack_codec>;
 
+	// create the client
 	auto client = boost::make_shared<client_type>("127.0.0.1", "9000");
 
-	auto task = client->call(client::add, 1, 2l).then([](int r)
+	// call an rpc
+	client->call(client::add, 100, 200.0).then([](int r)
 	{
 		std::cout << r << std::endl;
 	});
 
-	client->call(client::cnn, "", std::string{ "sdfsdfsdf" });
-
-	task.wait();
+	client->sub(client::sub_add, [](int result) { std::cout << result << std::endl; });
+	//client->call(client::foo, "hello world", 1);
 
 	std::getchar();
-
 	return 0;
 }

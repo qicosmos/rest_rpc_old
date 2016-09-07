@@ -74,7 +74,7 @@ namespace timax { namespace rpc
 		auto pack_args(Marshal const& m, TArgs&& ... args) const
 		{
 			static_assert(is_argument_match<signature_type, TArgs...>::value, "Arguments` types don`t match the protocol!");
-			return m.pack_args(std::move(Args{ std::forward<TArgs>(args) })...);
+			return m.pack_args(std::move(static_cast<Args>(std::forward<TArgs>(args)))...);
 		}
 
 	private:
@@ -206,6 +206,6 @@ namespace timax { namespace rpc
 	//}
 
 	TIMAX_DEFINE_PROTOCOL(sub_topic, std::string(std::string const&));
-	TIMAX_DEFINE_PROTOCOL(sub_confirm, std::string(std::string const&));
+	TIMAX_DEFINE_PROTOCOL(sub_confirm, void());
 	TIMAX_DEFINE_PROTOCOL(cancel_sub, void());
 } }
