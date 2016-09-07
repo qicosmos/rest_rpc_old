@@ -95,8 +95,16 @@ namespace timax { namespace rpc
 			}
 		}
 
+		void set_disconnect_handler(const std::function<void(connection_t*)>& handler)
+		{
+			handle_disconnect_ = handler;
+		}
+
 		void remove_sub_conn(connection_t* conn)
 		{
+			if (handle_disconnect_)
+				handle_disconnect_(conn);
+
 			std::unique_lock<std::mutex> lock(mtx_);
 			for (auto it = conn_map_.cbegin(); it != conn_map_.end();)
 			{
@@ -307,6 +315,8 @@ namespace timax { namespace rpc
 		tcp::acceptor acceptor_;
 		std::shared_ptr<std::thread> thd_;
 		std::size_t timeout_milli_;
+
+		std::function<void(connection_t*)> handle_disconnect_;
 
 		std::multimap<std::string, sub_connection> conn_map_;
 		std::mutex mtx_;
