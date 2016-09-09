@@ -4,23 +4,17 @@ namespace timax { namespace rpc
 {
 	struct rpc_context
 	{
-		enum class status_t
-		{
-			established,
-			processing,
-			accomplished,
-			aborted,
-		};
-
 		using success_function_t = std::function<void(char const*, size_t)>;
 		using error_function_t = std::function<void(error_code, char const*, size_t)>;
+		using on_error_function_t = std::function<void(client_error const&)>;
 
 		rpc_context(
 			bool is_void_return,
+			tcp::endpoint endpoint,
 			std::string const& name,
 			std::vector<char>&& request)
-			: status(status_t::established)
-			, is_void(is_void_return)
+			: is_void(is_void_return)
+			, endpoint(endpoint)
 			, name(name)
 			, req(std::move(request))
 		{
@@ -32,8 +26,7 @@ namespace timax { namespace rpc
 		}
 
 		rpc_context()
-			: status(status_t::established)
-			, is_void(true)
+			: is_void(true)
 		{
 			std::memset(&head, 0, sizeof(head_t));
 		}
@@ -75,10 +68,10 @@ namespace timax { namespace rpc
 
 		void error(error_code errcode)
 		{
+			error_func(errcode, rep.data(), rep.size());
+
 			if (on_error)
-			{
-				on_error(errcode, rep.data(), rep.size());
-			}
+				on_error(err);
 
 			if (nullptr != barrier)
 				barrier->notify();
@@ -101,15 +94,17 @@ namespace timax { namespace rpc
 			return nullptr != barrier && barrier->complete();
 		}
 
-		status_t							status;
 		//deadline_timer_t					timeout;	// 先不管超时
 		head_t								head;
 		bool								is_void;
+		tcp::endpoint						endpoint;
 		std::string							name;
 		std::vector<char>					req;		// request buffer
 		std::vector<char>					rep;		// response buffer
+		client_error						err;
 		success_function_t					on_ok;
-		error_function_t					on_error;
+		error_function_t					error_func;
+		on_error_function_t					on_error;
 		std::unique_ptr<result_barrier>		barrier;
 	};
 
@@ -117,7 +112,7 @@ namespace timax { namespace rpc
 	{
 	public:
 		using context_t = rpc_context;
-		using context_ptr = boost::shared_ptr<context_t>;
+		using context_ptr = std::shared_ptr<context_t>;
 		using call_map_t = std::map<uint32_t, context_ptr>;
 		using call_list_t = std::list<context_ptr>;
 
@@ -132,11 +127,6 @@ namespace timax { namespace rpc
 			auto call_id = ++call_id_;
 			ctx->get_head().id = call_id;
 			call_map_.emplace(call_id, ctx);
-			call_list_.push_back(ctx);
-		}
-
-		void push_void_call(context_ptr ctx)
-		{
 			call_list_.push_back(ctx);
 		}
 

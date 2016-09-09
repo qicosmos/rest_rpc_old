@@ -1,5 +1,4 @@
 #pragma once
-#include "../forward.hpp"
 #include "detail/async_connection.hpp"
 #include "detail/wait_barrier.hpp"
 // for rpc in async client
@@ -8,7 +7,7 @@
 #include "detail/async_rpc_session_impl.hpp"
 // for rpc in async client
 
-#include "detail/async_sub_session.hpp"
+//#include "detail/async_sub_session.hpp"
 
 namespace timax { namespace rpc
 {
@@ -20,7 +19,7 @@ namespace timax { namespace rpc
 		using codec_policy = Codec;
 		using lock_t = std::unique_lock<std::mutex>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
-		using sub_session_container = std::map<std::string, std::shared_ptr<sub_session>>;
+		//using sub_session_container = std::map<std::string, std::shared_ptr<sub_session>>;
 
 		/******************* wrap context with type information *********************/
 		template <typename Ret>
@@ -34,11 +33,12 @@ namespace timax { namespace rpc
 			using context_ptr = rpc_session::context_ptr;
 
 		public:
-			rpc_task_base(client_ptr client, context_ptr ct)
+			rpc_task_base(client_ptr client, context_ptr ctx)
 				: client_(client)
 				, ctx_(ctx)
 				, dismiss_(false)
 			{
+				set_error_function();
 			}
 
 			~rpc_task_base()
@@ -61,7 +61,7 @@ namespace timax { namespace rpc
 				auto client = client_.lock();
 				if (client)
 				{
-					client->template call_impl<result_type>(ctx_);
+					client->call_impl(ctx_);
 				}
 			}
 
@@ -72,33 +72,30 @@ namespace timax { namespace rpc
 				auto client = client_.lock();
 				if (nullptr != client)
 				{
-					client->template call_impl<result_type>(ctx_);
+					client->call_impl(ctx_);
 					ctx_->wait();
 				}
 			}
 
-			template <typename F>
-			void set_error_function(F&& f)
+			void set_error_function()
 			{
-				ctx_->on_error = [f](error_code errcode, char const* data, size_t size)
+				auto ctx_ptr = ctx_.get();
+				ctx_ptr->error_func = [ctx_ptr](error_code code, char const* data, size_t size)
 				{
-					if (error_code::FAIL == errcode)
+					if (error_code::FAIL == code)
 					{
 						codec_policy codec{};
-						auto error_message = codec.template unpack<std::string>(data, size);
-						f(client_error{ errcode, std::move(error_message) });
+						ctx_ptr->err.set_message(std::move(
+							codec.template unpack<std::string>(data, size)));
 					}
-					else
-					{
-						f(client_error{ errcode, "" });
-					}
+					ctx_ptr->err.set_code(code);
 				};
 			}
 
-		private:
-			client_weak					client_;
-			context_ptr					ctx_;
-			bool						dismiss_;
+		protected:
+			client_weak						client_;
+			context_ptr						ctx_;
+			bool							dismiss_;
 		};
 
 		template <typename Ret>
@@ -111,15 +108,16 @@ namespace timax { namespace rpc
 		public:
 			rpc_task(client_ptr client, context_ptr ctx)
 				: base_type(client, ctx)
-				, result_(new result_type{})
 			{
 			}
 
 			template <typename F>
 			rpc_task& when_ok(F&& f)
 			{
-				auto result = result_;
+				if (nullptr == result_)
+					result_.reset(new result_type);
 
+				auto result = result_;
 				this->ctx_->on_ok = [f, result](char const* data, size_t size)
 				{
 					codec_policy codec{};
@@ -132,18 +130,19 @@ namespace timax { namespace rpc
 			template <typename F>
 			rpc_task& when_error(F&& f)
 			{
-				this->set_error_function(std::forward<F>(f));
+				this->ctx_->on_error = std::forward<F>(f);
 				return *this;
 			}
 
 			result_type const& get()
 			{
 				this->wait();
+
 				return *result_;
 			}
 
 		private:
-			std::shared_ptr<result_type> result_;
+			std::shared_ptr<result_type>	result_;
 		};
 
 		template <>
@@ -170,7 +169,7 @@ namespace timax { namespace rpc
 			template <typename F>
 			rpc_task& when_error(F&& f)
 			{
-				this->set_error_function(std::forward<F>(f));
+				this->ctx_->on_error = std::forward<F>(f);
 				return *this;
 			}
 		};
@@ -182,6 +181,7 @@ namespace timax { namespace rpc
 			: ios_()
 			, ios_work_(std::make_unique<io_service_t::work>(ios_))
 			, ios_run_thread_(boost::bind(&io_service_t::run, &ios_))
+			, rpc_manager_(ios_)
 		{
 		}
 
@@ -195,71 +195,31 @@ namespace timax { namespace rpc
 		}
 
 		template <typename Protocol, typename ... Args>
-		auto call(Protocol const& protocol, Args&& ... args)
+		auto call(tcp::endpoint endpoint, Protocol const& protocol, Args&& ... args)
 		{
 			using result_type = typename Protocol::result_type;
-			auto buffer = protocol.pack_args(marshal_policy{}, std::forward<Args>(args)...);
-			auto ctx = boost::make_shared<rpc_context>(protocol.name(), std::move(buffer));
-			return rpc_task<result_type, result_type>(this->shared_from_this(), ctx);
-		}
+			auto buffer = protocol.pack_args(codec_policy{}, std::forward<Args>(args)...);
+			
+			auto ctx = std::make_shared<rpc_context>(
+				std::is_void<result_type>::value,
+				endpoint,
+				protocol.name(),
+				std::move(buffer));
 
-		template <typename Protocol, typename F>
-		void sub(Protocol const& protocol, F&& f)
-		{
-			using result_type = typename Protocol::result_type;
-			static_assert(!std::is_same<void, result_type>::value, "Can`t subscribe for a topic with void return type!");
-
-			auto buffer = sub_topic.pack_args(marshal_policy{}, protocol.name());
-
-			lock_t locker{ sub_mutex_ };
-			if (sub_sessions_.end() == sub_sessions_.find(protocol.name()))
-			{
-				auto new_sub_session = std::make_shared<sub_session>(
-					ios_, std::move(buffer), address_, port_, [f](char const* data, size_t size)
-				{
-					marshal_policy mp;
-					f(mp.template unpack<result_type>(data, size));
-				});
-				new_sub_session->start();
-				sub_sessions_.emplace(protocol.name(), std::move(new_sub_session));
-			}
-		}
-
-		template <typename Protocol>
-		void cancle_sub(Protocol const& protocol)
-		{
-			lock_t locker{ sub_mutex_ };
-			auto itr = sub_sessions_.find(protocol.name());
-			if (sub_sessions_.end() != itr)
-			{
-				itr->second->stop();
-				sub_sessions_.erase(itr);
-			}
+			return rpc_task<result_type>{ shared_from_this(), ctx };
 		}
 
 	private:
-		template <typename Ret>
-		auto call_impl(boost::shared_ptr<rpc_context> ctx) 
-			-> std::enable_if_t<!std::is_same<void, Ret>::value>
-		{
-			rpc_session_.call(ctx);
-		}
 
-		template <typename Ret>
-		auto call_impl(boost::shared_ptr<rpc_context> ctx)
-			-> std::enable_if_t<std::is_same<void, Ret>::value>
+		void call_impl(std::shared_ptr<rpc_context> ctx)
 		{
-			rpc_session_.call_void(ctx);
+			rpc_manager_.call(ctx);
 		}
 
 	private:
 		io_service_t				ios_;
 		work_ptr					ios_work_;
 		std::thread					ios_run_thread_;
-		std::string					address_;
-		std::string					port_;
-		rpc_session					rpc_session_;
-		sub_session_container		sub_sessions_;
-		std::mutex					sub_mutex_;
+		rpc_manager					rpc_manager_;
 	};
 } }

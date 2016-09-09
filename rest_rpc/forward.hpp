@@ -46,16 +46,16 @@
 
 namespace timax { namespace rpc
 {
-		using tcp = boost::asio::ip::tcp;
-		using io_service_t = boost::asio::io_service;
-		using lock_t = std::unique_lock<std::mutex>;
-		using deadline_timer_t = boost::asio::deadline_timer;
+	using tcp = boost::asio::ip::tcp;
+	using io_service_t = boost::asio::io_service;
+	using lock_t = std::unique_lock<std::mutex>;
+	using deadline_timer_t = boost::asio::deadline_timer;
 
-		template <typename Decode>
-		class connection;
+	template <typename Decode>
+	class connection;
 
-		template <typename Decode>
-		class server;
+	template <typename Decode>
+	class server;
 } }
 
 // common headers

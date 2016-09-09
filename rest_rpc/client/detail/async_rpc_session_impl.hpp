@@ -13,7 +13,7 @@ namespace timax { namespace rpc
 
 	rpc_session::~rpc_session()
 	{
-		stop_rpc_service();
+		stop_rpc_service(error_code::CANCEL);
 	}
 
 	void rpc_session::start()
@@ -21,13 +21,13 @@ namespace timax { namespace rpc
 		auto self = this->shared_from_this();
 
 		connection_.start(
-			[this, self] 
+			[this, self]		// when successfully connected
 		{ 
 			start_rpc_service(); 
 		},
-			[this, self] 
+			[this, self]		// when failed to connect
 		{ 
-			stop_rpc_service(); 
+			stop_rpc_calls(error_code::BADCONNECTION);
 		});
 	}
 
@@ -35,14 +35,6 @@ namespace timax { namespace rpc
 	{
 		lock_t locker{ mutex_ };
 		calls_.push_call(ctx);
-		locker.unlock();
-		cond_var_.notify_one();
-	}
-
-	void rpc_session::call_void(context_ptr ctx)
-	{
-		lock_t locker{ mutex_ };
-		calls_.push_void_call(ctx);
 		locker.unlock();
 		cond_var_.notify_one();
 	}
@@ -58,23 +50,14 @@ namespace timax { namespace rpc
 		}
 	}
 
-	void rpc_session::stop_rpc_service()
+	void rpc_session::stop_rpc_service(error_code error)
 	{
-		running_status_.store(status_t::disable);
-		cond_var_.notify_one();
-
-		call_map_t to_responses;
+		auto expected = status_t::running;
+		if (running_status_.compare_exchange_strong(expected, status_t::disable))
 		{
-			lock_t locker{ mutex_ };
-			calls_.task_calls_from_map(to_responses);
+			cond_var_.notify_one();
+			stop_rpc_calls(error);
 		}
-		for (auto& elem : to_responses)
-		{
-			auto ctx = elem.second;
-			// TODO
-			ctx->on_error(error_code::CANCEL);
-		}
-
 	}
 
 	void rpc_session::send_thread()
@@ -156,10 +139,8 @@ namespace timax { namespace rpc
 		}
 		else
 		{
-			ctx->error();
+			ctx->error(error_code::FAIL);
 		}
-
-		
 	}
 
 	void rpc_session::setup_heartbeat_timer()
@@ -168,11 +149,42 @@ namespace timax { namespace rpc
 		hb_timer_.async_wait(boost::bind(&rpc_session::handle_heartbeat, this->shared_from_this(), boost::asio::placeholders::error));
 	}
 
+	void rpc_session::stop_rpc_calls(error_code error)
+	{
+		call_map_t to_responses;
+		{
+			lock_t locker{ mutex_ };
+			calls_.task_calls_from_map(to_responses);
+		}
+		for (auto& elem : to_responses)
+		{
+			auto ctx = elem.second;
+			// TODO
+			ctx->error(error);
+		}
+
+		rpc_mgr_.remove_session(connection_.endpoint());
+	}
+
 	void rpc_session::handle_send(call_list_t to_calls, context_ptr ctx, boost::system::error_code const& error)
 	{
 		if (!error)
 		{
+			if (ctx->is_void)
+			{
+				{
+					lock_t locker{ mutex_ };
+					calls_.remove_call_from_map(ctx->head.id);
+				}
+				ctx->ok();
+			}
+
 			call_impl(std::move(to_calls));
+		}
+		else
+		{
+			// TODO log
+			stop_rpc_service(error_code::BADCONNECTION);
 		}
 	}
 
@@ -182,6 +194,11 @@ namespace timax { namespace rpc
 		{
 			recv_body();
 		}
+		else
+		{
+			// TODO log
+			stop_rpc_service(error_code::BADCONNECTION);
+		}
 	}
 
 	void rpc_session::handle_recv_body(uint32_t call_id, context_ptr ctx, boost::system::error_code const& error)
@@ -189,6 +206,11 @@ namespace timax { namespace rpc
 		if (!error)
 		{
 			call_complete(call_id, ctx);
+		}
+		else
+		{
+			// TODO log
+			stop_rpc_service(error_code::BADCONNECTION);
 		}
 	}
 
@@ -198,7 +220,7 @@ namespace timax { namespace rpc
 		{
 			lock_t locker{ mutex_ };
 			if (calls_.call_list_empty())
-				calls_.push_void_call(boost::make_shared<context_t>());
+				calls_.push_call(std::make_shared<context_t>());
 
 			setup_heartbeat_timer();
 		}
@@ -208,14 +230,9 @@ namespace timax { namespace rpc
 		: ios_(ios)
 	{}
 
-	void rpc_manager::call(tcp::endpoint const& endpoint, context_ptr ctx)
+	void rpc_manager::call(context_ptr ctx)
 	{
-		get_session(endpoint)->call(ctx);
-	}
-
-	void rpc_manager::call_void(tcp::endpoint const& endpoint, context_ptr ctx)
-	{
-		get_session(endpoint)->call_void(ctx);
+		get_session(ctx->endpoint)->call(ctx);
 	}
 
 	rpc_manager::session_ptr rpc_manager::get_session(tcp::endpoint const& endpoint)
@@ -224,7 +241,7 @@ namespace timax { namespace rpc
 		auto itr = sessions_.find(endpoint);
 		if (itr == sessions_.end())
 		{
-			auto session = std::make_shared<rpc_session>(ios_, endpoint);
+			auto session = std::make_shared<rpc_session>(*this, ios_, endpoint);
 			session->start();
 			sessions_.emplace(endpoint, session);
 			return session;

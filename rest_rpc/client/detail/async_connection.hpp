@@ -38,13 +38,10 @@ namespace timax{ namespace rpc
 	private:
 		void start_connect()
 		{
-			async_connect(socket_, endpoint_, boost::bind(&async_connection::handle_connection, this,
-				boost::asio::placeholders::error, boost::asio::placeholders::iterator));
+			socket_.async_connect(endpoint_, boost::bind(&async_connection::handle_connection, this, boost::asio::placeholders::error));
 		}
 
-		void handle_connection(
-			boost::system::error_code const& error,
-			tcp::resolver::iterator endpoint_iterator)
+		void handle_connection(const boost::system::error_code& error)
 		{
 			if (!error)
 			{
@@ -53,7 +50,7 @@ namespace timax{ namespace rpc
 			}
 			else
 			{
-				if (++retry_count_ < max_retry_count_)
+				if (++retry_count_ < max_retry_count_ || 0 == max_retry_count_)
 				{
 					start_connect();
 				}

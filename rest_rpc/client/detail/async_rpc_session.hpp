@@ -24,18 +24,17 @@ namespace timax { namespace rpc
 		~rpc_session();
 		void start();
 		void call(context_ptr ctx);
-		void call_void(context_ptr ctx);
 
 	private:
-		void stop();
 		void start_rpc_service();
-		void stop_rpc_service();
+		void stop_rpc_service(error_code error);
 		void send_thread();
 		void call_impl(call_list_t to_calls);
 		void recv_head();
 		void recv_body();
 		void call_complete(uint32_t call_id, context_ptr ctx);
 		void setup_heartbeat_timer();
+		void stop_rpc_calls(error_code error);
 
 	private:  // handlers
 		void handle_send(call_list_t to_calls, context_ptr ctx, boost::system::error_code const& error);
@@ -57,6 +56,7 @@ namespace timax { namespace rpc
 
 	class rpc_manager
 	{
+		friend class rpc_session;
 	public:
 		using session_map_t = std::map<tcp::endpoint, std::shared_ptr<rpc_session>>;
 		using session_ptr = std::shared_ptr<rpc_session>;
@@ -64,8 +64,7 @@ namespace timax { namespace rpc
 
 	public:
 		explicit rpc_manager(io_service_t& ios);
-		void call(tcp::endpoint const& endpoint, context_ptr ctx);
-		void call_void(tcp::endpoint const& endpoint, context_ptr ctx);
+		void call(context_ptr ctx);
 
 	private:
 		session_ptr get_session(tcp::endpoint const& endpoint);
