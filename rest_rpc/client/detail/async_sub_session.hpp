@@ -25,7 +25,8 @@ namespace timax { namespace rpc
 		void start()
 		{
 			running_flag_.store(true);
-			connection_.start(std::bind(&sub_session::request_sub, this->shared_from_this()));
+			//auto self = this->shared_from_this();
+			//connection_.start(std::bind(&sub_session::request_sub, this->shared_from_this()));
 		}
 
 		void stop()

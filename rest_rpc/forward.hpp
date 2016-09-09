@@ -44,6 +44,20 @@
 #include <msgpack.hpp>
 #include <thread_pool.hpp>
 
+namespace timax { namespace rpc
+{
+		using tcp = boost::asio::ip::tcp;
+		using io_service_t = boost::asio::io_service;
+		using lock_t = std::unique_lock<std::mutex>;
+		using deadline_timer_t = boost::asio::deadline_timer;
+
+		template <typename Decode>
+		class connection;
+
+		template <typename Decode>
+		class server;
+} }
+
 // common headers
 #include <rest_rpc/base/log.hpp>
 #include <rest_rpc/base/function_traits.hpp>
@@ -51,17 +65,3 @@
 #include <rest_rpc/base/common.h>
 #include <rest_rpc/base/utils.hpp>
 #include <rest_rpc/base/codec.hpp>
-
-namespace timax { namespace rpc 
-{
-	using tcp = boost::asio::ip::tcp;
-	using io_service_t = boost::asio::io_service;
-	using lock_t = std::unique_lock<std::mutex>;
-	using deadline_timer_t = boost::asio::deadline_timer;
-
-	template <typename Decode>
-	class connection;
-
-	template <typename Decode>
-	class server;
-} }

@@ -82,10 +82,16 @@
     <ClInclude Include="..\..\rest_rpc\client\detail\async_sub_session.hpp">
       <Filter>client\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\client\detail\connection.hpp">
+    <ClInclude Include="..\..\rest_rpc\client\detail\wait_barrier.hpp">
       <Filter>client\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\client\detail\wait_barrier.hpp">
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_context.hpp">
+      <Filter>client\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_connection.hpp">
+      <Filter>client\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session_impl.hpp">
       <Filter>client\detail</Filter>
     </ClInclude>
   </ItemGroup>
