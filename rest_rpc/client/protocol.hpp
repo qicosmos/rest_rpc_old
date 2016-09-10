@@ -4,25 +4,6 @@
 
 #define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::timax::rpc::protocol_define<func_type> handler{ #handler }
 
-namespace timax{ namespace mpl 
-{
-	template <typename ... Args>
-	struct and;
-
-	template <typename Arg>
-	struct and<Arg>
-	{
-		static constexpr bool value = Arg::value;
-	};
-
-	template <typename Arg, typename ... Args>
-	struct and<Arg, Args ...>
-	{
-		static constexpr bool value = Arg::value &&
-			and<Args...>::value;
-	};
-} }
-
 namespace timax { namespace rpc
 {
 	template <typename Func, typename ... Args>

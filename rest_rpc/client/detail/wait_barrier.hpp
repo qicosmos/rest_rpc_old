@@ -1,7 +1,5 @@
 #pragma once 
 
-#include "../../forward.hpp"
-
 namespace timax { namespace rpc
 {
 	class result_barrier
