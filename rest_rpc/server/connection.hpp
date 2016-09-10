@@ -30,6 +30,7 @@ namespace timax { namespace rpc
 		inline void reset_timer();
 		inline void cancel_timer();		
 		inline void set_no_delay();
+		inline void response(std::shared_ptr<std::vector<char>> msgs);
 		inline void response(const char* data, size_t size, result_code code = result_code::OK);
 		inline void response(std::string const& topic, char const* data, size_t size, result_code code = result_code::OK);
 		inline auto get_message(char const* data, size_t size, result_code code)->std::vector<boost::asio::const_buffer>;

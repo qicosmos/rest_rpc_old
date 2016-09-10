@@ -93,8 +93,15 @@ namespace timax { namespace rpc
 			temp = range;
 			lock.unlock();
 
-			std::shared_ptr<char> share_data(new char[size], [](char*p) {delete p; });
-			memcpy(share_data.get(), data, size);
+			//result_code::OK
+			std::shared_ptr<std::vector<char>> msgs = std::make_shared<std::vector<char>>();
+			//const int total
+			head_t head = {0};
+			head.len = size;
+			msgs->resize(sizeof(head_t) + head.len);
+			
+			memcpy(msgs->data(), &head, sizeof(head_t));
+			memcpy(msgs->data() + sizeof(head_t), data, size);
 
 			for (auto it = range.first; it != range.second; ++it)
 			{
@@ -103,7 +110,7 @@ namespace timax { namespace rpc
 
 				auto ptr = it->second.wp.lock();
 				if(ptr)
-					ptr->response(share_data.get(), size);
+					ptr->response(msgs);
 				//pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
 			}
 		}

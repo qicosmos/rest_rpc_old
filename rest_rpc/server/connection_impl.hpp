@@ -155,6 +155,24 @@ namespace timax { namespace rpc
 		write(get_message(topic, data, size, code));
 	}
 
+	template<typename Decode>
+	void connection<Decode>::response(std::shared_ptr<std::vector<char>> msgs)
+	{
+		auto self = this->shared_from_this();
+		boost::asio::async_write(socket_, boost::asio::buffer(*msgs), [this, self, msgs](boost::system::error_code ec, std::size_t length)
+		{
+			if (!ec)
+			{
+				g_succeed_count++;
+				read_head();
+			}
+			else
+			{
+				SPD_LOG_ERROR(ec.message().c_str());
+			}
+		});
+	}
+
 	template <typename Decode>
 	auto connection<Decode>::get_message(const char* data, size_t size, result_code code)
 		-> std::vector<boost::asio::const_buffer>
