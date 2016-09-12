@@ -2,11 +2,11 @@
 
 namespace timax { namespace rpc 
 {
-	template<typename Decode>
-	class server : private boost::noncopyable, public std::enable_shared_from_this<server<Decode>>
+	template<typename Codec>
+	class server : private boost::noncopyable, public std::enable_shared_from_this<server<Codec>>
 	{
 	public:
-		using connection_t = connection<Decode>;
+		using connection_t = connection<Codec>;
 		using connection_ptr = std::shared_ptr<connection_t>;
 
 	public:
@@ -58,13 +58,13 @@ namespace timax { namespace rpc
 
 		void remove_handler(std::string const& name)
 		{
-			router<Decode>::get().remove_handler(name);
+			router<Codec>::get().remove_handler(name);
 		}
 
 		template<typename Result>
 		void pub(const std::string& topic, Result&& result)
 		{
-			auto r = codec_type().pack(std::forward<Result>(result));
+			auto r = Codec().pack(std::forward<Result>(result));
 			pub(topic, r.data(), r.size());
 		}
 
@@ -175,7 +175,7 @@ namespace timax { namespace rpc
 		std::string sub(const std::string& topic)
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
-			if (!router<Decode>::get().has_handler(topic))
+			if (!router<Codec>::get().has_handler(topic))
 				return "";
 
 			return topic;
@@ -202,7 +202,7 @@ namespace timax { namespace rpc
 		template<typename R>
 		void default_after(connection_ptr conn, std::add_lvalue_reference_t<std::add_const_t<R>> r)
 		{
-			Decode codec;
+			Codec codec;
 			auto buf = codec.pack(r);
 			conn->response(buf.data(), buf.size());
 		}
@@ -287,20 +287,20 @@ namespace timax { namespace rpc
 		template <typename F, typename AF>
 		void register_handler_impl(std::string const& name, F&& f, AF&& af)
 		{
-			router<Decode>::get().register_handler(name, std::forward<F>(f), std::forward<AF>(af));
+			router<Codec>::get().register_handler(name, std::forward<F>(f), std::forward<AF>(af));
 		}
 
 		template <typename AF, typename T, typename Ret, typename ... Args>
 		void register_handler_impl(std::string const& name, Ret(T::*f)(Args...), T* ptr, AF&& af)
 		{
-			router<Decode>::get().register_handler(name, f, ptr, std::forward<AF>(af));
+			router<Codec>::get().register_handler(name, f, ptr, std::forward<AF>(af));
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////////////
 
 		void callback(connection_ptr conn, const char* data, size_t size)
 		{
-			auto& _router = router<Decode>::get();
+			auto& _router = router<Codec>::get();
 			_router.route(conn, data, size);
 		}
 
@@ -310,7 +310,7 @@ namespace timax { namespace rpc
 			std::weak_ptr<connection_t> wp;
 		};
 
-		friend class connection<Decode>;
+		friend class connection<Codec>;
 		io_service_pool io_service_pool_;
 		tcp::acceptor acceptor_;
 		std::shared_ptr<std::thread> thd_;

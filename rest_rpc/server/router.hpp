@@ -2,15 +2,15 @@
 
 namespace timax { namespace rpc 
 {
-	template <typename Decode>
+	template <typename Codec>
 	class connection;
 
-	template<typename Decode>
+	template<typename Codec>
 	class router : boost::noncopyable
 	{
-		using connection_t = connection<Decode>;
+		using connection_t = connection<Codec>;
 	public:
-		static router<Decode>& get()
+		static router<Codec>& get()
 		{
 			static router instance;
 			return instance;
@@ -83,7 +83,7 @@ namespace timax { namespace rpc
 
 				try
 				{
-					Decode dr;
+					Codec dr;
 					tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
 					call(func, afterfunc, conn, tp);
 				}
@@ -130,7 +130,7 @@ namespace timax { namespace rpc
 
 				try
 				{
-					Decode dr;
+					Codec dr;
 					tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
 
 					call_member(func, self, afterfunc, conn, tp);
