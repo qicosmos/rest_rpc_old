@@ -38,6 +38,52 @@ namespace timax{ namespace rpc
 		ARGUMENT_EXCEPTION = 3
 	};
 
+	enum class error_code 
+	{
+		OK,					// rpc正确
+		FAIL,				// rpc调用失败
+		TIMEOUT,			// rpc超时
+		CANCEL,				// rpc主动取消
+		BADCONNECTION,		// 连接故障
+	};
+
+	class client_error
+	{
+	public:
+		client_error()
+			: client_error(error_code::OK, "")
+		{}
+
+		client_error(error_code code, std::string message)
+			: code_(code)
+			, message_(std::move(message))
+		{}
+
+		error_code get_code() const
+		{
+			return code_;
+		}
+
+		void set_code(error_code code)
+		{
+			code_ = code;
+		}
+
+		std::string const& get_message() const
+		{
+			return message_;
+		}
+
+		void set_message(std::string message)
+		{
+			message_ = std::move(message);
+		}
+
+	private:
+		error_code		code_;
+		std::string		message_;
+	};
+
 	//
 	enum class framework_type
 	{

@@ -1,209 +1,225 @@
 #pragma once
-
-#include "detail/connection.hpp"
+#include "detail/async_connection.hpp"
 #include "detail/wait_barrier.hpp"
+// for rpc in async client
+#include "detail/async_rpc_context.hpp"
 #include "detail/async_rpc_session.hpp"
-#include "detail/async_sub_session.hpp"
+#include "detail/async_rpc_session_impl.hpp"
+// for rpc in async client
+
+//#include "detail/async_sub_session.hpp"
 
 namespace timax { namespace rpc
 {
-	template <typename Marshal>
-	class async_client : public boost::enable_shared_from_this<async_client<Marshal>>
+	template <typename Codec>
+	class async_client : public std::enable_shared_from_this<async_client<Codec>>
 	{
-		using client_ptr = boost::shared_ptr<async_client>;
-		using client_weak = boost::weak_ptr<async_client>;
-		using marshal_policy = Marshal;
+		using client_ptr = std::shared_ptr<async_client>;
+		using client_weak = std::weak_ptr<async_client>;
+		using codec_policy = Codec;
 		using lock_t = std::unique_lock<std::mutex>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
+		//using sub_session_container = std::map<std::string, std::shared_ptr<sub_session>>;
 
 		/******************* wrap context with type information *********************/
 		template <typename Ret>
-		friend class rpc_task;
+		friend class rpc_task_base;
 
 		template <typename Ret>
-		class rpc_task
+		class rpc_task_base
 		{
-			template <typename Ret0>
-			friend class rpc_task;
-
 		public:
 			using result_type = Ret;
-			using funtion_t = std::function<result_type(void)>;
 			using context_ptr = rpc_session::context_ptr;
-			using result_barrier_t = result_barrier<result_type>;
-			using result_barrier_ptr = boost::shared_ptr<result_barrier_t>;
 
 		public:
-			rpc_task(client_ptr client, context_ptr ctx)
+			rpc_task_base(client_ptr client, context_ptr ctx)
 				: client_(client)
 				, ctx_(ctx)
 				, dismiss_(false)
 			{
-				set_function<result_type>();
+				set_error_function();
 			}
 
-			template <typename Ret0, typename F>
-			rpc_task(rpc_task<Ret0>& other, F&& f)
-				: client_(other.client_)
-				, ctx_(other.ctx_)
-				, dismiss_(false)
-			{
-				auto inner_f = std::move(other.func_);
-				func_ = [inner_f, f]()
-				{
-					return f(inner_f());
-				};
-			}
-
-			template <typename F>
-			rpc_task(rpc_task<void>& other, F&& f)
-				: client_(other.client_)
-				, ctx_(other.ctx_)
-				, dismiss_(false)
-			{
-				auto inner_f = std::move(other.func_);
-				func_ = [inner_f, f]()
-				{
-					inner_f();
-					return f();
-				};
-			}
-
-			~rpc_task()
+			~rpc_task_base()
 			{
 				if (!dismiss_)
 				{
 					do_call_managed();
 				}
 			}
-		
-			template <typename F>
-			auto then(F&& f)
-			{
-				using next_triats_type = function_traits<std::remove_reference_t<F>>;
-				using next_result_type = typename next_triats_type::return_type;
-				using next_rpc_task = rpc_task<next_result_type>;
-		
-				dismiss_ = true;
-				return next_rpc_task{ *this, std::forward<F>(f) };
-			}
 
 			void wait()
 			{
-				do_call_and_wait();
-			}
-
-			template <typename = std::enable_if_t<!std::is_same<result_type, void>::value>>
-			auto const& get()
-			{
-				if (!result_barrier_->complete())
+				if(ctx_->complete())
 					do_call_and_wait();
-
-				return result_barrier_->get_result();
 			}
-		
+
 		private:
 			void do_call_managed()
 			{
 				auto client = client_.lock();
 				if (client)
 				{
-					auto f = std::move(func_);
-					ctx_->func = [f]() { f(); };
 					client->call_impl(ctx_);
 				}
 			}
 
 			void do_call_and_wait()
 			{
-				result_barrier_ = boost::make_shared<result_barrier_t>();
-
-				std::function<void()> f = [this]
-				{
-					result_barrier_->apply(func_);
-				};
-
+				ctx_->create_barrier();
 				dismiss_ = true;
 				auto client = client_.lock();
-				if (client)
+				if (nullptr != client)
 				{
-					ctx_->func = std::move(f);
 					client->call_impl(ctx_);
-					result_barrier_->wait();
+					ctx_->wait();
 				}
 			}
 
-			template <typename Ret0>
-			auto set_function() -> std::enable_if_t<!std::is_same<void, Ret0>::value>
+			void set_error_function()
 			{
-				auto ctx = ctx_;
-				func_ = [ctx]
+				auto ctx_ptr = ctx_.get();
+				ctx_ptr->error_func = [ctx_ptr](error_code code, char const* data, size_t size)
 				{
-					marshal_policy mp;
-					return mp.template unpack<result_type>(ctx->rep.data(), ctx->rep.size());
+					if (error_code::FAIL == code)
+					{
+						codec_policy codec{};
+						ctx_ptr->err.set_message(std::move(
+							codec.template unpack<std::string>(data, size)));
+					}
+					ctx_ptr->err.set_code(code);
 				};
 			}
 
-			template <typename Ret0>
-			auto set_function() ->std::enable_if_t<std::is_same<void, Ret0>::value>
+		protected:
+			client_weak						client_;
+			context_ptr						ctx_;
+			bool							dismiss_;
+		};
+
+		template <typename Ret>
+		class rpc_task : public rpc_task_base<Ret>
+		{
+		public:
+			using base_type = rpc_task_base<Ret>;
+			using result_type = Ret;
+
+		public:
+			rpc_task(client_ptr client, context_ptr ctx)
+				: base_type(client, ctx)
 			{
-				func_ = [] {};
+			}
+
+			template <typename F>
+			rpc_task& when_ok(F&& f)
+			{
+				if (nullptr == result_)
+					result_.reset(new result_type);
+
+				auto result = result_;
+				this->ctx_->on_ok = [f, result](char const* data, size_t size)
+				{
+					codec_policy codec{};
+					*result = codec.template unpack<result_type>(data, size);
+					f(*result);
+				};
+				return *this;
+			}
+
+			template <typename F>
+			rpc_task& when_error(F&& f)
+			{
+				this->ctx_->on_error = std::forward<F>(f);
+				return *this;
+			}
+
+			result_type const& get()
+			{
+				this->wait();
+
+				return *result_;
 			}
 
 		private:
-			client_weak				client_;
-			context_ptr				ctx_;
-			funtion_t				func_;
-			result_barrier_ptr		result_barrier_;
-			bool					dismiss_;
+			std::shared_ptr<result_type>	result_;
 		};
+
+		template <>
+		class rpc_task<void> : public rpc_task_base<void>
+		{
+		public:
+			using base_type = rpc_task_base<void>;
+			using result_type = void;
+
+		public:
+			rpc_task(client_ptr client, context_ptr ctx)
+				: base_type(client, ctx)
+				, result_(new result_type{})
+			{
+			}
+
+			template <typename F>
+			rpc_task& when_ok(F&& f)
+			{
+				this->ctx_->on_ok = [f](char const* data, size_t size) { f(); };
+				return *this;
+			}
+
+			template <typename F>
+			rpc_task& when_error(F&& f)
+			{
+				this->ctx_->on_error = std::forward<F>(f);
+				return *this;
+			}
+		};
+		
 		/******************* wrap context with type information *********************/
 
 	public:
-		async_client(std::string address, std::string port)
+		async_client()
 			: ios_()
 			, ios_work_(std::make_unique<io_service_t::work>(ios_))
-			, ios_run_thread_([this] { ios_.run(); })
-			, address_(std::move(address))
-			, port_(std::move(port))
-			, rpc_session_(ios_, address_, port_)
+			, ios_run_thread_(boost::bind(&io_service_t::run, &ios_))
+			, rpc_manager_(ios_)
 		{
 		}
 
 		~async_client()
 		{
 			ios_work_.reset();
+			if (!ios_.stopped())
+				ios_.stop();
 			if (ios_run_thread_.joinable())
 				ios_run_thread_.join();
 		}
 
 		template <typename Protocol, typename ... Args>
-		auto call(Protocol const& protocol, Args&& ... args)
+		auto call(tcp::endpoint endpoint, Protocol const& protocol, Args&& ... args)
 		{
 			using result_type = typename Protocol::result_type;
-			auto buffer = marshal_policy{}.pack_args(std::forward<Args>(args)...);
-			auto ctx = boost::make_shared<rpc_context>(protocol.name(), std::move(buffer));
-			return rpc_task<result_type>(this->shared_from_this(), ctx);
-		}
+			auto buffer = protocol.pack_args(codec_policy{}, std::forward<Args>(args)...);
+			
+			auto ctx = std::make_shared<rpc_context>(
+				std::is_void<result_type>::value,
+				endpoint,
+				protocol.name(),
+				std::move(buffer));
 
-		template <typename Protocol, typename F>
-		void sub(Protocol const& protocol, F&& f)
-		{
-			auto buffer = marshal_policy{}.pack_args(protocol.name());
-		}
-
-	private:
-		void call_impl(boost::shared_ptr<rpc_context> ctx)
-		{
-			rpc_session_.call(ctx);
+			return rpc_task<result_type>{ shared_from_this(), ctx };
 		}
 
 	private:
-		io_service_t		ios_;
-		work_ptr			ios_work_;
-		std::thread			ios_run_thread_;
-		std::string			address_;
-		std::string			port_;
-		rpc_session			rpc_session_;
+
+		void call_impl(std::shared_ptr<rpc_context> ctx)
+		{
+			rpc_manager_.call(ctx);
+		}
+
+	private:
+		io_service_t				ios_;
+		work_ptr					ios_work_;
+		std::thread					ios_run_thread_;
+		rpc_manager					rpc_manager_;
 	};
 } }

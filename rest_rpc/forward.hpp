@@ -44,15 +44,7 @@
 #include <msgpack.hpp>
 #include <thread_pool.hpp>
 
-// common headers
-#include <rest_rpc/base/log.hpp>
-#include <rest_rpc/base/function_traits.hpp>
-#include <rest_rpc/base/consts.h>
-#include <rest_rpc/base/common.h>
-#include <rest_rpc/base/utils.hpp>
-#include <rest_rpc/base/codec.hpp>
-
-namespace timax { namespace rpc 
+namespace timax { namespace rpc
 {
 	using tcp = boost::asio::ip::tcp;
 	using io_service_t = boost::asio::io_service;
@@ -65,3 +57,11 @@ namespace timax { namespace rpc
 	template <typename Decode>
 	class server;
 } }
+
+// common headers
+#include <rest_rpc/base/log.hpp>
+#include <rest_rpc/base/function_traits.hpp>
+#include <rest_rpc/base/consts.h>
+#include <rest_rpc/base/common.h>
+#include <rest_rpc/base/utils.hpp>
+#include <rest_rpc/base/codec.hpp>

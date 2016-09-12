@@ -18,23 +18,24 @@ namespace timax { namespace rpc
 		using sarray = std::array<char, Size>;
 
 	public:
-		connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli);
+		inline connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli);
 		
-		void start();
-		tcp::socket& socket();
-		void close();
+		inline void start();
+		inline tcp::socket& socket();
+		inline void close();
 	private:
 		friend class server<Decode>;
-		void read_head();
-		void read_body();
-		void reset_timer();
-		void cancel_timer();		
-		void set_no_delay();
-		void response(const char* data, size_t size, result_code code = result_code::OK);
-		void response(std::string const& topic, char const* data, size_t size, result_code code = result_code::OK);
-		auto get_message(char const* data, size_t size, result_code code)->std::vector<boost::asio::const_buffer>;
-		auto get_message(std::string const& topic, const char* data, size_t size, result_code code)->std::vector<boost::asio::const_buffer>;
-		void write(std::vector<boost::asio::const_buffer> const& message);
+		inline void read_head();
+		inline void read_body();
+		inline void reset_timer();
+		inline void cancel_timer();		
+		inline void set_no_delay();
+		inline void response(std::shared_ptr<std::vector<char>> msgs);
+		inline void response(const char* data, size_t size, result_code code = result_code::OK);
+		inline void response(std::string const& topic, char const* data, size_t size, result_code code = result_code::OK);
+		inline auto get_message(char const* data, size_t size, result_code code)->std::vector<boost::asio::const_buffer>;
+		inline auto get_message(std::string const& topic, const char* data, size_t size, result_code code)->std::vector<boost::asio::const_buffer>;
+		inline void write(std::vector<boost::asio::const_buffer> const& message);
 
 		server_ptr				server_;
 		tcp::socket				socket_;

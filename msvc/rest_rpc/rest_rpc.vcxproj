@@ -33,8 +33,10 @@
     <ClInclude Include="..\..\rest_rpc\client\client_base.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\client_proxy.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session.hpp" />
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session_impl.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\detail\async_sub_session.hpp" />
-    <ClInclude Include="..\..\rest_rpc\client\detail\connection.hpp" />
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_connection.hpp" />
+    <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_context.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\detail\wait_barrier.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\protocol.hpp" />
     <ClInclude Include="..\..\rest_rpc\forward.hpp" />
@@ -93,9 +95,11 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\rest_examples.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\rest_examples.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
