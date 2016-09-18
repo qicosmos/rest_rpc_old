@@ -27,7 +27,25 @@ namespace boost {
 
 namespace timax { namespace rpc
 {
-	using blob = msgpack::type::raw_ref;
+	struct blob_t : msgpack::type::raw_ref
+	{
+		blob_t(char const* data, size_t size)
+			: raw_ref_(data, static_cast<uint32_t>(size))
+		{
+		}
+
+		auto data() const
+		{
+			return raw_ref_.ptr;
+		}
+		
+		size_t size() const
+		{
+			return raw_ref_.size;
+		}
+
+		msgpack::type::raw_ref	raw_ref_;
+	};
 
 	struct msgpack_codec
 	{
@@ -89,8 +107,15 @@ namespace timax { namespace rpc
 		template <typename T>
 		T unpack(char const* data, size_t length)
 		{
-			msgpack::unpack(&msg_, data, length);
-			return msg_.get().as<T>();
+			try
+			{
+				msgpack::unpack(&msg_, data, length);
+				return msg_.get().as<T>();
+			}
+			catch (...)
+			{
+				throw exception{ error_code::FAIL, "Args not match!" };
+			}
 		}
 
 	private:

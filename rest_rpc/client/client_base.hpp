@@ -3,53 +3,6 @@
 
 namespace timax { namespace rpc 
 {
-	class client_exception
-	{
-	public:
-		client_exception(result_code code, std::string message)
-			: code_(code)
-			, message_(std::move(message))
-		{
-
-		}
-
-		result_code errcode() const noexcept
-		{
-			return code_;
-		}
-
-		std::string const& message() const noexcept
-		{
-			return message_;
-		}
-
-		std::string what() const
-		{
-			std::string what;
-			switch (code_)
-			{
-			case result_code::FAIL:
-				what = "User defined failure. ";
-				break;
-			case result_code::EXCEPTION:
-				what = "Exception. ";
-				break;
-			case result_code::ARGUMENT_EXCEPTION:
-				what = "Argument exception. ";
-				break;
-			default:
-				what = "Unknown failure. ";
-				break;
-			}
-			what += message_;
-			return what;
-		}
-
-	private:
-		result_code		code_;
-		std::string		message_;
-	};
-
 	class client_base
 	{
 	public:
@@ -243,8 +196,13 @@ namespace timax { namespace rpc
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
 
 			base_type::receive_head();
-			check_head();
 			base_type::receive_body();
+			
+			if (!base_type::check_head())
+			{
+				throw marshal_policy{}.unpack<exception>(recv_data(), head_t_->len);
+			}
+
 			// unpack the receive data
 			return protocol.unpack(marshal_, recv_data(), head_t_->len);
 		}
@@ -258,64 +216,19 @@ namespace timax { namespace rpc
 
 			auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
 			base_type::call(protocol.name(), buffer.data(), buffer.size());
-			//base_type::receive_head();
-			//check_head();
-		}
-
-		template <typename T=void, typename ... Args>
-		auto call(const string& rpc_service, Args&& ... args)
-		{
-			if (!is_connected())
-				connect(address_, port_);
-
-			auto buffer = marshal_.pack_args(std::forward<Args>(args)...);
-			base_type::call(rpc_service, buffer.data(), buffer.size());
 			base_type::receive_head();
-			check_head();
-			base_type::receive_body();
-			// unpack the receive data
-			return marshal_.unpack<T>(recv_data(), head_t_->len);
-		}
-
-		template <typename ... Args>
-		void call_void(const string& rpc_service, Args&& ... args)
-		{
-			if (!is_connected())
-				connect(address_, port_);
-
-			auto buffer = marshal_.pack_args(std::forward<Args>(args)...);
-			base_type::call(rpc_service, buffer.data(), buffer.size());
+			if (!base_type::check_head())
+			{
+				base_type::receive_body();
+				throw marshal_policy{}.unpack<exception>(recv_data(), head_t_->len);
+			}
 		}
 
 		template <typename Protocol, typename ... Args>
 		auto pub(Protocol const& protocol, Args&& ... args)
 		{
-			if (!is_connected())
-				connect(address_, port_);
-
 			return call(protocol, std::forward<Args>(args)...);
-
-			//auto buffer = protocol.pack_args(marshal_, std::forward<Args>(args)...);
-			//base_type::call(protocol.name(), buffer.data(), buffer.size());
 		}
-
-		//template <typename Protocol, typename F>
-		//auto sub(Protocol const& protocol, F&& f)
-		//	-> std::enable_if_t<std::is_void<typename Protocol::result_type>::value>
-		//{
-		//	std::string result = call(sub_topic, protocol.name());
-		//	if (result.empty())
-		//	{
-		//		throw std::runtime_error{ "Failed to register topic." };
-		//	}
-
-		//	while (true)
-		//	{
-		//		base_type::receive_head();
-		//		check_head();
-		//		f();
-		//	}
-		//}
 
 		template <typename Protocol, typename F>
 		auto sub(Protocol const& protocol, F&& f)
@@ -331,12 +244,9 @@ namespace timax { namespace rpc
 				throw std::runtime_error{ "Failed to register topic." };
 			}
 
-			call(sub_confirm);
-
 			while (!need_cancel_)
 			{
 				base_type::receive_head();
-				check_head();
 				base_type::receive_body();
 				
 				f(protocol.unpack(marshal_, recv_data(), head_t_->len));
@@ -348,19 +258,6 @@ namespace timax { namespace rpc
 		void cancel_sub_topic(const std::string& topic)
 		{
 			need_cancel_ = true;
-		}
-
-	private:
-		void check_head()
-		{
-			if (!base_type::check_head())
-			{
-				throw client_exception
-				{
-					static_cast<result_code>(head_t_->code),
-					std::move(marshal_.template unpack<std::string>(recv_data(), head_t_->len))
-				};
-			}
 		}
 
 	private:

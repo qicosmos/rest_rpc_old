@@ -8,16 +8,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/enable_shared_from_this.hpp>
-
-// boost libraries
-#include <boost/asio.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/bind.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <boost/asio/steady_timer.hpp>
 
 // standard libraries
 #include <cstdint>
@@ -50,12 +41,16 @@ namespace timax { namespace rpc
 	using io_service_t = boost::asio::io_service;
 	using lock_t = std::unique_lock<std::mutex>;
 	using deadline_timer_t = boost::asio::deadline_timer;
+	using steady_timer_t = boost::asio::steady_timer;
+	using duration_t = steady_timer_t::duration;
+	using message_t = std::vector<char>;
 
-	template <typename Decode>
 	class connection;
 
 	template <typename Decode>
 	class server;
+
+	static const auto asio_error = boost::asio::placeholders::error;
 } }
 
 // common headers
@@ -65,3 +60,4 @@ namespace timax { namespace rpc
 #include <rest_rpc/base/common.h>
 #include <rest_rpc/base/utils.hpp>
 #include <rest_rpc/base/codec.hpp>
+#include <rest_rpc/base/excetion.hpp>

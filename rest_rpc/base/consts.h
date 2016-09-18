@@ -10,4 +10,5 @@ namespace timax { namespace rpc
 
 	static const int MAX_BUF_LEN = 1048576;
 	static const int HEAD_LEN = 12;
+	static const int PAGE_SIZE = 4096;
 } }

@@ -21,7 +21,7 @@ int main(void)
 
 		while (true)
 		{
-			using namespace std;
+			using namespace std::chrono_literals;
 
 			client.pub(client::sub_add, lhs, rhs);
 			++rhs;
@@ -29,9 +29,9 @@ int main(void)
 			std::this_thread::sleep_for(1s);
 		}
 	}
-	catch (timax::rpc::client_exception const& e)
+	catch (timax::rpc::exception const& e)
 	{
-		std::cout << e.what() << std::endl;
+		std::cout << e.get_error_message() << std::endl;
 	}
 
 	return 0;

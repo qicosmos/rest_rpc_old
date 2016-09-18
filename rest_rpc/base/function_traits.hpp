@@ -24,7 +24,7 @@ namespace timax
 	public:
 		enum { arity = sizeof...(Args) };
 		typedef Ret function_type(Args...);
-		typedef Ret return_type;
+		typedef Ret result_type;
 		using stl_function_type = std::function<function_type>;
 		typedef Ret(*pointer)(Args...);
 
@@ -42,6 +42,10 @@ namespace timax
 	template<typename Ret, typename... Args>
 	struct function_traits<Ret(*)(Args...)> : function_traits<Ret(Args...)> {};
 
+	//函数引用
+	template<typename Ret, typename... Args>
+	struct function_traits<Ret(&)(Args...)> : function_traits<Ret(Args...)> {};
+
 	//std::function
 	template <typename Ret, typename... Args>
 	struct function_traits<std::function<Ret(Args...)>> : function_traits<Ret(Args...)> {};
@@ -51,9 +55,9 @@ namespace timax
 	TIMAX_FUNCTION_TRAITS(volatile)
 	TIMAX_FUNCTION_TRAITS(const volatile)
 
-		//函数对象
-		template<typename Callable>
-	struct function_traits : function_traits<decltype(&Callable::operator())> {};
+	//函数对象
+	template<typename Callable>
+	struct function_traits : function_traits<decltype(&std::remove_reference_t<Callable>::operator())> {};
 
 	template <typename Function>
 	typename function_traits<Function>::stl_function_type to_function(const Function& lambda)

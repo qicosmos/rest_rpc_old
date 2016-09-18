@@ -155,7 +155,6 @@ namespace timax { namespace rpc
 		public:
 			rpc_task(client_ptr client, context_ptr ctx)
 				: base_type(client, ctx)
-				, result_(new result_type{})
 			{
 			}
 

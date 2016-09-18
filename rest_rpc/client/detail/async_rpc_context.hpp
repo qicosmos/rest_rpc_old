@@ -6,7 +6,7 @@ namespace timax { namespace rpc
 	{
 		using success_function_t = std::function<void(char const*, size_t)>;
 		using error_function_t = std::function<void(error_code, char const*, size_t)>;
-		using on_error_function_t = std::function<void(client_error const&)>;
+		using on_error_function_t = std::function<void(exception const&)>;
 
 		rpc_context(
 			bool is_void_return,
@@ -101,7 +101,7 @@ namespace timax { namespace rpc
 		std::string							name;
 		std::vector<char>					req;		// request buffer
 		std::vector<char>					rep;		// response buffer
-		client_error						err;
+		exception							err;
 		success_function_t					on_ok;
 		error_function_t					error_func;
 		on_error_function_t					on_error;

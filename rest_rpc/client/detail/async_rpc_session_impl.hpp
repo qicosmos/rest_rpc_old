@@ -170,14 +170,14 @@ namespace timax { namespace rpc
 	{
 		if (!error)
 		{
-			if (ctx->is_void)
-			{
-				{
-					lock_t locker{ mutex_ };
-					calls_.remove_call_from_map(ctx->head.id);
-				}
-				ctx->ok();
-			}
+			//if (ctx->is_void)
+			//{
+			//	{
+			//		lock_t locker{ mutex_ };
+			//		calls_.remove_call_from_map(ctx->head.id);
+			//	}
+			//	ctx->ok();
+			//}
 
 			call_impl(std::move(to_calls));
 		}

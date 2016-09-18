@@ -60,16 +60,10 @@
     <ClInclude Include="..\..\rest_rpc\server\connection_impl.hpp">
       <Filter>server</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\server\io_service_pool.hpp">
-      <Filter>server</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\server\router.hpp">
       <Filter>server</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\server\server.hpp">
-      <Filter>server</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\server\token_parser.hpp">
       <Filter>server</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client.hpp" />
@@ -93,6 +87,9 @@
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session_impl.hpp">
       <Filter>client\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\ios_wrapper.hpp">
+      <Filter>server</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

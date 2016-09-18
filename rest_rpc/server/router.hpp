@@ -2,176 +2,177 @@
 
 namespace timax { namespace rpc 
 {
-	template <typename Decode>
-	class connection;
-
-	template<typename Decode>
+	template <typename CodecPolicy>
 	class router : boost::noncopyable
 	{
-		using connection_t = connection<Decode>;
 	public:
-		static router<Decode>& get()
+		using codec_policy = CodecPolicy;
+		using connection_ptr = std::shared_ptr<connection>;
+		using invoker_t = std::function<void(connection_ptr, char const*, size_t)>;
+		using invoker_map_t = std::map<std::string, invoker_t>;
+
+	public:
+		template <typename Handler, typename PostFunc>
+		bool register_invoker(std::string const& name, Handler&& handler, PostFunc&& post_func)
 		{
-			static router instance;
-			return instance;
+			using is_void_t = std::is_void<typename function_traits<Handler>::result_type>;
+
+			if (invokers_.find(name) != invokers_.end())
+				return false;
+
+			auto invoker = get_invoker(std::forward<Handler>(handler), std::forward<PostFunc>(post_func), is_void_t{});
+			invokers_.emplace(name, std::move(invoker));
+			return true;
 		}
 
-		template<typename Function, typename AfterFunction>
-		void register_handler(std::string const & name, const Function& f, const AfterFunction& af)
+		template <typename Handler, typename PostFunc>
+		bool async_register_invoker(std::string const& name, Handler&& handler, PostFunc&& post_func)
 		{
-			register_nonmember_func(name, f, af);
+			using is_void_t = std::is_void<typename function_traits<Handler>::result_type>;
+
+			if (invokers_.find(name) != invokers_.end())
+				return false;
+
+			auto invoker = get_async_invoker(std::forward<Handler>(handler), std::forward<PostFunc>(post_func), is_void_t{});
+			invokers_.emplace(name, std::move(invoker));
+			return true;
 		}
 
-		template<typename Function, typename AfterFunction, typename Self>
-		void register_handler(const std::string& name, const Function& f, Self* self, const AfterFunction& af)
+		bool has_invoker(std::string const& name) const
 		{
-			register_member_func(name, f, self, af);
+			return invokers_.find(name) != invokers_.end();
 		}
 
-		void remove_handler(std::string const& name)
+		void apply_invoker(std::string const& name, connection_ptr conn, char const* data, size_t size) const
 		{
-			this->invokers_.erase(name);
-		}
+			static auto cannot_find_invoker_error = codec_policy{}.pack(exception{ error_code::FAIL, "Cannot find handler!" });
 
-		bool has_handler(std::string const& func_name)
-		{
-			return invokers_.find(func_name) != invokers_.end();
-		}
-
-		void route(std::shared_ptr<connection_t> conn, const char* data, size_t size)
-		{
-			std::string func_name = data;
-			auto it = invokers_.find(func_name);
-			if (it != invokers_.end())
+			auto itr = invokers_.find(name);
+			if (invokers_.end() == itr)
 			{
-				auto length = func_name.length();
-				blob bl = { data + length + 1, static_cast<uint32_t>(size - length - 1) };
-				
-				it->second(conn, bl);
-			}		
+				conn->response_error(cannot_find_invoker_error);
+			}
+			else
+			{
+				auto& invoker = itr->second;
+				if (!invoker)
+				{
+					conn->response_error(cannot_find_invoker_error);
+				}
+
+				try
+				{
+					invoker(conn, data, size);
+				}
+				catch (exception const& error)
+				{
+					// TODO response back to client
+					auto args_not_match_error = codec_policy{}.pack(error);
+					conn->response_error(std::move(args_not_match_error));
+				}
+			}
 		}
 
 	private:
-		router() = default;
-		router(const router&) = delete;
-		router(router&&) = delete;
-
-		template<typename Function, typename AfterFunction>
-		void register_nonmember_func(std::string const & name, const Function& f, const AfterFunction& afterfunc)
+		template <typename Func, typename ArgsTuple, size_t ... Is>
+		static auto call_helper_impl(Func&& f, ArgsTuple&& args_tuple, std::false_type, std::index_sequence<Is...>)
 		{
-			using std::placeholders::_1;
-			using std::placeholders::_2;
-
-			this->invokers_[name] = { std::bind(&invoker<Function, AfterFunction>::apply, f, afterfunc, _1, _2) };
+			return f(std::forward<std::tuple_element_t<Is, remove_reference_t<ArgsTuple>>>(std::get<Is>(args_tuple))...);
 		}
 
-		template<typename Function, typename AfterFunction, typename Self>
-		void register_member_func(const std::string& name, const Function& f, Self* self, const AfterFunction& afterfunc)
+		template <typename Func, typename ArgsTuple, size_t ... Is>
+		static auto call_helper_impl(Func&& f, ArgsTuple&& args_tuple, std::true_type, std::index_sequence<Is...>)
 		{
-			using std::placeholders::_1;
-			using std::placeholders::_2;
-
-			this->invokers_[name] = { std::bind(&invoker<Function, AfterFunction>::template apply_member<Self>, f, self, afterfunc, _1, _2) };
+			f(std::forward<std::tuple_element_t<Is, remove_reference_t<ArgsTuple>>>(std::get<Is>(args_tuple))...);
 		}
 
-		template<typename Function, typename AfterFunction>
-		struct invoker
+		template <typename Func, typename ArgsTuple, typename IsVoid>
+		static auto call_helper(Func&& f, ArgsTuple&& args_tuple, IsVoid is_void)
 		{
-			static inline void apply(const Function& func, const AfterFunction& afterfunc, std::shared_ptr<connection_t> conn, blob bl)
-			{
-				using tuple_type = typename function_traits<Function>::tuple_type;
+			using indices_type = std::make_index_sequence<std::tuple_size<remove_reference_t<ArgsTuple>>::value>;
+			return call_helper_impl(std::forward<Func>(f), std::forward<ArgsTuple>(args_tuple), is_void, indices_type{});
+		}
 
-				try
+		template <typename Handler, typename PostFunc>
+		static invoker_t get_invoker(Handler&& handler, PostFunc&& post_func, std::true_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			
+			// void return type
+			invoker_t invoker = [f = std::move(handler), post = std::move(post_func)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+				call_helper(f, args_tuple, std::true_type{});
+			
+				conn->response([conn, &post] { post(conn); });
+			};
+			
+			return invoker;
+		}
+
+		template <typename Handler, typename PostFunc>
+		static invoker_t get_invoker(Handler&& handler, PostFunc&& post_func, std::false_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			invoker_t invoker = [f = std::move(handler), post = std::move(post_func)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+				auto result = call_helper(f, args_tuple, std::false_type{});
+			
+				auto message = cp.pack(result);
+				conn->response(std::move(message), [conn, &post, r = std::move(result)]{ post(conn, r); });
+			};
+			
+			return invoker;
+		}
+
+		template <typename Handler, typename PostFunc>
+		static invoker_t get_async_invoker(Handler&& handler, PostFunc&& post_func, std::true_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			invoker_t invoker = [f = std::move(handler), post = std::move(post_func)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+
+				std::async([conn, args = std::move(args_tuple), &f, &post]
 				{
-					Decode dr;
-					tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
-					call(func, afterfunc, conn, tp);
-				}
-				catch (const std::exception& ex)
+					call_helper(f, args, std::true_type{});
+					conn->response([conn, &post] { post(conn); });
+				});
+			};
+
+			return invoker;
+		}
+
+		template <typename Handler, typename PostFunc>
+		static invoker_t get_async_invoker(Handler&& handler, PostFunc&& post_func, std::false_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			invoker_t invoker = [f = std::move(handler), post = std::move(post_func)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+
+				std::async([conn, args = std::move(args_tuple), &f, &post]
 				{
-					SPD_LOG_ERROR(ex.what());
-					conn->close();
-				}
-				catch (...)
-				{
-					conn->close();
-				}
-			}
+					auto result = call_helper(f, args, std::false_type{});
+					auto message = codec_policy{}.pack(result);
+					conn->response(std::move(message), [conn, &post, r = std::move(result)]{ post(conn, r); });
+				});
+			};
 
-			template<typename F, typename ... Args>
-			static typename std::enable_if<std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
-				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
-			{
-				call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				if(af)
-					af(conn);
-			}
+			return invoker;
+		}
 
-			template<typename F, typename ... Args>
-			static typename std::enable_if<!std::is_void<typename std::result_of<F(Args...)>::type>::value>::type
-				call(const F& f, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
-			{
-				auto r = call_helper(f, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				if(af)
-					af(conn, r);
-			}
-
-			template<typename F, size_t... I, typename ... Args>
-			static auto call_helper(const F& f, const std::index_sequence<I...>&, const std::tuple<Args...>& tup)
-			{
-				return f(std::get<I>(tup)...);
-			}
-
-			//member function
-			template<typename Self>
-			static inline void apply_member(const Function& func, Self* self, const AfterFunction& afterfunc, std::shared_ptr<connection_t> conn, blob bl)
-			{
-				using tuple_type = typename function_traits<Function>::tuple_type;
-
-				try
-				{
-					Decode dr;
-					tuple_type tp = dr.template unpack<tuple_type>(bl.ptr, bl.size);
-
-					call_member(func, self, afterfunc, conn, tp);
-				}
-				catch (const std::exception& ex)
-				{
-					SPD_LOG_ERROR(ex.what());
-					conn->close();
-				}
-				catch (...)
-				{
-					conn->close();
-				}
-			}
-
-			template<typename F, typename Self, typename ... Args>
-			static inline std::enable_if_t<std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
-				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
-			{
-				call_member_helper(f, self, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				af(conn);
-			}
-
-			template<typename F, typename Self, typename ... Args>
-			static inline std::enable_if_t<!std::is_void<typename std::result_of<F(Self, Args...)>::type>::value>
-				call_member(const F& f, Self* self, const AfterFunction& af, std::shared_ptr<connection_t> conn, const std::tuple<Args...>& tp)
-			{
-				auto r = call_member_helper(f, self, std::make_index_sequence<sizeof... (Args)>{}, tp);
-				af(conn, r);
-			}
-
-			template<typename F, typename Self, size_t... Indexes, typename ... Args>
-			static auto call_member_helper(const F& f, Self* self, const std::index_sequence<Indexes...>&, const std::tuple<Args...>& tup)
-			{
-				return (*self.*f)(std::get<Indexes>(tup)...);
-			}
-		};
-
-		std::map<std::string, std::function<void(std::shared_ptr<connection_t>, blob)>> invokers_;
+	private:
+		// mutable std::mutex		mutex_;
+		invoker_map_t			invokers_;
 	};
 } }
-
-
-

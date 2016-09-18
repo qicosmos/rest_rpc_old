@@ -44,10 +44,9 @@
     <ClInclude Include="..\..\rest_rpc\server.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\connection.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\connection_impl.hpp" />
-    <ClInclude Include="..\..\rest_rpc\server\io_service_pool.hpp" />
+    <ClInclude Include="..\..\rest_rpc\server\ios_wrapper.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\router.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\server.hpp" />
-    <ClInclude Include="..\..\rest_rpc\server\token_parser.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{BB7587EB-C565-4B77-82B9-0F4D8C30E3CC}</ProjectGuid>

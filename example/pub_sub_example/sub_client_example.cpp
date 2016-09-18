@@ -24,15 +24,14 @@ int main(void)
 		client.sub(client::sub_add, [](int r)
 		{
 			std::cout << r << std::endl;
-		}
-		);
+		});
 
 		auto r = client.call(client::add, 1, 2);
 		std::cout << r << std::endl;
 	}
-	catch (timax::rpc::client_exception const& e)
+	catch (timax::rpc::exception const& e)
 	{
-		std::cout << e.what() << std::endl;
+		std::cout << e.get_error_message() << std::endl;
 	}
 
 //	thd.join();

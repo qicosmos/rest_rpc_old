@@ -40,13 +40,6 @@ namespace client
 	}
 }
 
-namespace client
-{
-	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
-	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
-	TIMAX_DEFINE_PROTOCOL(compose, void(int, const std::string&, timax::rpc::blob, double));
-}
-
 using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
 
 //void test_translate(const client::configure& cfg)
@@ -391,6 +384,12 @@ using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
 //		return;
 //}
 
+namespace client
+{
+	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
+}
+
 int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
@@ -399,21 +398,18 @@ int main(void)
 	sync_client client;
 	client.connect(cfg.hostname, cfg.port);
 
-	//while (true) //just for test performance
-	//{
-	//	client.call(client::add, 1, 2);
-	//}
-
 	try
 	{
-		auto r = client.call<int>("add", 1, 2);
 		auto result = client.call(client::add, 1, 2);
 		assert(result == 3);
+
+		client.call(client::madoka, 3, 4);
 	}
-	catch (timax::rpc::client_exception const& e)
+	catch (timax::rpc::exception const& e)
 	{
-		std::cout << e.what() << std::endl;
+		std::cout << e.get_error_message() << std::endl;
 	}
 
+	std::getchar();
 	return 0;
 }

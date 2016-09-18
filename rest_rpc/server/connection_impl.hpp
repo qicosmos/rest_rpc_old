@@ -2,221 +2,181 @@
 
 namespace timax { namespace rpc 
 {
-	template <typename Decode>
-	connection<Decode>::connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli)
-		: server_(server)
-		, socket_(io_service)
-		, head_(), data_()
-		, timer_(io_service)
-		, timeout_milli_(timeout_milli)
+	connection::connection(ios_wrapper& ios, duration_t time_out)
+		: ios_wrapper_(ios)
+		, socket_(ios_wrapper_.get_ios())
+		, timer_(ios_wrapper_.get_ios())
+		, time_out_(time_out)
 	{
-
 	}
 
-	template <typename Decode>
-	void connection<Decode>::start()
+	void connection::response(message_t message, std::function<void()>&& post_func)
 	{
-		set_no_delay();
-		read_head();
+		ios_wrapper_.write_ok(this->shared_from_this(), std::move(message), std::move(post_func));
 	}
 
-	template <typename Decode>
-	tcp::socket& connection<Decode>::socket()
+	void connection::response(std::function<void()>&& post_func)
 	{
-		return socket_;
+		response(message_t{}, std::move(post_func));
 	}
 
-	template <typename Decode>
-	void connection<Decode>::read_head()
+	void connection::response_error(message_t message, std::function<void()>&& post_func)
 	{
-		reset_timer();
-		auto self(this->shared_from_this());
-		boost::asio::async_read(socket_, boost::asio::buffer(&head_, sizeof(head_t)), [this, self](boost::system::error_code ec, std::size_t length)
-		{
-			if (!socket_.is_open())
-			{
-				cancel_timer();
-				return;
-			}
-
-			if (!ec)
-			{
-				if (head_.len > 0 && head_.len < MAX_BUF_LEN)
-				{
-					read_body();
-					return;
-				}
-
-				if (head_.len == 0) //nobody, just head.
-				{
-					read_head();
-				}
-				else
-				{
-					SPD_LOG_ERROR("invalid body len {}", head_.len);
-					cancel_timer();
-				}
-			}
-			else
-			{
-				server_->remove_sub_conn(self.get());
-				SPD_LOG_ERROR(ec.message().c_str());
-				cancel_timer();
-			}
-		});
+		ios_wrapper_.write_error(this->shared_from_this(), std::move(message), std::move(post_func));
 	}
 
-	template <typename Decode>
-	void connection<Decode>::read_body()
-	{
-		auto self(this->shared_from_this());
-		data_.resize(head_.len);
-		boost::asio::async_read(socket_, boost::asio::buffer(data_), [this, self](boost::system::error_code ec, std::size_t length)
-		{
-			cancel_timer();
-
-			if (!socket_.is_open())
-				return;
-
-			if (!ec)
-			{
-				server_->callback(self, data_.data(), length);
-			}
-			else
-			{
-				SPD_LOG_ERROR(ec.message().c_str());
-			}
-		});
-	}
-
-	template <typename Decode>
-	void connection<Decode>::reset_timer()
-	{
-		if (timeout_milli_ == 0)
-			return;
-
-		auto self(this->shared_from_this());
-		timer_.expires_from_now(boost::posix_time::milliseconds(timeout_milli_));
-		timer_.async_wait([this, self](const boost::system::error_code& ec)
-		{
-			if (!socket_.is_open())
-			{
-				return;
-			}
-
-			if (ec)
-			{
-				SPD_LOG_INFO(ec.message().c_str());
-				return;
-			}
-
-			SPD_LOG_INFO("connection timeout");
-			server_->remove_sub_conn(self.get());
-			close();
-		});
-	}
-
-	template <typename Decode>
-	void connection<Decode>::cancel_timer()
-	{
-		if (timeout_milli_ == 0)
-			return;
-	
-		timer_.cancel();
-	}
-
-	template <typename Decode>
-	void connection<Decode>::close()
+	void connection::close()
 	{
 		boost::system::error_code ignored_ec;
 		socket_.close(ignored_ec);
 	}
 
-	template <typename Decode>
-	void connection<Decode>::set_no_delay()
+	tcp::socket& connection::socket()
+	{
+		return socket_;
+	}
+
+	void connection::start()
+	{
+		set_no_delay();
+		read_head();
+	}
+
+	void connection::on_error(boost::system::error_code const& error)
+	{
+		//SPD_LOG_ERROR(error.message().c_str());
+		std::cout << error.message() << std::endl;
+		
+		close();
+
+		if (on_error_)
+			on_error_(this->shared_from_this(), error);
+	}
+
+	void connection::set_on_error(connection_on_error_t on_error)
+	{
+		on_error_ = std::move(on_error);
+	}
+
+	void connection::set_on_read(connection_on_read_t on_read)
+	{
+		on_read_ = std::move(on_read);
+	}
+
+	void connection::set_on_read_pages(connection_on_read_pages_t on_read_pages)
+	{
+		on_read_pages_ = std::move(on_read_pages);
+	}
+
+	blob_t connection::get_read_buffer() const
+	{
+		return{ usual_read_buffer_.data(), head_.len };
+	}
+
+	void connection::set_no_delay()
 	{
 		boost::asio::ip::tcp::no_delay option(true);
 		boost::system::error_code ec;
 		socket_.set_option(option, ec);
 	}
 
-	template <typename Decode>
-	void connection<Decode>::response(const char* data, size_t size, result_code code)
+	void connection::expires_timer()
 	{
-		if (size > MAX_BUF_LEN - HEAD_LEN)
-			throw std::overflow_error("the size is too big");
+		if (time_out_.count() == 0)
+			return;
 
-		write(get_message(data, size, code));
+		timer_.expires_from_now(time_out_);
+		// timer_.async_wait
 	}
 
-	template <typename Decode>
-	void connection<Decode>::response(std::string const& topic, char const* data, size_t size, result_code code)
+	void connection::cancel_timer()
 	{
-		write(get_message(topic, data, size, code));
+		if (time_out_.count() == 0)
+			return;
+
+		timer_.cancel();
 	}
 
-	template<typename Decode>
-	void connection<Decode>::response(std::shared_ptr<std::vector<char>> msgs)
+	void connection::read_head()
 	{
-		auto self = this->shared_from_this();
-		boost::asio::async_write(socket_, boost::asio::buffer(*msgs), [this, self, msgs](boost::system::error_code ec, std::size_t length)
+		expires_timer();
+		async_read(socket_, boost::asio::buffer(&head_, sizeof(head_t)),
+			boost::bind(&connection::handle_read_head, this->shared_from_this(), asio_error));
+	}
+
+	void connection::read_body()
+	{
+		if (head_.len <= PAGE_SIZE)
 		{
-			if (!ec)
+			async_read(socket_, boost::asio::buffer(usual_read_buffer_.data(), head_.len),
+				boost::bind(&connection::handle_read_body, this->shared_from_this(), asio_error));
+		}
+		else
+		{
+			std::vector<char> read_buffer(head_.len, 0);
+			async_read(socket_, boost::asio::buffer(read_buffer.data(), read_buffer.size()), boost::bind(
+				&connection::handle_read_body_pages, this->shared_from_this(), std::move(read_buffer), asio_error));
+		}
+	}
+
+	void connection::handle_read_head(boost::system::error_code const& error)
+	{
+		if (!socket_.is_open())
+			return;
+
+		if (!error)
+		{
+			if (head_.len == 0)
 			{
-				g_succeed_count++;
 				read_head();
 			}
 			else
 			{
-				SPD_LOG_ERROR(ec.message().c_str());
+				read_body();
 			}
-		});
-	}
-
-	template <typename Decode>
-	auto connection<Decode>::get_message(const char* data, size_t size, result_code code)
-		-> std::vector<boost::asio::const_buffer>
-	{
-		head_.code = static_cast<int16_t>(code);
-		head_.len = static_cast<uint32_t>(size);
-
-		return
-		{ 
-			boost::asio::buffer(&head_, sizeof(head_t)),
-			boost::asio::buffer(data, size)
-		};
-	}
-
-	template <typename Decode>
-	auto connection<Decode>::get_message(std::string const& topic, const char* data, size_t size, result_code code)
-		-> std::vector<boost::asio::const_buffer>
-	{
-		head_.code = static_cast<int16_t>(code);
-		head_.len = static_cast<uint32_t>(size + topic.size() + 1);
-
-		return
+		}
+		else
 		{
-			boost::asio::buffer(&head_, sizeof(head_t)),
-			boost::asio::buffer(topic),
-			boost::asio::buffer(data, size)
-		};
+			cancel_timer();
+			on_error(error);
+		}
 	}
 
-	template <typename Decode>
-	void connection<Decode>::write(std::vector<boost::asio::const_buffer> const& message)
+	void connection::handle_read_body(boost::system::error_code const& error)
 	{
-		auto self = this->shared_from_this();
-		boost::asio::async_write(socket_, message, [this, self](boost::system::error_code ec, std::size_t length)
+		cancel_timer();
+		if (!socket_.is_open())
+			return;
+
+		if (!error)
 		{
-			if (!ec)
-			{
-				g_succeed_count++;
-				read_head();
-			}
-			else
-			{
-				SPD_LOG_ERROR(ec.message().c_str());
-			}
-		});
+			if (on_read_)
+				on_read_(this->shared_from_this());
+
+			read_head();
+		}
+		else
+		{
+			on_error(error);
+		}
+	}
+
+	void connection::handle_read_body_pages(std::vector<char> read_buffer, boost::system::error_code const& error)
+	{
+		cancel_timer();
+		if (!socket_.is_open())
+			return;
+
+		if (!error)
+		{
+			if (on_read_pages_)
+				on_read_pages_(this->shared_from_this(), std::move(read_buffer));
+
+			read_head();
+		}
+		else
+		{
+			on_error(error);
+		}
 	}
 } }
