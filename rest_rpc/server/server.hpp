@@ -95,12 +95,25 @@ namespace timax { namespace rpc
 			}
 		}
 
+		void remove_sub_conn(connection_ptr conn)
+		{
+			lock_t lock{ mutex_ };
+			for (auto itr = subscribers_.begin(); itr != subscribers_.end(); )
+			{
+				if (itr->second.lock() == conn)
+					itr = subscribers_.erase(itr);
+				else
+					++itr;
+			}
+		}
+
 	private:
 		void init_callback_functions()
 		{
 			connection::set_on_error([this](connection_ptr conn_ptr, boost::system::error_code const& error)
 			{
 				// TODO ...
+				remove_sub_conn(conn_ptr);
 			});
 
 			connection::set_on_read([this](connection_ptr conn_ptr)
