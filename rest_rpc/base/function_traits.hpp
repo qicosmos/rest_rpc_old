@@ -7,11 +7,14 @@ struct function_traits<ReturnType(ClassType::*)(Args...) __VA_ARGS__> : function
 
 namespace timax 
 {
-	//普通函数
-	//函数指针
-	//function/lambda
-	//成员函数
-	//函数对象
+	 /*
+	  * 1. function type							==>	Ret(Args...)
+	  * 2. function pointer							==>	Ret(*)(Args...)
+	  * 3. function reference						==>	Ret(&)(Args...)
+	  * 4. pointer to non-static member function	==> Ret(T::*)(Args...)
+	  * 5. function object and functor				==>> &T::operator()
+	  * 6. function with generic operator call		==> template <typeanme ... Args> &T::operator()
+	  */
 
 	//转换为std::function和函数指针 
 	template<typename T>
@@ -36,6 +39,7 @@ namespace timax
 		};
 
 		typedef std::tuple<std::remove_cv_t<std::remove_reference_t<Args>>...> tuple_type;
+		using raw_tuple_type = std::tuple<Args...>;
 	};
 
 	//函数指针
@@ -75,5 +79,80 @@ namespace timax
 	typename function_traits<Function>::pointer to_function_pointer(const Function& lambda)
 	{
 		return static_cast<typename function_traits<Function>::pointer>(lambda);
+	}
+}
+
+namespace timax
+{
+	template <typename Arg0, typename Tuple>
+	struct push_front_to_tuple_type;
+
+	template <typename Arg0, typename ... Args>
+	struct push_front_to_tuple_type<Arg0, std::tuple<Args...>>
+	{
+		using type = std::tuple<Arg0, Args...>;
+	};
+
+	template <size_t I, typename IndexSequence>
+	struct push_front_to_index_sequence;
+
+	template <size_t I, size_t ... Is>
+	struct push_front_to_index_sequence<I, std::index_sequence<Is...>>
+	{
+		using type = std::index_sequence<I, Is...>;
+	};
+
+	template <typename ... BindArgs>
+	struct make_bind_index_sequence;
+
+	template <>
+	struct make_bind_index_sequence<>
+	{
+		using type = std::index_sequence<>;
+	};
+
+	template <typename Arg0, typename ... Args>
+	struct make_bind_index_sequence<Arg0, Args...>
+	{
+	private:
+		using arg0_type = std::remove_reference_t<std::remove_cv_t<Arg0>>;
+		constexpr static auto ph_value = std::is_placeholder<arg0_type>::value;
+		using rests_index_sequence_t = typename make_bind_index_sequence<Args...>::type;
+		
+	public:
+		using type = std::conditional_t<0 == ph_value, rests_index_sequence_t,
+			typename push_front_to_index_sequence<ph_value - 1, rests_index_sequence_t>::type>;
+	};
+
+	template <typename Ret, typename ... Args>
+	struct function_helper
+	{
+		using type = std::function<Ret(Args...)>;
+	};
+
+	template <typename IndexSequence, typename Ret, typename ArgsTuple>
+	struct bind_traits;
+
+	template <size_t ... Is, typename Ret, typename ArgsTuple>
+	struct bind_traits<std::index_sequence<Is...>, Ret, ArgsTuple>
+	{
+		using type = typename function_helper<Ret, std::tuple_element_t<Is, ArgsTuple>...>::type;
+	};
+
+	template <typename F, typename ... Args>
+	struct bind_to_function
+	{
+	private:
+		using index_sequence_t = typename make_bind_index_sequence<Args...>::type;
+		using function_traits_t = function_traits<F>;
+	public:
+		using type = typename bind_traits<index_sequence_t, typename function_traits_t::result_type, typename function_traits_t::raw_tuple_type>::type;
+	};
+
+	template <typename F, typename ... Args>
+	auto bind(F&& f, Args&& ... args)
+		-> typename bind_to_function<F, Args...>::type
+	{
+		return std::bind(std::forward<F>(f), std::forward<Args>(args)...);
 	}
 }

@@ -8,9 +8,10 @@ namespace timax { namespace rpc
 	public:
 		using codec_policy = CodecPolicy;
 		using connection_ptr = std::shared_ptr<connection>;
+		using connection_weak = std::weak_ptr<connection>;
 		using router_t = router<codec_policy>;
 		using invoker_t = typename router_t::invoker_t;
-		using sub_container = std::multimap<std::string, connection_ptr>;
+		using sub_container = std::multimap<std::string, connection_weak>;
 
 	public:
 		server(uint16_t port, size_t pool_size, duration_t time_out = duration_t::max())
@@ -77,10 +78,21 @@ namespace timax { namespace rpc
 			if (range.first == range.second)
 				return;
 
-			std::for_each(range.first, range.second, [&buffer](auto elem)
+			std::list<connection_ptr> alives;
+			std::for_each(range.first, range.second, [&alives](auto& elem)
 			{
-				elem.second->response(buffer);
+				auto conn = elem.second.lock();
+				if (conn)
+				{
+					alives.push_back(conn);
+				}
 			});
+			lock.unlock();
+
+			for (auto& alive_conn : alives)
+			{
+				alive_conn->response(buffer);
+			}
 		}
 
 	private:
