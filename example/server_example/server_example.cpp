@@ -38,7 +38,7 @@ int main()
 	//func(1, 2);
 	//using result_type = timax::function_traits<decltype(func)>::result_type;
 	//auto r = result_type{};
-
+	timax::log::get().init("rest_rpc_server.lg");
 	using server_t = timax::rpc::server<timax::rpc::msgpack_codec>;
 	server_t server{ port, pool_size };
 

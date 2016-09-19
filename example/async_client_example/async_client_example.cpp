@@ -18,6 +18,12 @@ int main()
 	// get the server endpoint 
 	auto endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 9000);
 	
+	// test bench
+	while (true)
+	{
+		client->call(endpoint, client::add, 1, 2);
+	}
+
 	// call an rpc
 	client->call(endpoint, client::add, 100, 200.0).when_ok([](int r)
 	{
