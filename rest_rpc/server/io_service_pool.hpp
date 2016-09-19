@@ -136,6 +136,7 @@ namespace timax { namespace rpc
 
 			if (!error)
 			{
+				g_succeed_count++;
 				ctx->apply_post_func();
 			}
 			ctx.reset(); // release as soon as possible
@@ -159,6 +160,7 @@ namespace timax { namespace rpc
 
 			if (!error)
 			{
+				g_succeed_count++;
 				if(!delay_messages.empty())
 				{
 					response_progress(std::move(delay_messages));
