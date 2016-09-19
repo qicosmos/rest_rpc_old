@@ -136,7 +136,8 @@ namespace timax { namespace rpc
 	template <typename Decode>
 	void connection<Decode>::response(context_ptr& ctx)
 	{
-		ios_wrapper_.response(this->shared_from_this(), ctx);
+		auto self = this->shared_from_this();
+		ios_wrapper_.response(self, ctx);
 	}
 
 	template <typename Decode>
