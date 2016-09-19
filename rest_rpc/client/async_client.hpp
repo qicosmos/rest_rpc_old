@@ -207,7 +207,7 @@ namespace timax { namespace rpc
 				protocol.name(),
 				std::move(buffer));
 
-			return rpc_task<result_type>{ shared_from_this(), ctx };
+			return rpc_task<result_type>{ this->shared_from_this(), ctx };
 		}
 
 	private:
