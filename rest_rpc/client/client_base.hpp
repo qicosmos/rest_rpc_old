@@ -274,7 +274,7 @@ namespace timax { namespace rpc
 			check_head();
 			base_type::receive_body();
 			// unpack the receive data
-			return marshal_.unpack<T>(recv_data(), head_t_->len);
+			return marshal_.template unpack<T>(recv_data(), head_t_->len);
 		}
 
 		template <typename ... Args>
