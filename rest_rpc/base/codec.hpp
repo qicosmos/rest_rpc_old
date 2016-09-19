@@ -114,7 +114,8 @@ namespace timax { namespace rpc
 			}
 			catch (...)
 			{
-				throw exception{ error_code::FAIL, "Args not match!" };
+				using namespace std::string_literals;
+				throw exception{ error_code::FAIL, "Args not match!"s };
 			}
 		}
 
