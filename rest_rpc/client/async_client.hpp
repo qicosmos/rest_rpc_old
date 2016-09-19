@@ -98,7 +98,7 @@ namespace timax { namespace rpc
 			bool							dismiss_;
 		};
 
-		template <typename Ret>
+		template <typename Ret, typename = void>
 		class rpc_task : public rpc_task_base<Ret>
 		{
 		public:
@@ -146,8 +146,8 @@ namespace timax { namespace rpc
 			std::shared_ptr<result_type>	result_;
 		};
 
-		template <>
-		class rpc_task<void> : public rpc_task_base<void>
+		template <typename Dummy>
+		class rpc_task<void, Dummy> : public rpc_task_base<void>
 		{
 		public:
 			using base_type = rpc_task_base<void>;
