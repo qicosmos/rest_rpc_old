@@ -117,16 +117,6 @@ void compose(int i, const std::string& str, blob bl, double d)
 	std::cout << i << " " << str << " " << bl.ptr << " " << d << std::endl;;
 }
 
-template<typename T>
-void after_add(std::shared_ptr<connection<codec_type>> sp, T r)
-{
-	//encode
-	msgpack::sbuffer sbuf;
-	msgpack::pack(sbuf, r);
-
-	sp->response(sbuf.data(), sbuf.size());
-}
-
 void after(std::shared_ptr<connection<codec_type>> sp)
 {
 	//encode
