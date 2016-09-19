@@ -8,10 +8,12 @@ namespace timax { namespace rpc
 	public:
 		using connection_t = connection<Codec>;
 		using connection_ptr = std::shared_ptr<connection_t>;
+		using context_t = response_context<Codec>;
+		using message_t = typename Codec::buffer_type;
 
 	public:
 		server(short port, size_t size, size_t timeout_milli = 0) : io_service_pool_(size), timeout_milli_(timeout_milli),
-			acceptor_(io_service_pool_.get_io_service(), tcp::endpoint(tcp::v4(), port))
+			acceptor_(io_service_pool_.get_ios_wrapper().get_ios(), tcp::endpoint(tcp::v4(), port))
 		{
 			register_handler(SUB_TOPIC, &server::sub, this, [this](auto conn, std::string const& topic)
 			{
@@ -66,7 +68,7 @@ namespace timax { namespace rpc
 		void run()
 		{
 			do_accept();
-			thd_ = std::make_shared<std::thread>([this] {io_service_pool_.run(); });
+			thd_ = std::make_shared<std::thread>([this] {io_service_pool_.start(); });
 		}
 
 		void remove_handler(std::string const& name)
@@ -94,14 +96,10 @@ namespace timax { namespace rpc
 			lock.unlock();
 
 			//result_code::OK
-			std::shared_ptr<std::vector<char>> msgs = std::make_shared<std::vector<char>>();
 			//const int total
-			head_t head = {0};
-			head.len = size;
-			msgs->resize(sizeof(head_t) + head.len);
-			
-			memcpy(msgs->data(), &head, sizeof(head_t));
-			memcpy(msgs->data() + sizeof(head_t), data, size);
+			head_t head = { 0 };
+			message_t message(data, data + size);
+			auto ctx = std::make_shared<context_t>(head, std::move(message));
 
 			for (auto it = range.first; it != range.second; ++it)
 			{
@@ -109,9 +107,8 @@ namespace timax { namespace rpc
 					continue;
 
 				auto ptr = it->second.wp.lock();
-				if(ptr)
-					ptr->response(msgs);
-				//pool_.post([ptr, share_data, size] { ptr->response(share_data.get(), size); });
+				if (ptr)
+					ptr->response(ctx);
 			}
 		}
 
@@ -175,7 +172,7 @@ namespace timax { namespace rpc
 		void do_accept()
 		{
 			auto new_connection = std::make_shared<connection_t>(
-				this->shared_from_this(), io_service_pool_.get_io_service(), timeout_milli_);
+				this->shared_from_this(), io_service_pool_.get_ios_wrapper(), timeout_milli_);
 			acceptor_.async_accept(new_connection->socket(), [this, new_connection](boost::system::error_code ec)
 			{
 				if (ec)
@@ -224,12 +221,16 @@ namespace timax { namespace rpc
 		{
 			Codec codec;
 			auto buf = codec.pack(r);
-			conn->response(buf.data(), buf.size());
+			auto ctx = std::make_shared<context_t>(conn->head_, std::move(buf), [conn] { conn->read_head(); });
+			conn->response(ctx);
 		}
 
 		void default_after(connection_ptr conn)
 		{
 			conn->read_head();
+			// TODO response
+			//auto ctx = std::make_shared<context_t>(conn->head_, message_t{}, [conn] { conn->read_head(); });
+			//conn->response(ctx);
 		}
 
 		template <typename Ret, typename AF>
@@ -331,14 +332,14 @@ namespace timax { namespace rpc
 		};
 
 		friend class connection<Codec>;
-		io_service_pool io_service_pool_;
-		tcp::acceptor acceptor_;
-		std::shared_ptr<std::thread> thd_;
-		std::size_t timeout_milli_;
+		io_service_pool<Codec>						io_service_pool_;
+		tcp::acceptor								acceptor_;
+		std::shared_ptr<std::thread>				thd_;
+		std::size_t									timeout_milli_;
 
-		std::function<void(connection_t*)> handle_disconnect_;
+		std::function<void(connection_t*)>			handle_disconnect_;
 
-		std::multimap<std::string, sub_connection> conn_map_;
+		std::multimap<std::string, sub_connection>	conn_map_;
 		std::mutex mtx_;
 		//ThreadPool pool_;
 	};

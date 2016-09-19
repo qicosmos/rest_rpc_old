@@ -3,11 +3,12 @@
 namespace timax { namespace rpc 
 {
 	template <typename Decode>
-	connection<Decode>::connection(server_ptr server, boost::asio::io_service& io_service, std::size_t timeout_milli)
+	connection<Decode>::connection(server_ptr server, ios_wrapper_t& wrapper, std::size_t timeout_milli)
 		: server_(server)
-		, socket_(io_service)
+		, ios_wrapper_(wrapper)
+		, socket_(ios_wrapper_.get_ios())
 		, head_(), data_()
-		, timer_(io_service)
+		, timer_(ios_wrapper_.get_ios())
 		, timeout_milli_(timeout_milli)
 	{
 
@@ -133,90 +134,16 @@ namespace timax { namespace rpc
 	}
 
 	template <typename Decode>
+	void connection<Decode>::response(context_ptr& ctx)
+	{
+		ios_wrapper_.response(this->shared_from_this(), ctx);
+	}
+
+	template <typename Decode>
 	void connection<Decode>::set_no_delay()
 	{
 		boost::asio::ip::tcp::no_delay option(true);
 		boost::system::error_code ec;
 		socket_.set_option(option, ec);
-	}
-
-	template <typename Decode>
-	void connection<Decode>::response(const char* data, size_t size, result_code code)
-	{
-		if (size > MAX_BUF_LEN - HEAD_LEN)
-			throw std::overflow_error("the size is too big");
-
-		write(get_message(data, size, code));
-	}
-
-	template <typename Decode>
-	void connection<Decode>::response(std::string const& topic, char const* data, size_t size, result_code code)
-	{
-		write(get_message(topic, data, size, code));
-	}
-
-	template<typename Decode>
-	void connection<Decode>::response(std::shared_ptr<std::vector<char>> msgs)
-	{
-		auto self = this->shared_from_this();
-		boost::asio::async_write(socket_, boost::asio::buffer(*msgs), [this, self, msgs](boost::system::error_code ec, std::size_t length)
-		{
-			if (!ec)
-			{
-				g_succeed_count++;
-				read_head();
-			}
-			else
-			{
-				SPD_LOG_ERROR(ec.message().c_str());
-			}
-		});
-	}
-
-	template <typename Decode>
-	auto connection<Decode>::get_message(const char* data, size_t size, result_code code)
-		-> std::vector<boost::asio::const_buffer>
-	{
-		head_.code = static_cast<int16_t>(code);
-		head_.len = static_cast<uint32_t>(size);
-
-		return
-		{ 
-			boost::asio::buffer(&head_, sizeof(head_t)),
-			boost::asio::buffer(data, size)
-		};
-	}
-
-	template <typename Decode>
-	auto connection<Decode>::get_message(std::string const& topic, const char* data, size_t size, result_code code)
-		-> std::vector<boost::asio::const_buffer>
-	{
-		head_.code = static_cast<int16_t>(code);
-		head_.len = static_cast<uint32_t>(size + topic.size() + 1);
-
-		return
-		{
-			boost::asio::buffer(&head_, sizeof(head_t)),
-			boost::asio::buffer(topic),
-			boost::asio::buffer(data, size)
-		};
-	}
-
-	template <typename Decode>
-	void connection<Decode>::write(std::vector<boost::asio::const_buffer> const& message)
-	{
-		auto self = this->shared_from_this();
-		boost::asio::async_write(socket_, message, [this, self](boost::system::error_code ec, std::size_t length)
-		{
-			if (!ec)
-			{
-				g_succeed_count++;
-				read_head();
-			}
-			else
-			{
-				SPD_LOG_ERROR(ec.message().c_str());
-			}
-		});
 	}
 } }
