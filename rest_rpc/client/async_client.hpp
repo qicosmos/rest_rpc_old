@@ -104,6 +104,7 @@ namespace timax { namespace rpc
 		public:
 			using base_type = rpc_task_base<Ret>;
 			using result_type = Ret;
+			using context_ptr = typename base_type::context_ptr;
 
 		public:
 			rpc_task(client_ptr client, context_ptr ctx)
@@ -151,6 +152,7 @@ namespace timax { namespace rpc
 		public:
 			using base_type = rpc_task_base<void>;
 			using result_type = void;
+			using context_ptr = typename base_type::context_ptr;
 
 		public:
 			rpc_task(client_ptr client, context_ptr ctx)
