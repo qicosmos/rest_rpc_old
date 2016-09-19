@@ -21,6 +21,8 @@ include_directories(
 		${REST_RPC_DIRECTORY}
 		${REST_RPC_DIRECTORY}/Kapok
 		${REST_RPC_DIRECTORY}/spdlog/include
+		${REST_RPC_DIRECTORY}/msgpack/include
+        ${REST_RPC_DIRECTORY}/thread-pool-cpp/thread_pool
 		)
 SET(EXTRA_LIBS ${EXTRA_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 

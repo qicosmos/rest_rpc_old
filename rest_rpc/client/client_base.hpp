@@ -200,7 +200,7 @@ namespace timax { namespace rpc
 			
 			if (!base_type::check_head())
 			{
-				throw marshal_policy{}.unpack<exception>(recv_data(), head_t_->len);
+				//throw marshal_policy{}.unpack<exception>(recv_data(), head_t_->len);
 			}
 
 			// unpack the receive data
@@ -220,7 +220,7 @@ namespace timax { namespace rpc
 			if (!base_type::check_head())
 			{
 				base_type::receive_body();
-				throw marshal_policy{}.unpack<exception>(recv_data(), head_t_->len);
+				//throw marshal_policy{}.unpack<exception>(recv_data(), head_t_->len);
 			}
 		}
 
