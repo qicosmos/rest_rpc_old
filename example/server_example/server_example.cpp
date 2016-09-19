@@ -42,7 +42,7 @@ int main()
 	using server_t = timax::rpc::server<timax::rpc::msgpack_codec>;
 	server_t server{ port, pool_size };
 
-	server.register_handler("add", client::add, [](auto conn, int r) { std::cout << r << std::endl; });
+	server.register_handler("add", client::add, [](auto conn, int r) {});
 	server.register_handler("sub_add", client::add, [&server](auto conn, int r) { server.pub("sub_add", r); });
 	//server.async_register_handler("add", client::add, [](auto conn, int r) { std::cout << r << std::endl; });
 	//server.async_register_handler("sub_add", client::add, [&server](auto conn, int r) { server.pub("sub_add", r); });
