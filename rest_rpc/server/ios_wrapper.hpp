@@ -156,6 +156,10 @@ namespace timax { namespace rpc
 
 			if (!error)
 			{
+				// for test
+				g_succeed_count++;
+				// for test
+
 				// call the post function
 				context->apply_post_func();
 			}
@@ -174,6 +178,10 @@ namespace timax { namespace rpc
 
 			if (!error)
 			{
+				// for test
+				g_succeed_count++;
+				// for test
+
 				// call the post function
 				context->apply_post_func();
 			}
