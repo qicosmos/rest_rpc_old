@@ -54,7 +54,10 @@ namespace timax { namespace rpc
 		else
 		{
 			if (!calls_.push_call(ctx))
+			{
+				lock.unlock();
 				ctx->error(error_code::UNKNOWN);
+			}
 		}
 	}
 
@@ -83,9 +86,10 @@ namespace timax { namespace rpc
 		}
 		else
 		{
+			std::cout << "Numbers of request to call before move: "<< to_calls_.size() << std::endl;
 			calls_.task_calls_from_list(to_calls_);
 			lock.unlock();
-
+			std::cout << "Numbers of request to call after move: " << to_calls_.size() << std::endl;
 			call_impl1();
 		}
 	}
@@ -161,7 +165,7 @@ namespace timax { namespace rpc
 	{
 		using namespace std::chrono_literals;
 
-		hb_timer_.expires_from_now(1s);
+		hb_timer_.expires_from_now(5s);
 		hb_timer_.async_wait(boost::bind(&rpc_session::handle_heartbeat, this->shared_from_this(), boost::asio::placeholders::error));
 	}
 
@@ -258,17 +262,17 @@ namespace timax { namespace rpc
 	{
 		if (!error)
 		{
-			auto ctx = std::make_shared<context_t>();
-			call(ctx);
+			//auto ctx = std::make_shared<context_t>();
+			//call(ctx);
 			setup_heartbeat_timer();
 			// print queue size every seconds
 
-			//lock_t lock{ mutex_ };
-			//auto call_list_size = calls_.get_call_list_size();
-			//auto call_map_size = calls_.get_call_map_size();
-			//lock.unlock();
-			//
-			//std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
+			lock_t lock{ mutex_ };
+			auto call_list_size = calls_.get_call_list_size();
+			auto call_map_size = calls_.get_call_map_size();
+			lock.unlock();
+			
+			std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
 		}
 	}
 
