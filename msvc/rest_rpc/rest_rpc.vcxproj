@@ -19,13 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\rest_rpc\base\base64.hpp" />
-    <ClInclude Include="..\..\rest_rpc\base\bin_escape.h" />
     <ClInclude Include="..\..\rest_rpc\base\codec.hpp" />
     <ClInclude Include="..\..\rest_rpc\base\common.h" />
     <ClInclude Include="..\..\rest_rpc\base\consts.h" />
+    <ClInclude Include="..\..\rest_rpc\base\excetion.hpp" />
     <ClInclude Include="..\..\rest_rpc\base\function_traits.hpp" />
-    <ClInclude Include="..\..\rest_rpc\base\json_hex16.h" />
     <ClInclude Include="..\..\rest_rpc\base\log.hpp" />
     <ClInclude Include="..\..\rest_rpc\base\utils.hpp" />
     <ClInclude Include="..\..\rest_rpc\client.hpp" />

@@ -15,12 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\rest_rpc\base\base64.hpp">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\base\bin_escape.h">
-      <Filter>base</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\base\codec.hpp">
       <Filter>base</Filter>
     </ClInclude>
@@ -31,9 +25,6 @@
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\base\function_traits.hpp">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\base\json_hex16.h">
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\base\log.hpp">
@@ -90,6 +81,9 @@
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\server\ios_wrapper.hpp">
       <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\excetion.hpp">
+      <Filter>base</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

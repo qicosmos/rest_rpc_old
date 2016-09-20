@@ -202,7 +202,6 @@ namespace timax { namespace rpc
 			auto buffer = protocol.pack_args(codec_policy{}, std::forward<Args>(args)...);
 			
 			auto ctx = std::make_shared<rpc_context>(
-				std::is_void<result_type>::value,
 				endpoint,
 				protocol.name(),
 				std::move(buffer));
@@ -212,7 +211,7 @@ namespace timax { namespace rpc
 
 	private:
 
-		void call_impl(std::shared_ptr<rpc_context> ctx)
+		void call_impl(std::shared_ptr<rpc_context>& ctx)
 		{
 			rpc_manager_.call(ctx);
 		}

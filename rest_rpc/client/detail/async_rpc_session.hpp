@@ -9,7 +9,6 @@ namespace timax { namespace rpc
 		enum class status_t
 		{
 			stopped,
-			disable,
 			running,
 		};
 
@@ -23,13 +22,14 @@ namespace timax { namespace rpc
 		inline rpc_session(rpc_manager& mgr, io_service_t& ios, tcp::endpoint const& endpoint);
 		inline ~rpc_session();
 		inline void start();
-		inline void call(context_ptr ctx);
+		inline void call(context_ptr& ctx);
 
 	private:
 		inline void start_rpc_service();
 		inline void stop_rpc_service(error_code error);
-		inline void send_thread();
-		inline void call_impl(call_list_t to_calls);
+		inline void call_impl();
+		inline void call_impl(context_ptr& ctx);
+		inline void call_impl1();
 		inline void recv_head();
 		inline void recv_body();
 		inline void call_complete(uint32_t call_id, context_ptr ctx);
@@ -37,7 +37,8 @@ namespace timax { namespace rpc
 		inline void stop_rpc_calls(error_code error);
 
 	private:  // handlers
-		inline void handle_send(call_list_t to_calls, context_ptr ctx, boost::system::error_code const& error);
+		inline void handle_send_single(context_ptr ctx, boost::system::error_code const& error);
+		inline void handle_send_multiple(context_ptr ctx, boost::system::error_code const& error);
 		inline void handle_recv_head(boost::system::error_code const& error);
 		inline void handle_recv_body(uint32_t call_id, context_ptr ctx, boost::system::error_code const& error);
 		inline void handle_heartbeat(boost::system::error_code const& error);
@@ -47,11 +48,11 @@ namespace timax { namespace rpc
 		deadline_timer_t					hb_timer_;
 		async_connection					connection_;
 		rpc_call_container					calls_;
-		std::atomic<status_t>				running_status_;
-		std::atomic<bool>					is_calling_;
+		std::atomic<status_t>				status_;
+		bool								is_write_in_progress_;
 		head_t								head_;
 		mutable std::mutex					mutex_;
-		mutable std::condition_variable		cond_var_;
+		call_list_t							to_calls_;
 	};
 
 	class rpc_manager
@@ -64,7 +65,7 @@ namespace timax { namespace rpc
 
 	public:
 		inline explicit rpc_manager(io_service_t& ios);
-		inline void call(context_ptr ctx);
+		inline void call(context_ptr& ctx);
 
 	private:
 		inline session_ptr get_session(tcp::endpoint const& endpoint);

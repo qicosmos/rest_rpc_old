@@ -6,8 +6,8 @@ namespace timax { namespace rpc
 		: rpc_mgr_(mgr)
 		, hb_timer_(ios)
 		, connection_(ios, endpoint)
-		, running_status_(status_t::stopped)
-		, is_calling_(false)
+		, status_(status_t::running)
+		, is_write_in_progress_(false)
 	{
 	}
 
@@ -19,7 +19,6 @@ namespace timax { namespace rpc
 	void rpc_session::start()
 	{
 		auto self = this->shared_from_this();
-
 		connection_.start(
 			[this, self]		// when successfully connected
 		{ 
@@ -31,72 +30,71 @@ namespace timax { namespace rpc
 		});
 	}
 
-	void rpc_session::call(context_ptr ctx)
+	void rpc_session::call(context_ptr& ctx)
 	{
-		lock_t locker{ mutex_ };
-		calls_.push_call(ctx);
-		locker.unlock();
-		cond_var_.notify_one();
+		if (status_t::stopped == status_.load())
+		{
+			ctx->error(error_code::BADCONNECTION);
+			return;
+		}
+
+		lock_t lock{ mutex_ };
+		if (!is_write_in_progress_)
+		{
+			is_write_in_progress_ = true;
+			calls_.push_call_response(ctx);
+			lock.unlock();
+
+			call_impl(ctx);
+		}
+		else
+		{
+			calls_.push_call(ctx);
+		}
 	}
 
 	void rpc_session::start_rpc_service()
 	{
-		auto expected = status_t::stopped;
-		if (running_status_.compare_exchange_strong(expected, status_t::running))
-		{
-			recv_head();
-			setup_heartbeat_timer();
-			std::thread{ boost::bind(&rpc_session::send_thread, this->shared_from_this()) }.detach();
-		}
+		recv_head();
+		setup_heartbeat_timer();
 	}
 
 	void rpc_session::stop_rpc_service(error_code error)
 	{
-		auto expected = status_t::running;
-		if (running_status_.compare_exchange_strong(expected, status_t::disable))
-		{
-			cond_var_.notify_one();
-			stop_rpc_calls(error);
-		}
+		status_ = status_t::stopped;
+		stop_rpc_calls(error);
 	}
 
-	void rpc_session::send_thread()
+	void rpc_session::call_impl()
 	{
-		while (running_status_.load() == status_t::running)
+		lock_t lock{ mutex_ };
+		if (calls_.call_list_empty())
 		{
-			lock_t locker{ mutex_ };
-			cond_var_.wait(locker, [this]
-			{
-				return (!calls_.call_list_empty() && !is_calling_.load()) ||
-					(running_status_.load() != status_t::running);
-			});
-
-			if (running_status_.load() != status_t::running)
-				return;
-
-			call_list_t to_calls;
-			calls_.task_calls_from_list(to_calls);
-			locker.unlock();
-
-			is_calling_.store(true);
-			call_impl(std::move(to_calls));
-		}
-	}
-
-	void rpc_session::call_impl(call_list_t to_calls)
-	{
-		if (running_status_.load() == status_t::disable || to_calls.empty())
-		{
-			is_calling_.store(false);
+			is_write_in_progress_ = false;
+			return;
 		}
 		else
 		{
-			auto to_call = to_calls.front();
-			to_calls.pop_front();
+			calls_.task_calls_from_list(to_calls_);
+			lock.unlock();
 
-			async_write(connection_.socket(), to_call->get_send_message(),
-				boost::bind(&rpc_session::handle_send, this->shared_from_this(), std::move(to_calls), to_call, boost::asio::placeholders::error));
+			call_impl1();
 		}
+	}
+
+	void rpc_session::call_impl(context_ptr& ctx)
+	{
+		async_write(connection_.socket(), ctx->get_send_message(), boost::bind(&rpc_session::handle_send_single,
+			this->shared_from_this(), ctx, boost::asio::placeholders::error));
+	}
+
+	void rpc_session::call_impl1()
+	{
+		context_ptr to_call = std::move(to_calls_.front());
+		to_calls_.pop_front();
+
+		async_write(connection_.socket(), to_call->get_send_message(),
+			boost::bind(&rpc_session::handle_send_multiple, this->shared_from_this(), to_call, boost::asio::placeholders::error));
 	}
 
 	void rpc_session::recv_head()
@@ -127,8 +125,10 @@ namespace timax { namespace rpc
 
 	void rpc_session::call_complete(uint32_t call_id, context_ptr ctx)
 	{
+		recv_head();
+
 		{
-			lock_t locker{ mutex_ };
+			lock_t lock{ mutex_ };
 			calls_.remove_call_from_map(call_id);
 		}
 
@@ -159,31 +159,49 @@ namespace timax { namespace rpc
 		for (auto& elem : to_responses)
 		{
 			auto ctx = elem.second;
-			// TODO
 			ctx->error(error);
 		}
 
 		rpc_mgr_.remove_session(connection_.endpoint());
 	}
 
-	void rpc_session::handle_send(call_list_t to_calls, context_ptr ctx, boost::system::error_code const& error)
+	void rpc_session::handle_send_single(context_ptr ctx, boost::system::error_code const& error)
 	{
+		if (!connection_.socket().is_open())
+			return;
+
+		ctx.reset();
+
 		if (!error)
 		{
-			//if (ctx->is_void)
-			//{
-			//	{
-			//		lock_t locker{ mutex_ };
-			//		calls_.remove_call_from_map(ctx->head.id);
-			//	}
-			//	ctx->ok();
-			//}
-
-			call_impl(std::move(to_calls));
+			call_impl();
 		}
 		else
 		{
-			// TODO log
+			stop_rpc_service(error_code::BADCONNECTION);
+		}
+	}
+
+	void rpc_session::handle_send_multiple(context_ptr ctx, boost::system::error_code const& error)
+	{
+		if (!connection_.socket().is_open())
+			return;
+
+		ctx.reset();
+
+		if (!error)
+		{
+			if (to_calls_.empty())
+			{
+				call_impl();
+			}
+			else
+			{
+				call_impl1();
+			}
+		}
+		else
+		{
 			stop_rpc_service(error_code::BADCONNECTION);
 		}
 	}
@@ -218,10 +236,7 @@ namespace timax { namespace rpc
 	{
 		if (!error)
 		{
-			lock_t locker{ mutex_ };
-			if (calls_.call_list_empty())
-				calls_.push_call(std::make_shared<context_t>());
-
+			call(std::make_shared<context_t>());
 			setup_heartbeat_timer();
 		}
 	}
@@ -230,7 +245,7 @@ namespace timax { namespace rpc
 		: ios_(ios)
 	{}
 
-	void rpc_manager::call(context_ptr ctx)
+	void rpc_manager::call(context_ptr& ctx)
 	{
 		get_session(ctx->endpoint)->call(ctx);
 	}

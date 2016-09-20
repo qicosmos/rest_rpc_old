@@ -9,12 +9,10 @@ namespace timax { namespace rpc
 		using on_error_function_t = std::function<void(exception const&)>;
 
 		rpc_context(
-			bool is_void_return,
 			tcp::endpoint endpoint,
 			std::string const& name,
 			std::vector<char>&& request)
-			: is_void(is_void_return)
-			, endpoint(endpoint)
+			: endpoint(endpoint)
 			, name(name)
 			, req(std::move(request))
 		{
@@ -26,7 +24,6 @@ namespace timax { namespace rpc
 		}
 
 		rpc_context()
-			: is_void(true)
 		{
 			std::memset(&head, 0, sizeof(head_t));
 		}
@@ -96,7 +93,6 @@ namespace timax { namespace rpc
 
 		//deadline_timer_t					timeout;	// 先不管超时
 		head_t								head;
-		bool								is_void;
 		tcp::endpoint						endpoint;
 		std::string							name;
 		std::vector<char>					req;		// request buffer
@@ -122,12 +118,20 @@ namespace timax { namespace rpc
 		{
 		}
 
-		void push_call(context_ptr ctx)
+		void push_call(context_ptr& ctx)
 		{
-			auto call_id = ++call_id_;
-			ctx->get_head().id = call_id;
-			call_map_.emplace(call_id, ctx);
+			push_call_response(ctx);
 			call_list_.push_back(ctx);
+		}
+
+		void push_call_response(context_ptr& ctx)
+		{
+			if (ctx->req.size() > 0)
+			{
+				auto call_id = ++call_id_;
+				ctx->get_head().id = call_id;
+				call_map_.emplace(call_id, ctx);
+			}
 		}
 
 		void task_calls_from_list(call_list_t& to_calls)

@@ -17,7 +17,7 @@ int main()
 
 	// get the server endpoint 
 	auto endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 9000);
-	
+	//
 	// test bench
 	while (true)
 	{

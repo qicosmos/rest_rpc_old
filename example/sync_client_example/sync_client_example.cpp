@@ -398,6 +398,12 @@ int main(void)
 	sync_client client;
 	client.connect(cfg.hostname, cfg.port);
 
+
+	while (true)
+	{
+		client.call(client::add, 1, 2);
+	}
+
 	try
 	{
 		auto result = client.call(client::add, 1, 2);
