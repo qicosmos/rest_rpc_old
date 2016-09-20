@@ -2,14 +2,16 @@
 
 namespace timax { namespace rpc 
 {
+	template <typename CodecPolicy>
 	struct rpc_context
 	{
+		using codec_policy = CodecPolicy;
 		using success_function_t = std::function<void(char const*, size_t)>;
 		using error_function_t = std::function<void(error_code, char const*, size_t)>;
 		using on_error_function_t = std::function<void(exception const&)>;
 
 		rpc_context(
-			tcp::endpoint endpoint,
+			tcp::endpoint const& endpoint,
 			std::string const& name,
 			std::vector<char>&& request)
 			: endpoint(endpoint)
@@ -65,7 +67,13 @@ namespace timax { namespace rpc
 
 		void error(error_code errcode)
 		{
-			error_func(errcode, rep.data(), rep.size());
+			err.set_code(errcode);
+			if (error_code::FAIL == errcode)
+			{
+				codec_policy cp{};
+				auto error_message = cp.template unpack<std::string>(rep.data(), rep.size());
+				err.set_message(std::move(error_message));
+			}
 
 			if (on_error)
 				on_error(err);
@@ -104,10 +112,12 @@ namespace timax { namespace rpc
 		std::unique_ptr<result_barrier>		barrier;
 	};
 
+	template <typename CodecPolicy>
 	class rpc_call_container
 	{
 	public:
-		using context_t = rpc_context;
+		using codec_policy = CodecPolicy;
+		using context_t = rpc_context<codec_policy>;
 		using context_ptr = std::shared_ptr<context_t>;
 		using call_map_t = std::map<uint32_t, context_ptr>;
 		using call_list_t = std::list<context_ptr>;

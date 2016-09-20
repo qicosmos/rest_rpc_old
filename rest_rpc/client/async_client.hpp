@@ -20,6 +20,8 @@ namespace timax { namespace rpc
 		using lock_t = std::unique_lock<std::mutex>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
 		//using sub_session_container = std::map<std::string, std::shared_ptr<sub_session>>;
+		using context_t = rpc_context<codec_policy>;
+		using context_ptr = std::shared_ptr<context_t>;
 
 		/******************* wrap context with type information *********************/
 		template <typename Ret>
@@ -30,7 +32,7 @@ namespace timax { namespace rpc
 		{
 		public:
 			using result_type = Ret;
-			using context_ptr = rpc_session::context_ptr;
+			using context_ptr = typename rpc_session<codec_policy>::context_ptr;
 
 		public:
 			rpc_task_base(client_ptr client, context_ptr ctx)
@@ -38,7 +40,6 @@ namespace timax { namespace rpc
 				, ctx_(ctx)
 				, dismiss_(false)
 			{
-				set_error_function();
 			}
 
 			~rpc_task_base()
@@ -75,20 +76,6 @@ namespace timax { namespace rpc
 					client->call_impl(ctx_);
 					ctx_->wait();
 				}
-			}
-
-			void set_error_function()
-			{
-				ctx_->error_func = [ctx = ctx_](error_code code, char const* data, size_t size)
-				{
-					if (error_code::FAIL == code)
-					{
-						codec_policy codec{};
-						ctx->err.set_message(std::move(
-							codec.template unpack<std::string>(data, size)));
-					}
-					ctx->err.set_code(code);
-				};
 			}
 
 		protected:
@@ -200,7 +187,7 @@ namespace timax { namespace rpc
 			using result_type = typename Protocol::result_type;
 			auto buffer = protocol.pack_args(codec_policy{}, std::forward<Args>(args)...);
 			
-			auto ctx = std::make_shared<rpc_context>(
+			auto ctx = std::make_shared<context_t>(
 				endpoint,
 				protocol.name(),
 				std::move(buffer));
@@ -210,7 +197,7 @@ namespace timax { namespace rpc
 
 	private:
 
-		void call_impl(std::shared_ptr<rpc_context>& ctx)
+		void call_impl(std::shared_ptr<context_t>& ctx)
 		{
 			rpc_manager_.call(ctx);
 		}
@@ -219,6 +206,6 @@ namespace timax { namespace rpc
 		io_service_t				ios_;
 		work_ptr					ios_work_;
 		std::thread					ios_run_thread_;
-		rpc_manager					rpc_manager_;
+		rpc_manager<codec_policy>	rpc_manager_;
 	};
 } }

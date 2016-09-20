@@ -2,9 +2,11 @@
 
 namespace timax { namespace rpc
 {
+	template <typename CodecPolicy>
 	class rpc_manager;
 
-	class rpc_session : public std::enable_shared_from_this<rpc_session>
+	template <typename CodecPolicy>
+	class rpc_session : public std::enable_shared_from_this<rpc_session<CodecPolicy>>
 	{
 		enum class status_t
 		{
@@ -13,13 +15,16 @@ namespace timax { namespace rpc
 		};
 
 	public:
-		using context_t = rpc_call_container::context_t;
-		using context_ptr = rpc_call_container::context_ptr;
-		using call_list_t = rpc_call_container::call_list_t;
-		using call_map_t = rpc_call_container::call_map_t;
+		using codec_policy = CodecPolicy;
+		using rpc_manager_t = rpc_manager<codec_policy>;
+		using rpc_call_container_t = rpc_call_container<codec_policy>;
+		using context_t = typename rpc_call_container_t::context_t;
+		using context_ptr = typename rpc_call_container_t::context_ptr;
+		using call_list_t = typename rpc_call_container_t::call_list_t;
+		using call_map_t = typename rpc_call_container_t::call_map_t;
 			
 	public:
-		inline rpc_session(rpc_manager& mgr, io_service_t& ios, tcp::endpoint const& endpoint);
+		inline rpc_session(rpc_manager_t& mgr, io_service_t& ios, tcp::endpoint const& endpoint);
 		inline ~rpc_session();
 		inline void start();
 		inline void call(context_ptr& ctx);
@@ -44,24 +49,30 @@ namespace timax { namespace rpc
 		inline void handle_heartbeat(boost::system::error_code const& error);
 
 	private:
-		rpc_manager&						rpc_mgr_;
+		rpc_manager_t&						rpc_mgr_;
 		steady_timer_t						hb_timer_;
 		async_connection					connection_;
-		rpc_call_container					calls_;
+		rpc_call_container_t				calls_;
 		std::atomic<status_t>				status_;
 		bool								is_write_in_progress_;
 		head_t								head_;
 		mutable std::mutex					mutex_;
 		call_list_t							to_calls_;
 	};
-
+	
+	template <typename CodecPolicy>
 	class rpc_manager
 	{
+		template <typename CodecPolicy>
 		friend class rpc_session;
+
 	public:
-		using session_map_t = std::map<tcp::endpoint, std::shared_ptr<rpc_session>>;
-		using session_ptr = std::shared_ptr<rpc_session>;
-		using context_ptr = rpc_session::context_ptr;
+		using codec_policy = CodecPolicy;
+		using rpc_session_t = rpc_session<codec_policy>;
+		using session_map_t = std::map<tcp::endpoint, std::shared_ptr<rpc_session_t>>;
+		using session_ptr = std::shared_ptr<rpc_session_t>;
+		using context_ptr = typename rpc_session_t::context_ptr;
+		using context_t = typename rpc_session_t::context_t;
 
 	public:
 		inline explicit rpc_manager(io_service_t& ios);
