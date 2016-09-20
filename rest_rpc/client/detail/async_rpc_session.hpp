@@ -63,7 +63,7 @@ namespace timax { namespace rpc
 	template <typename CodecPolicy>
 	class rpc_manager
 	{
-		template <typename CodecPolicy>
+		template <typename>
 		friend class rpc_session;
 
 	public:
