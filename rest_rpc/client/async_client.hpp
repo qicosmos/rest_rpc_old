@@ -79,18 +79,15 @@ namespace timax { namespace rpc
 
 			void set_error_function()
 			{
-				auto ctx_ptr = ctx_.get();
-				ctx_ptr->error_func = [ctx_ptr](error_code code, char const* data, size_t size)
+				ctx_->error_func = [ctx = ctx_](error_code code, char const* data, size_t size)
 				{
-					//std::cout << "enter error function" << std::endl;
 					if (error_code::FAIL == code)
 					{
 						codec_policy codec{};
-						ctx_ptr->err.set_message(std::move(
+						ctx->err.set_message(std::move(
 							codec.template unpack<std::string>(data, size)));
 					}
-					ctx_ptr->err.set_code(code);
-					//std::cout << "leave error function" << std::endl;
+					ctx->err.set_code(code);
 				};
 			}
 
