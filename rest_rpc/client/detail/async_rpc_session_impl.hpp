@@ -258,17 +258,17 @@ namespace timax { namespace rpc
 	{
 		if (!error)
 		{
-			auto ctx = std::make_shared<context_t>();
-			call(ctx);
+			//auto ctx = std::make_shared<context_t>();
+			//call(ctx);
 			setup_heartbeat_timer();
 			// print queue size every seconds
 
-			//lock_t lock{ mutex_ };
-			//auto call_list_size = calls_.get_call_list_size();
-			//auto call_map_size = calls_.get_call_map_size();
-			//lock.unlock();
-			//
-			//std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
+			lock_t lock{ mutex_ };
+			auto call_list_size = calls_.get_call_list_size();
+			auto call_map_size = calls_.get_call_map_size();
+			lock.unlock();
+			
+			std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
 		}
 	}
 
