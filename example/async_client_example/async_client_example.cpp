@@ -21,7 +21,16 @@ int main()
 	// test bench
 	while (true)
 	{
-		client->call(endpoint, client::add, 1, 2);
+		client->call(endpoint, client::add, 1, 2).when_error([](timax::rpc::exception const& error)
+		{
+			// process error
+			if (error.get_error_code() == timax::rpc::error_code::FAIL)
+				std::cout << error.get_error_message() << std::endl;
+			else if (error.get_error_code() == timax::rpc::error_code::BADCONNECTION)
+			{
+				std::cout << "BADCONNECTION" << std::endl;
+			}
+		});
 	}
 
 	// call an rpc
