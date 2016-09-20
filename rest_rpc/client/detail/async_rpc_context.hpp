@@ -65,12 +65,12 @@ namespace timax { namespace rpc
 
 		void error(error_code errcode)
 		{
-			std::cout << "pre error function" << std::endl;
+			//std::cout << "pre error function" << std::endl;
 			error_func(errcode, rep.data(), rep.size());
-			std::cout << "post error function" << std::endl;
+			//std::cout << "post error function" << std::endl;
 
-			if (on_error)
-				on_error(err);
+			//if (on_error)
+			//	on_error(err);
 
 			if (nullptr != barrier)
 				barrier->notify();
