@@ -82,6 +82,7 @@ namespace timax { namespace rpc
 				auto ctx_ptr = ctx_.get();
 				ctx_ptr->error_func = [ctx_ptr](error_code code, char const* data, size_t size)
 				{
+					std::cout << "enter error function" << std::endl;
 					if (error_code::FAIL == code)
 					{
 						codec_policy codec{};
@@ -89,6 +90,7 @@ namespace timax { namespace rpc
 							codec.template unpack<std::string>(data, size)));
 					}
 					ctx_ptr->err.set_code(code);
+					std::cout << "leave error function" << std::endl;
 				};
 			}
 
