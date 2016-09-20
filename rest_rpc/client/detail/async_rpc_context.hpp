@@ -115,13 +115,18 @@ namespace timax { namespace rpc
 	public:
 		rpc_call_container()
 			: call_id_(0)
+			, max_size_(1048576)
 		{
 		}
 
-		void push_call(context_ptr& ctx)
+		bool push_call(context_ptr& ctx)
 		{
+			if (call_map_.size() > max_size_)
+				return false;
+
 			push_call_response(ctx);
 			call_list_.push_back(ctx);
+			return true;
 		}
 
 		void push_call_response(context_ptr& ctx)
@@ -164,9 +169,20 @@ namespace timax { namespace rpc
 			call_map = std::move(call_map_);
 		}
 
+		size_t get_call_list_size() const
+		{
+			return call_list_.size();
+		}
+
+		size_t get_call_map_size() const
+		{
+			return call_map_.size();
+		}
+
 	private:
 		call_map_t				call_map_;
 		call_list_t				call_list_;
 		uint32_t				call_id_;
+		size_t					max_size_;
 	};
 } }

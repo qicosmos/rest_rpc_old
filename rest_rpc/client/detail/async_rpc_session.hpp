@@ -32,7 +32,7 @@ namespace timax { namespace rpc
 		inline void call_impl1();
 		inline void recv_head();
 		inline void recv_body();
-		inline void call_complete(uint32_t call_id, context_ptr ctx);
+		inline void call_complete(uint32_t call_id, context_ptr& ctx);
 		inline void setup_heartbeat_timer();
 		inline void stop_rpc_calls(error_code error);
 
@@ -45,7 +45,7 @@ namespace timax { namespace rpc
 
 	private:
 		rpc_manager&						rpc_mgr_;
-		deadline_timer_t					hb_timer_;
+		steady_timer_t						hb_timer_;
 		async_connection					connection_;
 		rpc_call_container					calls_;
 		std::atomic<status_t>				status_;

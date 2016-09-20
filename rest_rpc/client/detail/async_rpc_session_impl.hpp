@@ -49,7 +49,8 @@ namespace timax { namespace rpc
 		}
 		else
 		{
-			calls_.push_call(ctx);
+			if (!calls_.push_call(ctx))
+				ctx->error(error_code::UNKNOWN);
 		}
 	}
 
@@ -123,14 +124,9 @@ namespace timax { namespace rpc
 		}
 	}
 
-	void rpc_session::call_complete(uint32_t call_id, context_ptr ctx)
+	void rpc_session::call_complete(uint32_t call_id, context_ptr& ctx)
 	{
 		recv_head();
-
-		{
-			lock_t lock{ mutex_ };
-			calls_.remove_call_from_map(call_id);
-		}
 
 		auto rcode = static_cast<result_code>(head_.code);
 		if (result_code::OK == rcode)
@@ -141,11 +137,18 @@ namespace timax { namespace rpc
 		{
 			ctx->error(error_code::FAIL);
 		}
+
+		{
+			lock_t lock{ mutex_ };
+			calls_.remove_call_from_map(call_id);
+		}
 	}
 
 	void rpc_session::setup_heartbeat_timer()
 	{
-		hb_timer_.expires_from_now(boost::posix_time::seconds{ 15 });
+		using namespace std::chrono_literals;
+
+		hb_timer_.expires_from_now(1s);
 		hb_timer_.async_wait(boost::bind(&rpc_session::handle_heartbeat, this->shared_from_this(), boost::asio::placeholders::error));
 	}
 
@@ -236,8 +239,17 @@ namespace timax { namespace rpc
 	{
 		if (!error)
 		{
-			call(std::make_shared<context_t>());
+			auto ctx = std::make_shared<context_t>();
+			call(ctx);
 			setup_heartbeat_timer();
+			// print queue size every seconds
+
+			//lock_t lock{ mutex_ };
+			//auto call_list_size = calls_.get_call_list_size();
+			//auto call_map_size = calls_.get_call_map_size();
+			//lock.unlock();
+			//
+			//std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
 		}
 	}
 
