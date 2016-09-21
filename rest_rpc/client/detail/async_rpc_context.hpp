@@ -123,7 +123,7 @@ namespace timax { namespace rpc
 		using call_list_t = std::list<context_ptr>;
 
 	public:
-		explicit rpc_call_container(size_t max_size = 10240)
+		explicit rpc_call_container(size_t max_size = MAX_QUEUE_SIZE)
 			: call_id_(0)
 			, max_size_(max_size)
 		{
