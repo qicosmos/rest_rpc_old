@@ -42,22 +42,27 @@ namespace timax { namespace rpc
 			return;
 		}
 
-		lock_t lock{ mutex_ };
-		if (!is_write_in_progress_)
+		bool empty = false;
 		{
-			is_write_in_progress_ = true;
-			calls_.push_call_response(ctx);
-			lock.unlock();
-
-			call_impl(ctx);
-		}
-		else
-		{
+			lock_t lock{ mutex_ };
+			empty = calls_.call_list_empty();
 			if (!calls_.push_call(ctx))
 			{
 				lock.unlock();
 				ctx->error(error_code::UNKNOWN);
 			}
+		}
+
+		if (empty)
+		{
+			auto self = this->shared_from_this();
+			rpc_mgr_.get_io_service().post([self, this]
+			{
+				if (to_calls_.empty())
+				{
+					call_impl();
+				}
+			});
 		}
 	}
 
@@ -79,36 +84,21 @@ namespace timax { namespace rpc
 	void rpc_session<CodecPolicy>::call_impl()
 	{
 		lock_t lock{ mutex_ };
-		if (calls_.call_list_empty())
+		if (!calls_.call_list_empty())
 		{
-			is_write_in_progress_ = false;
-			return;
-		}
-		else
-		{
-			std::cout << "Numbers of request to call before move: "<< to_calls_.size() << std::endl;
 			calls_.task_calls_from_list(to_calls_);
 			lock.unlock();
-			std::cout << "Numbers of request to call after move: " << to_calls_.size() << std::endl;
 			call_impl1();
 		}
 	}
-
-	template <typename CodecPolicy>
-	void rpc_session<CodecPolicy>::call_impl(context_ptr& ctx)
-	{
-		async_write(connection_.socket(), ctx->get_send_message(), boost::bind(&rpc_session::handle_send_single,
-			this->shared_from_this(), ctx, boost::asio::placeholders::error));
-	}
-
+	
 	template <typename CodecPolicy>
 	void rpc_session<CodecPolicy>::call_impl1()
 	{
-		context_ptr to_call = std::move(to_calls_.front());
-		to_calls_.pop_front();
+		auto& to_call = to_calls_.front();
 
 		async_write(connection_.socket(), to_call->get_send_message(),
-			boost::bind(&rpc_session::handle_send_multiple, this->shared_from_this(), to_call, boost::asio::placeholders::error));
+			boost::bind(&rpc_session::handle_send, this->shared_from_this(), boost::asio::placeholders::error));
 	}
 
 	template <typename CodecPolicy>
@@ -187,30 +177,12 @@ namespace timax { namespace rpc
 	}
 
 	template <typename CodecPolicy>
-	void rpc_session<CodecPolicy>::handle_send_single(context_ptr ctx, boost::system::error_code const& error)
+	void rpc_session<CodecPolicy>::handle_send(boost::system::error_code const& error)
 	{
 		if (!connection_.socket().is_open())
 			return;
 
-		ctx.reset();
-
-		if (!error)
-		{
-			call_impl();
-		}
-		else
-		{
-			stop_rpc_service(error_code::BADCONNECTION);
-		}
-	}
-
-	template <typename CodecPolicy>
-	void rpc_session<CodecPolicy>::handle_send_multiple(context_ptr ctx, boost::system::error_code const& error)
-	{
-		if (!connection_.socket().is_open())
-			return;
-
-		ctx.reset();
+		to_calls_.pop_front();
 
 		if (!error)
 		{
@@ -285,6 +257,12 @@ namespace timax { namespace rpc
 	void rpc_manager<CodecPolicy>::call(context_ptr& ctx)
 	{
 		get_session(ctx->endpoint)->call(ctx);
+	}
+
+	template <typename CodecPolicy>
+	io_service_t& rpc_manager<CodecPolicy>::get_io_service()
+	{
+		return ios_;
 	}
 
 	template <typename CodecPolicy>

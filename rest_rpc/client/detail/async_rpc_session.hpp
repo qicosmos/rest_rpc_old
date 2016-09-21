@@ -33,7 +33,6 @@ namespace timax { namespace rpc
 		inline void start_rpc_service();
 		inline void stop_rpc_service(error_code error);
 		inline void call_impl();
-		inline void call_impl(context_ptr& ctx);
 		inline void call_impl1();
 		inline void recv_head();
 		inline void recv_body();
@@ -42,8 +41,7 @@ namespace timax { namespace rpc
 		inline void stop_rpc_calls(error_code error);
 
 	private:  // handlers
-		inline void handle_send_single(context_ptr ctx, boost::system::error_code const& error);
-		inline void handle_send_multiple(context_ptr ctx, boost::system::error_code const& error);
+		inline void handle_send(boost::system::error_code const& error);
 		inline void handle_recv_head(boost::system::error_code const& error);
 		inline void handle_recv_body(uint32_t call_id, context_ptr ctx, boost::system::error_code const& error);
 		inline void handle_heartbeat(boost::system::error_code const& error);
@@ -77,6 +75,7 @@ namespace timax { namespace rpc
 	public:
 		inline explicit rpc_manager(io_service_t& ios);
 		inline void call(context_ptr& ctx);
+		inline io_service_t& get_io_service();
 
 	private:
 		inline session_ptr get_session(tcp::endpoint const& endpoint);
