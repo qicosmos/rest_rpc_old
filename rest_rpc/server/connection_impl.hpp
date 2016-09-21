@@ -110,11 +110,15 @@ namespace timax { namespace rpc
 			async_read(socket_, boost::asio::buffer(usual_read_buffer_.data(), head_.len),
 				boost::bind(&connection::handle_read_body, this->shared_from_this(), asio_error));
 		}
+		else if(head_.len <= MAX_BUF_LEN)
+		{
+			std::vector<char> read_buffer(head_.len, 0);
+			async_read(socket_, boost::asio::buffer(read_buffer.data(), read_buffer.size()), boost::bind(
+				&connection::handle_read_body_pages, this->shared_from_this(), std::move(read_buffer), asio_error));
+			//socket_.close();
+		}
 		else
 		{
-			//std::vector<char> read_buffer(head_.len, 0);
-			//async_read(socket_, boost::asio::buffer(read_buffer.data(), read_buffer.size()), boost::bind(
-			//	&connection::handle_read_body_pages, this->shared_from_this(), std::move(read_buffer), asio_error));
 			socket_.close();
 		}
 	}

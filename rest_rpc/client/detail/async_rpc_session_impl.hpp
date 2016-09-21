@@ -121,7 +121,7 @@ namespace timax { namespace rpc
 			{
 				call_complete(call_ctx);
 			}
-			else if (head_.len > PAGE_SIZE)
+			else if (head_.len > MAX_BUF_LEN)
 			{
 				stop_rpc_service(error_code::UNKNOWN);
 				connection_.socket().close();
@@ -239,12 +239,12 @@ namespace timax { namespace rpc
 			setup_heartbeat_timer();
 			// print queue size every seconds
 
-			lock_t lock{ mutex_ };
-			auto call_list_size = calls_.get_call_list_size();
-			auto call_map_size = calls_.get_call_map_size();
-			lock.unlock();
+			//lock_t lock{ mutex_ };
+			//auto call_list_size = calls_.get_call_list_size();
+			//auto call_map_size = calls_.get_call_map_size();
+			//lock.unlock();
 			
-			std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
+			//std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
 		}
 	}
 

@@ -99,7 +99,7 @@ namespace timax { namespace rpc
 			return nullptr != barrier && barrier->complete();
 		}
 
-		//deadline_timer_t					timeout;	// ÏÈ²»¹Ü³¬Ê±
+		//deadline_timer_t					timeout;	// ï¿½È²ï¿½ï¿½Ü³ï¿½Ê±
 		head_t								head;
 		tcp::endpoint						endpoint;
 		std::string							name;
@@ -123,9 +123,9 @@ namespace timax { namespace rpc
 		using call_list_t = std::list<context_ptr>;
 
 	public:
-		rpc_call_container()
+		explicit rpc_call_container(size_t max_size = 10240)
 			: call_id_(0)
-			, max_size_(1048576)
+			, max_size_(max_size)
 		{
 		}
 
