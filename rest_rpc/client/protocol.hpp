@@ -3,6 +3,7 @@
 #include <boost/type_traits.hpp>
 
 #define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::timax::rpc::protocol_define<func_type> handler{ #handler }
+#define TIMAX_DEFINE_SUB_PROTOCOL(handler, type) static const ::timax::rpc::sub_protocol<type> handler{ #handler }
 
 namespace timax { namespace rpc
 {
@@ -93,7 +94,38 @@ namespace timax { namespace rpc
 		}
 	};
 
+	template <typename T>
+	struct sub_protocol
+	{
+		using result_type = T;
+		
+		explicit sub_protocol(std::string topic_name)
+			: topic_(std::move(topic_name))
+		{}
+
+		template <typename CodecPolicy>
+		auto pack(CodecPolicy& cp) const
+		{
+			return cp.pack(topic_);
+		}
+
+		template <typename CodecPolicy>
+		result_type unpack(CodecPolicy& cp, char const* data, size_t size) const
+		{
+			return cp.template unpack<result_type>(data, size);
+		}
+
+		auto const& name() const noexcept
+		{
+			return topic_;
+		}
+
+	private:
+		std::string topic_;
+	};
+
+	template <>
+	struct sub_protocol<void>;
+
 	TIMAX_DEFINE_PROTOCOL(sub_topic, std::string(std::string const&));
-	TIMAX_DEFINE_PROTOCOL(sub_confirm, void());
-	TIMAX_DEFINE_PROTOCOL(cancel_sub, void());
 } }

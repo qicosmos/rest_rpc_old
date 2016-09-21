@@ -5,6 +5,7 @@ namespace client
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(foo, void(std::string, double));
+	TIMAX_DEFINE_SUB_PROTOCOL(sub_div, int);
 }
 
 
@@ -57,6 +58,8 @@ int main()
 	//	if (error.get_error_code() == timax::rpc::error_code::FAIL)
 	//		std::cout << error.get_error_message() << std::endl;
 	//});
+
+	client->sub(endpoint, client::sub_div, [](int r) { std::cout << r << std::endl; });
 
 	std::getchar();
 	return 0;

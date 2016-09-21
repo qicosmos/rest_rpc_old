@@ -7,21 +7,23 @@
 #include "detail/async_rpc_session_impl.hpp"
 // for rpc in async client
 
-//#include "detail/async_sub_session.hpp"
+#include "detail/async_sub_session.hpp"
 
 namespace timax { namespace rpc
 {
-	template <typename Codec>
-	class async_client : public std::enable_shared_from_this<async_client<Codec>>
+	template <typename CodecPolicy>
+	class async_client : public std::enable_shared_from_this<async_client<CodecPolicy>>
 	{
 		using client_ptr = std::shared_ptr<async_client>;
 		using client_weak = std::weak_ptr<async_client>;
-		using codec_policy = Codec;
+		using codec_policy = CodecPolicy;
 		using lock_t = std::unique_lock<std::mutex>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
-		//using sub_session_container = std::map<std::string, std::shared_ptr<sub_session>>;
 		using context_t = rpc_context<codec_policy>;
 		using context_ptr = std::shared_ptr<context_t>;
+
+		using rpc_manager_t = rpc_manager<codec_policy>;
+		using sub_manager_t = sub_manager<codec_policy>;
 
 		/******************* wrap context with type information *********************/
 		template <typename Ret>
@@ -169,6 +171,7 @@ namespace timax { namespace rpc
 			, ios_work_(std::make_unique<io_service_t::work>(ios_))
 			, ios_run_thread_(boost::bind(&io_service_t::run, &ios_))
 			, rpc_manager_(ios_)
+			, sub_manager_(ios_)
 		{
 		}
 
@@ -195,6 +198,18 @@ namespace timax { namespace rpc
 			return rpc_task<result_type>{ this->shared_from_this(), ctx };
 		}
 
+		template <typename Protocol, typename Func>
+		void sub(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func)
+		{
+			sub_manager_.sub(endpoint, protocol, std::forward<Func>(func));
+		}
+
+		template <typename Protocol, typename Func>
+		void remove_sub(tcp::endpoint const& endpoint, Protocol const& protocol)
+		{
+			// TODO - to implement
+		}
+
 	private:
 
 		void call_impl(std::shared_ptr<context_t>& ctx)
@@ -206,6 +221,7 @@ namespace timax { namespace rpc
 		io_service_t				ios_;
 		work_ptr					ios_work_;
 		std::thread					ios_run_thread_;
-		rpc_manager<codec_policy>	rpc_manager_;
+		rpc_manager_t				rpc_manager_;
+		sub_manager_t				sub_manager_;
 	};
 } }

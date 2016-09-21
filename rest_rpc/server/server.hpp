@@ -29,15 +29,6 @@ namespace timax { namespace rpc
 					subscribers_.emplace(topic, conn);
 				}
 			});
-
-			//register_handler(SUB_TOPIC, std::move(std::bind(&server::sub, this, std::placeholders::_1)), [this](auto conn, auto const& topic)
-			//{
-			//	if (!topic.empty())
-			//	{
-			//		lock_t lock{ mutex_ };
-			//		subscribers_.emplace(topic, conn);
-			//	}
-			//});
 		}
 
 		~server()
