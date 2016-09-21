@@ -119,18 +119,23 @@ namespace timax { namespace rpc
 		{
 			if (0 == head_.len)
 			{
-				call_complete(call_id, call_ctx);
+				call_complete(call_ctx);
+			}
+			else if (head_.len > PAGE_SIZE)
+			{
+				stop_rpc_service(error_code::UNKNOWN);
+				connection_.socket().close();
 			}
 			else
 			{
 				async_read(connection_.socket(), call_ctx->get_recv_message(head_.len), boost::bind(&rpc_session::handle_recv_body,
-					this->shared_from_this(), call_id, call_ctx, boost::asio::placeholders::error));
+					this->shared_from_this(), call_ctx, boost::asio::placeholders::error));
 			}
 		}
 	}
 
 	template <typename CodecPolicy>
-	void rpc_session<CodecPolicy>::call_complete(uint32_t call_id, context_ptr& ctx)
+	void rpc_session<CodecPolicy>::call_complete(context_ptr& ctx)
 	{
 		recv_head();
 
@@ -142,11 +147,6 @@ namespace timax { namespace rpc
 		else
 		{
 			ctx->error(error_code::FAIL);
-		}
-
-		{
-			lock_t lock{ mutex_ };
-			calls_.remove_call_from_map(call_id);
 		}
 	}
 
@@ -216,11 +216,11 @@ namespace timax { namespace rpc
 	}
 
 	template <typename CodecPolicy>
-	void rpc_session<CodecPolicy>::handle_recv_body(uint32_t call_id, context_ptr ctx, boost::system::error_code const& error)
+	void rpc_session<CodecPolicy>::handle_recv_body(context_ptr ctx, boost::system::error_code const& error)
 	{
 		if (!error)
 		{
-			call_complete(call_id, ctx);
+			call_complete(ctx);
 		}
 		else
 		{

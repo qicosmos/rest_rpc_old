@@ -131,7 +131,7 @@ namespace timax { namespace rpc
 
 		bool push_call(context_ptr& ctx)
 		{
-			if (call_map_.size() > max_size_)
+			if (call_map_.size() >= max_size_)
 				return false;
 
 			push_call_response(ctx);
@@ -163,15 +163,12 @@ namespace timax { namespace rpc
 		{
 			auto itr = call_map_.find(call_id);
 			if (call_map_.end() != itr)
-				return itr->second;
-			return nullptr;
-		}
-
-		void remove_call_from_map(uint32_t call_id)
-		{
-			auto itr = call_map_.find(call_id);
-			if (call_map_.end() != itr)
+			{
+				context_ptr ctx = itr->second;
 				call_map_.erase(itr);
+				return ctx;
+			}
+			return nullptr;
 		}
 
 		void task_calls_from_map(call_map_t& call_map)

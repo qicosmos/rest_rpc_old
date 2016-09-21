@@ -36,14 +36,14 @@ namespace timax { namespace rpc
 		inline void call_impl1();
 		inline void recv_head();
 		inline void recv_body();
-		inline void call_complete(uint32_t call_id, context_ptr& ctx);
+		inline void call_complete(context_ptr& ctx);
 		inline void setup_heartbeat_timer();
 		inline void stop_rpc_calls(error_code error);
 
 	private:  // handlers
 		inline void handle_send(boost::system::error_code const& error);
 		inline void handle_recv_head(boost::system::error_code const& error);
-		inline void handle_recv_body(uint32_t call_id, context_ptr ctx, boost::system::error_code const& error);
+		inline void handle_recv_body(context_ptr ctx, boost::system::error_code const& error);
 		inline void handle_heartbeat(boost::system::error_code const& error);
 
 	private:
