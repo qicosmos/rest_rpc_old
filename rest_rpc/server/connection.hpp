@@ -2,11 +2,11 @@
 
 namespace timax { namespace rpc 
 {
-	std::string g_str = "HTTP/1.0 200 OK\r\n"
-		"Content-Length: 4\r\n"
-		"Content-Type: text/html\r\n"
-		"Connection: Keep-Alive\r\n\r\n"
-		"TEST";
+	//std::string g_str = "HTTP/1.0 200 OK\r\n"
+	//	"Content-Length: 4\r\n"
+	//	"Content-Type: text/html\r\n"
+	//	"Connection: Keep-Alive\r\n\r\n"
+	//	"TEST";
 
 	template <typename Decode>
 	struct response_context;
