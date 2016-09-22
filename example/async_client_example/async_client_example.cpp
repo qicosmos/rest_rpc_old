@@ -4,6 +4,7 @@ namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 	TIMAX_DEFINE_SUB_PROTOCOL(sub_add, int);
+	TIMAX_DEFINE_SUB_PROTOCOL(sub_not_exist, double);
 }
 
 
@@ -57,7 +58,15 @@ int main()
 	//		std::cout << error.get_error_message() << std::endl;
 	//});
 
-	client->sub(endpoint, client::sub_add, [](int r) { std::cout << r << std::endl; });
+	//client->sub(endpoint, client::sub_add, [](int r) { std::cout << r << std::endl; });
+	client->sub(endpoint, client::sub_not_exist, 
+		[](double r) 
+	{ 
+		std::cout << r << std::endl; 
+	}, [](timax::rpc::exception const& error)
+	{
+		std::cout << error.get_error_message() << std::endl;
+	});
 
 	std::getchar();
 	return 0;

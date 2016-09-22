@@ -133,7 +133,14 @@ namespace timax { namespace rpc
 		std::string sub(std::string const& topic)
 		{
 			if (!router_.has_invoker(topic))
-				return "";
+			{
+				using namespace std::string_literals;
+
+				std::string error_message = "Topic:"s + topic + " not exists!";
+				exception e{ error_code::FAIL, std::move(error_message) };
+				throw e;
+			}
+
 			return topic;
 		}
 

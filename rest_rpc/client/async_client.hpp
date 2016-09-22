@@ -204,6 +204,12 @@ namespace timax { namespace rpc
 			sub_manager_.sub(endpoint, protocol, std::forward<Func>(func));
 		}
 
+		template <typename Protocol, typename Func, typename EFunc>
+		void sub(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func, EFunc&& efunc)
+		{
+			sub_manager_.sub(endpoint, protocol, std::forward<Func>(func), std::forward<EFunc>(efunc));
+		}
+
 		template <typename Protocol, typename Func>
 		void remove_sub(tcp::endpoint const& endpoint, Protocol const& protocol)
 		{
