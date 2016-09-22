@@ -59,5 +59,5 @@ namespace timax { namespace rpc
 #include <rest_rpc/base/consts.h>
 #include <rest_rpc/base/common.h>
 #include <rest_rpc/base/utils.hpp>
-#include <rest_rpc/base/codec.hpp>
 #include <rest_rpc/base/excetion.hpp>
+#include <rest_rpc/base/codec.hpp>

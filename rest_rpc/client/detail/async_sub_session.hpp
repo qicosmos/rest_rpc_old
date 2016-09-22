@@ -126,7 +126,8 @@ namespace timax { namespace rpc
 			auto& on_error_func = get_on_error();
 			if (on_error_func)
 			{
-				on_error_func(this->shared_from_this());
+				auto self = this->shared_from_this();
+				on_error_func(self);
 			}
 		}
 
@@ -369,7 +370,8 @@ namespace timax { namespace rpc
 		template <typename Protocol, typename Func>
 		sub_session_ptr make_sub_session(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func)
 		{
-			auto topic = protocol.pack(codec_policy{});
+			codec_policy cp{};
+			auto topic = protocol.pack(cp);
 			auto proc_func = make_proc_func(protocol, std::forward<Func>(func));
 			return std::make_shared<sub_session_t>(ios_, endpoint, protocol.name(), topic, std::move(proc_func));
 		}
@@ -377,7 +379,8 @@ namespace timax { namespace rpc
 		template <typename Protocol, typename Func, typename EFunc>
 		sub_session_ptr make_sub_session(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func, EFunc&& efunc)
 		{
-			auto topic = protocol.pack(codec_policy{});
+			codec_policy cp{};
+			auto topic = protocol.pack(cp);
 			auto proc_func = make_proc_func(protocol, std::forward<Func>(func));
 			return std::make_shared<sub_session_t>(ios_, endpoint, protocol.name(), topic, std::move(proc_func), std::forward<EFunc>(efunc));
 		}

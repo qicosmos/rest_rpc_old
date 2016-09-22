@@ -77,19 +77,19 @@ namespace timax { namespace rpc
 		template <typename Func, typename ArgsTuple, size_t ... Is>
 		static auto call_helper_impl(Func&& f, ArgsTuple&& args_tuple, std::false_type, std::index_sequence<Is...>)
 		{
-			return f(std::forward<std::tuple_element_t<Is, remove_reference_t<ArgsTuple>>>(std::get<Is>(args_tuple))...);
+			return f(std::forward<std::tuple_element_t<Is, std::remove_reference_t<ArgsTuple>>>(std::get<Is>(args_tuple))...);
 		}
 
 		template <typename Func, typename ArgsTuple, size_t ... Is>
 		static auto call_helper_impl(Func&& f, ArgsTuple&& args_tuple, std::true_type, std::index_sequence<Is...>)
 		{
-			f(std::forward<std::tuple_element_t<Is, remove_reference_t<ArgsTuple>>>(std::get<Is>(args_tuple))...);
+			f(std::forward<std::tuple_element_t<Is, std::remove_reference_t<ArgsTuple>>>(std::get<Is>(args_tuple))...);
 		}
 
 		template <typename Func, typename ArgsTuple, typename IsVoid>
 		static auto call_helper(Func&& f, ArgsTuple&& args_tuple, IsVoid is_void)
 		{
-			using indices_type = std::make_index_sequence<std::tuple_size<remove_reference_t<ArgsTuple>>::value>;
+			using indices_type = std::make_index_sequence<std::tuple_size<std::remove_reference_t<ArgsTuple>>::value>;
 			return call_helper_impl(std::forward<Func>(f), std::forward<ArgsTuple>(args_tuple), is_void, indices_type{});
 		}
 

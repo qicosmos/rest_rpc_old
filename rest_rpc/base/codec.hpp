@@ -193,9 +193,9 @@ namespace timax { namespace rpc
 			return assign(ss);
 		}
 
-		vector<char> assign(std::stringstream& ss) const
+		std::vector<char> assign(std::stringstream& ss) const
 		{
-			vector<char> vec;
+			std::vector<char> vec;
 			std::streampos beg = ss.tellg();
 			ss.seekg(0, std::ios_base::end);
 			std::streampos end = ss.tellg();
