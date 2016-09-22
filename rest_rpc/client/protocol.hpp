@@ -106,7 +106,7 @@ namespace timax { namespace rpc
 		template <typename CodecPolicy>
 		auto pack(CodecPolicy& cp) const
 		{
-			return cp.pack(topic_);
+			return cp.pack_args(topic_);
 		}
 
 		template <typename CodecPolicy>

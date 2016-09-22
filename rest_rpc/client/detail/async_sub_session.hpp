@@ -21,6 +21,7 @@ namespace timax { namespace rpc
 
 		void start()
 		{
+			running_flag_.store(true);
 			auto self = this->shared_from_this();
 			connection_.start(
 				[self, this]()
@@ -209,12 +210,14 @@ namespace timax { namespace rpc
 		{
 			using endpoint_value_type = typename endpoint_map_t::value_type;
 
+			auto session_ptr = make_sub_session(endpoint, protocol, std::forward<Func>(func));
+
 			lock_t lock{ mutex_ };
 			auto endpoint_itr = topics_.find(endpoint);
 			if (topics_.end() == endpoint_itr)
 			{
-				auto session_ptr = make_sub_session(endpoint, protocol, std::forward<Func>(func));
 				topics_map_t topic_map;
+				session_ptr->start();
 				topic_map.emplace(protocol.name(), session_ptr);
 				topics_.emplace(endpoint, std::move(topic_map));
 			}
@@ -227,7 +230,7 @@ namespace timax { namespace rpc
 				}
 				else
 				{
-					auto session_ptr = make_sub_session(endpoint, protocol, std::forward<Func>(func));
+					session_ptr->start();
 					endpoint_itr->second.emplace(protocol.name(), session_ptr);
 				}
 			}
