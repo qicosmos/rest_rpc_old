@@ -2,10 +2,9 @@
 
 namespace client
 {
-	//TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
 	//TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 	//TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
-	TIMAX_DEFINE_SUB_PROTOCOL(sub_add, int);
 }
 
 using async_client_t = timax::rpc::async_client<timax::rpc::msgpack_codec>;

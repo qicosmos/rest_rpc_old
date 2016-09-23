@@ -373,7 +373,7 @@ namespace timax { namespace rpc
 		sub_session_ptr make_sub_session(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func)
 		{
 			codec_policy cp{};
-			auto topic = protocol.pack(cp);
+			auto topic = protocol.pack_topic(cp);
 			auto proc_func = make_proc_func(protocol, std::forward<Func>(func));
 			return std::make_shared<sub_session_t>(ios_, endpoint, protocol.name(), topic, std::move(proc_func));
 		}
@@ -382,7 +382,7 @@ namespace timax { namespace rpc
 		sub_session_ptr make_sub_session(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func, EFunc&& efunc)
 		{
 			codec_policy cp{};
-			auto topic = protocol.pack(cp);
+			auto topic = protocol.pack_topic(cp);
 			auto proc_func = make_proc_func(protocol, std::forward<Func>(func));
 			return std::make_shared<sub_session_t>(ios_, endpoint, protocol.name(), topic, std::move(proc_func), std::forward<EFunc>(efunc));
 		}

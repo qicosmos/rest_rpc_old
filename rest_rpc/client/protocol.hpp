@@ -3,7 +3,6 @@
 #include <boost/type_traits.hpp>
 
 #define TIMAX_DEFINE_PROTOCOL(handler, func_type) static const ::timax::rpc::protocol_define<func_type> handler{ #handler }
-#define TIMAX_DEFINE_SUB_PROTOCOL(handler, type) static const ::timax::rpc::sub_protocol<type> handler{ #handler }
 
 namespace timax { namespace rpc
 {
@@ -45,11 +44,17 @@ namespace timax { namespace rpc
 			return name_;
 		}
 
-		template <typename Marshal, typename ... TArgs>
-		auto pack_args(Marshal const& m, TArgs&& ... args) const
+		template <typename CodecPolicy, typename ... TArgs>
+		auto pack_args(CodecPolicy const& cp, TArgs&& ... args) const
 		{
 			static_assert(is_argument_match<signature_type, TArgs...>::value, "Arguments` types don`t match the protocol!");
-			return m.pack_args(std::move(static_cast<Args>(std::forward<TArgs>(args)))...);
+			return cp.pack_args(std::move(static_cast<Args>(std::forward<TArgs>(args)))...);
+		}
+
+		template <typename CodecPolicy>
+		auto pack_topic(CodecPolicy const& cp) const
+		{
+			return cp.pack_args(name_);
 		}
 
 	private:
@@ -93,39 +98,6 @@ namespace timax { namespace rpc
 		{
 		}
 	};
-
-	template <typename T>
-	struct sub_protocol
-	{
-		using result_type = T;
-		
-		explicit sub_protocol(std::string topic_name)
-			: topic_(std::move(topic_name))
-		{}
-
-		template <typename CodecPolicy>
-		auto pack(CodecPolicy& cp) const
-		{
-			return cp.pack_args(topic_);
-		}
-
-		template <typename CodecPolicy>
-		result_type unpack(CodecPolicy& cp, char const* data, size_t size) const
-		{
-			return cp.template unpack<result_type>(data, size);
-		}
-
-		auto const& name() const noexcept
-		{
-			return topic_;
-		}
-
-	private:
-		std::string topic_;
-	};
-
-	template <>
-	struct sub_protocol<void>;
 
 	TIMAX_DEFINE_PROTOCOL(sub_topic, std::string(std::string const&));
 } }
