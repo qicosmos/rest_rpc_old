@@ -63,10 +63,10 @@ namespace timax { namespace rpc
 
 		void ok()
 		{
-			is_over = true;
-
 			if (on_ok)
 				on_ok(rep.data(), rep.size());
+
+			is_over = true;
 
 			if (nullptr != barrier)
 				barrier->notify();
@@ -74,8 +74,6 @@ namespace timax { namespace rpc
 
 		void error(error_code errcode, char const* message = nullptr)
 		{
-			is_over = true;
-
 			err.set_code(errcode);
 			if (error_code::FAIL == errcode)
 			{
@@ -94,6 +92,8 @@ namespace timax { namespace rpc
 			if (on_error)
 				on_error(err);
 
+			is_over = true;
+
 			if (nullptr != barrier)
 				barrier->notify();
 		}
@@ -107,7 +107,7 @@ namespace timax { namespace rpc
 		void wait()
 		{
 			if(nullptr != barrier)
-				barrier->wait([this] { return is_over.load(); });
+				barrier->wait();
 		}
 
 		steady_timer_t						timer;
@@ -120,7 +120,7 @@ namespace timax { namespace rpc
 		exception							err;
 		success_function_t					on_ok;
 		on_error_function_t					on_error;
-		std::atomic<bool>					is_over;
+		bool								is_over;
 		std::unique_ptr<result_barrier>		barrier;
 	};
 
