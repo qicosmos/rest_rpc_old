@@ -5,7 +5,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../;$(BOOST_ROOT);$(SolutionDir)../kapok;$(SolutionDir)../spdlog/include;$(SolutionDir)../msgpack/include;$(SolutionDir)../thread-pool-cpp/thread_pool</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../;$(BOOST_ROOT);$(SolutionDir)../kapok;$(SolutionDir)../spdlog/include;$(SolutionDir)../msgpack/include;$(SolutionDir)../thread-pool-cpp/thread_pool;$(SolutionDir)../kapok/fmt</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;FMT_HEADER_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>

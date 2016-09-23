@@ -3,8 +3,8 @@
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
-	TIMAX_DEFINE_SUB_PROTOCOL(sub_add, int);
-	TIMAX_DEFINE_SUB_PROTOCOL(sub_not_exist, double);
+	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(sub_not_exist, double(int, std::string const&));
 }
 
 using tcp = boost::asio::ip::tcp;

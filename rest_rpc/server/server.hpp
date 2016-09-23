@@ -60,11 +60,11 @@ namespace timax { namespace rpc
 		}
 
 		template <typename Result>
-		void pub(std::string const& topic, Result const& result)
+		void pub(std::string const& topic, Result const& result, std::function<void()>&& postf = nullptr)
 		{
 			head_t h = { 0 };
 			auto buffer = codec_policy{}.pack(result);
-			auto ctx = context_t::make_message(h, std::move(buffer));
+			auto ctx = context_t::make_message(h, std::move(buffer), std::move(postf));
 
 			lock_t lock{ mutex_ };
 			auto range = subscribers_.equal_range(topic);

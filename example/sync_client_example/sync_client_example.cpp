@@ -58,11 +58,6 @@ int main(void)
 
 	sync_client client;
 	
-	//while (true)
-	//{
-	//	client.call(endpoint, client::add, 1, 2);
-	//}
-
 	try
 	{
 		auto result = client.call(endpoint, client::add, 1, 2);

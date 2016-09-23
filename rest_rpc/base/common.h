@@ -59,7 +59,5 @@ namespace timax{ namespace rpc
 		JSON = 0,
 		BINARY = 1,
 	};
-
-	static std::atomic<std::uint64_t> g_succeed_count(0); //for test qps
 } }
 

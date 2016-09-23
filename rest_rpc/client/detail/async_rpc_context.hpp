@@ -85,7 +85,10 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				err.set_message(message);
+				if (nullptr != message)
+				{
+					err.set_message(message);
+				}
 			}
 
 			if (on_error)
@@ -104,7 +107,7 @@ namespace timax { namespace rpc
 		void wait()
 		{
 			if(nullptr != barrier)
-				barrier->wait([this] { return is_over; });
+				barrier->wait([this] { return is_over.load(); });
 		}
 
 		steady_timer_t						timer;
@@ -117,7 +120,7 @@ namespace timax { namespace rpc
 		exception							err;
 		success_function_t					on_ok;
 		on_error_function_t					on_error;
-		bool								is_over;
+		std::atomic<bool>					is_over;
 		std::unique_ptr<result_barrier>		barrier;
 	};
 

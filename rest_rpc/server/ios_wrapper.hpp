@@ -113,10 +113,6 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				// for test
-				//g_succeed_count++;
-				// for test
-
 				// call the post function
 				context->apply_post_func();
 
@@ -144,10 +140,6 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				// for test
-				//g_succeed_count++;
-				// for test
-
 				// call the post function
 				ctx_ptr->apply_post_func();
 
