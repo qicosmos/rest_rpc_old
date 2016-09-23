@@ -36,12 +36,6 @@
     <ClInclude Include="..\..\rest_rpc\client\async_client.hpp">
       <Filter>client</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\client\client_base.hpp">
-      <Filter>client</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\client\client_proxy.hpp">
-      <Filter>client</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client\protocol.hpp">
       <Filter>client</Filter>
     </ClInclude>
@@ -84,6 +78,9 @@
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\base\excetion.hpp">
       <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\sync_client.hpp">
+      <Filter>client</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

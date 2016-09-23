@@ -46,10 +46,15 @@ namespace timax { namespace rpc
 		{
 			lock_t lock{ mutex_ };
 			empty = calls_.call_list_empty();
-			if (!calls_.push_call(ctx))
+			auto push_success = calls_.push_call(ctx);
+			lock.unlock();
+			if (!push_success)
 			{
-				lock.unlock();
 				ctx->error(error_code::UNKNOWN);
+			}
+			else
+			{
+				set_timeout(ctx);
 			}
 		}
 
@@ -115,16 +120,23 @@ namespace timax { namespace rpc
 		lock_t locker{ mutex_ };
 		auto call_ctx = calls_.get_call_from_map(call_id);
 		locker.unlock();
-		if (nullptr != call_ctx)
+
+		if (0 == head_.len)
 		{
-			if (0 == head_.len)
+			call_complete(call_ctx);
+		}
+		else if (head_.len > MAX_BUF_LEN)
+		{
+			stop_rpc_service(error_code::UNKNOWN);
+			connection_.socket().close();
+		}
+		else
+		{
+			if (nullptr == call_ctx)
 			{
-				call_complete(call_ctx);
-			}
-			else if (head_.len > MAX_BUF_LEN)
-			{
-				stop_rpc_service(error_code::UNKNOWN);
-				connection_.socket().close();
+				to_discard_message_.resize(head_.len);
+				async_read(connection_.socket(), boost::asio::buffer(to_discard_message_),
+					boost::bind(&rpc_session::handle_recv_body_discard, this->shared_from_this(), asio_error));
 			}
 			else
 			{
@@ -137,17 +149,20 @@ namespace timax { namespace rpc
 	template <typename CodecPolicy>
 	void rpc_session<CodecPolicy>::call_complete(context_ptr& ctx)
 	{
-		recv_head();
+		if (nullptr != ctx)
+		{
+			auto rcode = static_cast<result_code>(head_.code);
+			if (result_code::OK == rcode)
+			{
+				ctx->ok();
+			}
+			else
+			{
+				ctx->error(error_code::FAIL);
+			}
+		}
 
-		auto rcode = static_cast<result_code>(head_.code);
-		if (result_code::OK == rcode)
-		{
-			ctx->ok();
-		}
-		else
-		{
-			ctx->error(error_code::FAIL);
-		}
+		recv_head();
 	}
 
 	template <typename CodecPolicy>
@@ -155,7 +170,7 @@ namespace timax { namespace rpc
 	{
 		using namespace std::chrono_literals;
 
-		hb_timer_.expires_from_now(5s);
+		hb_timer_.expires_from_now(15s);
 		hb_timer_.async_wait(boost::bind(&rpc_session::handle_heartbeat, this->shared_from_this(), boost::asio::placeholders::error));
 	}
 
@@ -174,6 +189,17 @@ namespace timax { namespace rpc
 		}
 
 		rpc_mgr_.remove_session(connection_.endpoint());
+	}
+
+	template <typename CodecPolicy>
+	void rpc_session<CodecPolicy>::set_timeout(context_ptr& ctx)
+	{
+		if (duration_t::max() != ctx->timeout)
+		{
+			ctx->timer.expires_from_now(ctx->timeout);
+			ctx->timer.async_wait(boost::bind(&rpc_session::handle_timeout,
+				this->shared_from_this(), ctx, asio_error));
+		}
 	}
 
 	template <typename CodecPolicy>
@@ -204,6 +230,9 @@ namespace timax { namespace rpc
 	template <typename CodecPolicy>
 	void rpc_session<CodecPolicy>::handle_recv_head(boost::system::error_code const& error)
 	{
+		if (!connection_.socket().is_open())
+			return;
+
 		if (!error)
 		{
 			recv_body();
@@ -218,13 +247,27 @@ namespace timax { namespace rpc
 	template <typename CodecPolicy>
 	void rpc_session<CodecPolicy>::handle_recv_body(context_ptr ctx, boost::system::error_code const& error)
 	{
+		if (!connection_.socket().is_open())
+			return;
+
 		if (!error)
 		{
 			call_complete(ctx);
 		}
 		else
 		{
-			// TODO log
+			stop_rpc_service(error_code::BADCONNECTION);
+		}
+	}
+
+	template <typename CodecPolicy>
+	void rpc_session<CodecPolicy>::handle_recv_body_discard(boost::system::error_code const& error)
+	{
+		if (!connection_.socket().is_open())
+			return;
+
+		if (error)
+		{
 			stop_rpc_service(error_code::BADCONNECTION);
 		}
 	}
@@ -232,19 +275,25 @@ namespace timax { namespace rpc
 	template <typename CodecPolicy>
 	void rpc_session<CodecPolicy>::handle_heartbeat(boost::system::error_code const& error)
 	{
+		if (!connection_.socket().is_open())
+			return;
+
 		if (!error)
 		{
-			//auto ctx = std::make_shared<context_t>();
-			//call(ctx);
+			auto ctx = std::make_shared<context_t>(rpc_mgr_.get_io_service());
+			call(ctx);
 			setup_heartbeat_timer();
-			// print queue size every seconds
+		}
+	}
 
-			//lock_t lock{ mutex_ };
-			//auto call_list_size = calls_.get_call_list_size();
-			//auto call_map_size = calls_.get_call_map_size();
-			//lock.unlock();
-			
-			//std::cout << to_calls_.size() << " - " << call_list_size << " - " << call_map_size << std::endl;
+	template <typename CodecPolicy>
+	void rpc_session<CodecPolicy>::handle_timeout(context_ptr ctx, boost::system::error_code const& error)
+	{
+		if (!error && !ctx->is_over)
+		{
+			ctx->error(error_code::TIMEOUT);
+			lock_t lock{ mutex_ };
+			calls_.remove_call_from_map(ctx->head.id);
 		}
 	}
 

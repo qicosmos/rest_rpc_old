@@ -3,17 +3,16 @@
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
-	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
 }
 
-using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
+using async_client_t = timax::rpc::async_client<timax::rpc::msgpack_codec>;
 
 int main(void)
 {
 	timax::log::get().init("rest_rpc_client.lg");
 
-	sync_client client;
-	client.connect("127.0.0.1", "9000");
+	auto endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 9000);
+	auto async_client = std::make_shared<async_client_t>();
 
 	try
 	{
@@ -22,10 +21,7 @@ int main(void)
 		while (true)
 		{
 			using namespace std::chrono_literals;
-
-			client.pub(client::sub_add, lhs, rhs);
-			++rhs;
-
+			async_client->call(endpoint, client::sub_add, lhs, rhs++);
 			std::this_thread::sleep_for(1s);
 		}
 	}

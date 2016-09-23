@@ -7,16 +7,19 @@ namespace timax { namespace rpc
 	{
 		using codec_policy = CodecPolicy;
 		using success_function_t = std::function<void(char const*, size_t)>;
-		using error_function_t = std::function<void(error_code, char const*, size_t)>;
 		using on_error_function_t = std::function<void(exception const&)>;
 
 		rpc_context(
+			io_service_t& ios,
 			tcp::endpoint const& endpoint,
 			std::string const& name,
 			std::vector<char>&& request)
-			: endpoint(endpoint)
+			: timer(ios)
+			, timeout(duration_t::max())
+			, endpoint(endpoint)
 			, name(name)
 			, req(std::move(request))
+			, is_over(false)
 		{
 			head =
 			{
@@ -25,7 +28,9 @@ namespace timax { namespace rpc
 			};
 		}
 
-		rpc_context()
+		explicit rpc_context(io_service_t& ios)
+			: timer(ios)
+			, timeout(duration_t::max())
 		{
 			std::memset(&head, 0, sizeof(head_t));
 		}
@@ -58,6 +63,8 @@ namespace timax { namespace rpc
 
 		void ok()
 		{
+			is_over = true;
+
 			if (on_ok)
 				on_ok(rep.data(), rep.size());
 
@@ -65,14 +72,20 @@ namespace timax { namespace rpc
 				barrier->notify();
 		}
 
-		void error(error_code errcode)
+		void error(error_code errcode, char const* message = nullptr)
 		{
+			is_over = true;
+
 			err.set_code(errcode);
 			if (error_code::FAIL == errcode)
 			{
 				codec_policy cp{};
 				auto error_message = cp.template unpack<std::string>(rep.data(), rep.size());
 				err.set_message(std::move(error_message));
+			}
+			else
+			{
+				err.set_message(message);
 			}
 
 			if (on_error)
@@ -91,24 +104,20 @@ namespace timax { namespace rpc
 		void wait()
 		{
 			if(nullptr != barrier)
-				barrier->wait();
+				barrier->wait([this] { return is_over; });
 		}
 
-		bool complete() const
-		{
-			return nullptr != barrier && barrier->complete();
-		}
-
-		//deadline_timer_t					timeout;	// �Ȳ��ܳ�ʱ
-		head_t								head;
+		steady_timer_t						timer;
+		steady_timer_t::duration			timeout;
 		tcp::endpoint						endpoint;
 		std::string							name;
+		head_t								head;
 		std::vector<char>					req;		// request buffer
 		std::vector<char>					rep;		// response buffer
 		exception							err;
 		success_function_t					on_ok;
-		error_function_t					error_func;
 		on_error_function_t					on_error;
+		bool								is_over;
 		std::unique_ptr<result_barrier>		barrier;
 	};
 
@@ -169,6 +178,13 @@ namespace timax { namespace rpc
 				return ctx;
 			}
 			return nullptr;
+		}
+
+		void remove_call_from_map(uint32_t call_id)
+		{
+			auto itr = call_map_.find(call_id);
+			if(call_map_.end() != itr)
+				call_map_.erase(itr);
 		}
 
 		void task_calls_from_map(call_map_t& call_map)

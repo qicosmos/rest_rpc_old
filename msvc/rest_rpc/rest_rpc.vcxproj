@@ -28,8 +28,6 @@
     <ClInclude Include="..\..\rest_rpc\base\utils.hpp" />
     <ClInclude Include="..\..\rest_rpc\client.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\async_client.hpp" />
-    <ClInclude Include="..\..\rest_rpc\client\client_base.hpp" />
-    <ClInclude Include="..\..\rest_rpc\client\client_proxy.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session_impl.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\detail\async_sub_session.hpp" />
@@ -37,6 +35,7 @@
     <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_context.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\detail\wait_barrier.hpp" />
     <ClInclude Include="..\..\rest_rpc\client\protocol.hpp" />
+    <ClInclude Include="..\..\rest_rpc\client\sync_client.hpp" />
     <ClInclude Include="..\..\rest_rpc\forward.hpp" />
     <ClInclude Include="..\..\rest_rpc\rpc.hpp" />
     <ClInclude Include="..\..\rest_rpc\server.hpp" />

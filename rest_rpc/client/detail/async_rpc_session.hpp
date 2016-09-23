@@ -39,12 +39,15 @@ namespace timax { namespace rpc
 		inline void call_complete(context_ptr& ctx);
 		inline void setup_heartbeat_timer();
 		inline void stop_rpc_calls(error_code error);
+		inline void set_timeout(context_ptr& ctx);
 
 	private:  // handlers
 		inline void handle_send(boost::system::error_code const& error);
 		inline void handle_recv_head(boost::system::error_code const& error);
 		inline void handle_recv_body(context_ptr ctx, boost::system::error_code const& error);
+		inline void handle_recv_body_discard(boost::system::error_code const& error);
 		inline void handle_heartbeat(boost::system::error_code const& error);
+		inline void handle_timeout(context_ptr ctx, boost::system::error_code const& error);
 
 	private:
 		rpc_manager_t&						rpc_mgr_;
@@ -56,6 +59,7 @@ namespace timax { namespace rpc
 		head_t								head_;
 		mutable std::mutex					mutex_;
 		call_list_t							to_calls_;
+		std::vector<char>					to_discard_message_;
 	};
 	
 	template <typename CodecPolicy>

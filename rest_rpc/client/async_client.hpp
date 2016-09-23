@@ -54,8 +54,7 @@ namespace timax { namespace rpc
 
 			void wait()
 			{
-				if(ctx_->complete())
-					do_call_and_wait();
+				do_call_and_wait();
 			}
 
 		private:
@@ -70,13 +69,16 @@ namespace timax { namespace rpc
 
 			void do_call_and_wait()
 			{
-				ctx_->create_barrier();
-				dismiss_ = true;
-				auto client = client_.lock();
-				if (nullptr != client)
+				if (!dismiss_)
 				{
-					client->call_impl(ctx_);
-					ctx_->wait();
+					dismiss_ = true;
+					ctx_->create_barrier();
+					auto client = client_.lock();
+					if (nullptr != client)
+					{
+						client->call_impl(ctx_);
+						ctx_->wait();
+					}
 				}
 			}
 
@@ -104,15 +106,17 @@ namespace timax { namespace rpc
 			rpc_task& when_ok(F&& f)
 			{
 				if (nullptr == result_)
-					result_.reset(new result_type);
-
-				auto result = result_;
-				this->ctx_->on_ok = [f, result](char const* data, size_t size)
 				{
-					codec_policy codec{};
-					*result = codec.template unpack<result_type>(data, size);
-					f(*result);
-				};
+					//result_.reset(new result_type);
+					result_ = std::make_shared<result_type>();
+					this->ctx_->on_ok = [f, r = result_](char const* data, size_t size)
+					{
+						codec_policy codec{};
+						*r = codec.template unpack<result_type>(data, size);
+						f(*r);
+					};
+				}
+					
 				return *this;
 			}
 
@@ -123,10 +127,25 @@ namespace timax { namespace rpc
 				return *this;
 			}
 
+			rpc_task& timeout(duration_t t)
+			{
+				this->ctx_->timeout = t;
+				return *this;
+			}
+
 			result_type const& get()
 			{
-				this->wait();
+				if (nullptr == result_)
+				{
+					result_ = std::make_shared<result_type>();
+					this->ctx_->on_ok = [r = result_](char const* data, size_t size)
+					{
+						codec_policy codec{};
+						*r = codec.template unpack<result_type>(data, size);
+					};
+				}
 
+				this->wait();
 				return *result_;
 			}
 
@@ -161,6 +180,12 @@ namespace timax { namespace rpc
 				this->ctx_->on_error = std::forward<F>(f);
 				return *this;
 			}
+
+			rpc_task& timeout(duration_t t)
+			{
+				this->ctx_->timeout = t;
+				return *this;
+			}
 		};
 		
 		/******************* wrap context with type information *********************/
@@ -191,6 +216,7 @@ namespace timax { namespace rpc
 			auto buffer = protocol.pack_args(codec_policy{}, std::forward<Args>(args)...);
 			
 			auto ctx = std::make_shared<context_t>(
+				ios_,
 				endpoint,
 				protocol.name(),
 				std::move(buffer));
@@ -213,7 +239,7 @@ namespace timax { namespace rpc
 		template <typename Protocol, typename Func>
 		void remove_sub(tcp::endpoint const& endpoint, Protocol const& protocol)
 		{
-			// TODO - to implement
+			sub_manager_.remove()
 		}
 
 	private:

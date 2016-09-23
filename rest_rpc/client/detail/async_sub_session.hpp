@@ -99,7 +99,7 @@ namespace timax { namespace rpc
 
 		void begin_sub_procedure()
 		{
-			//setup_heartbeat_timer();			// setup heart beat
+			setup_heartbeat_timer();			// setup heart beat
 			recv_sub_head();
 		}
 
@@ -257,15 +257,17 @@ namespace timax { namespace rpc
 
 				setup_heartbeat_timer();
 			}
-			else
-			{
-				on_error(exception{ error_code::BADCONNECTION, std::move(error.message()) });
-			}
 		}
 
 		void handle_send_hb(boost::system::error_code const& error)
 		{
+			if (!(connection_.socket().is_open() && running_flag_.load()))
+				return;
 
+			if (error)
+			{
+				on_error(exception{ error_code::BADCONNECTION, std::move(error.message()) });
+			}
 		}
 
 	private:
