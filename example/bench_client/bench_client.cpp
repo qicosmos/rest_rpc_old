@@ -33,7 +33,7 @@ namespace bench
 
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
 
-	std::atomic<uint64_t> count = 0;
+	std::atomic<uint64_t> count{ 0 };
 
 	void bench_async(boost::asio::ip::tcp::endpoint const& endpoint)
 	{

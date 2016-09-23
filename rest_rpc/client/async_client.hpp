@@ -239,7 +239,7 @@ namespace timax { namespace rpc
 		template <typename Protocol, typename Func>
 		void remove_sub(tcp::endpoint const& endpoint, Protocol const& protocol)
 		{
-			sub_manager_.remove()
+			//sub_manager_.remove()
 		}
 
 	private:
