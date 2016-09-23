@@ -62,7 +62,9 @@ namespace timax { namespace rpc
 		template <typename Result>
 		void pub(std::string const& topic, Result const& result)
 		{
+			head_t h = { 0 };
 			auto buffer = codec_policy{}.pack(result);
+			auto ctx = context_t::make_message(h, std::move(buffer));
 
 			lock_t lock{ mutex_ };
 			auto range = subscribers_.equal_range(topic);
@@ -82,7 +84,7 @@ namespace timax { namespace rpc
 
 			for (auto& alive_conn : alives)
 			{
-				alive_conn->response(buffer);
+				alive_conn->response(ctx);
 			}
 		}
 

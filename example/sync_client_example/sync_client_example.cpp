@@ -67,6 +67,8 @@ int main(void)
 	{
 		auto result = client.call(endpoint, client::add, 1, 2);
 		assert(result == 3);
+
+		//client.call(endpoint, client::madoka, 2.0, 8);
 	}
 	catch (timax::rpc::exception const& e)
 	{

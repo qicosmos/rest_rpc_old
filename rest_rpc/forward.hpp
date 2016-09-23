@@ -43,7 +43,6 @@ namespace timax { namespace rpc
 	using deadline_timer_t = boost::asio::deadline_timer;
 	using steady_timer_t = boost::asio::steady_timer;
 	using duration_t = steady_timer_t::duration;
-	using message_t = std::vector<char>;
 
 	class connection;
 

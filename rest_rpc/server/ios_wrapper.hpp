@@ -9,40 +9,8 @@ namespace timax { namespace rpc
 	public:
 		using post_func_t = std::function<void()>;
 		using connection_ptr = std::shared_ptr<connection>;
-
-		struct context_t
-		{
-			context_t() = default;
-
-			context_t(head_t const& h, message_t msg, post_func_t postf)
-				: head(h)
-				, message(std::move(msg))
-				, post_func(std::move(postf))
-			{
-				head.len = static_cast<uint32_t>(message.size());
-			}
-
-			void apply_post_func() const
-			{
-				if (post_func)
-					post_func();
-			}
-
-			auto get_message() const
-				-> std::vector<boost::asio::const_buffer>
-			{
-				if (message.empty())
-					return{ boost::asio::buffer(&head, sizeof(head_t)) };
-
-				return{ boost::asio::buffer(&head, sizeof(head_t)), boost::asio::buffer(message) };
-			}
-
-			head_t			head;
-			message_t		message;
-			post_func_t		post_func;
-		};
-
-		using context_container_t = std::list<std::pair<connection_ptr, context_t*>>;
+		using context_ptr = std::shared_ptr<context_t>;
+		using context_container_t = std::list<std::pair<connection_ptr, context_ptr>>;
 		using ios_work_ptr = std::unique_ptr<io_service_t::work>;
 
 	public:
@@ -77,27 +45,7 @@ namespace timax { namespace rpc
 				thread_.join();
 		}
 
-		void write_ok(connection_ptr conn_ptr, message_t&& message, post_func_t&& post_func)
-		{
-			auto context = new context_t{ conn_ptr->head_, std::move(message), std::move(post_func) };
-			write_impl(conn_ptr, context);
-		}
-
-		void write_error(connection_ptr conn_ptr, message_t&& message, post_func_t&& post_func)
-		{
-			auto context = new context_t{ conn_ptr->head_, std::move(message), std::move(post_func) };
-			context->head.code = static_cast<int16_t>(result_code::FAIL);
-			write_impl(conn_ptr, context);
-		}
-
-		io_service_t& get_ios() noexcept
-		{
-			return ios_;
-		}
-
-	private:
-
-		void write_impl(connection_ptr conn_ptr, context_t* context)
+		void write(connection_ptr& conn_ptr, context_ptr& context)
 		{
 			assert(nullptr != context);
 
@@ -114,7 +62,13 @@ namespace timax { namespace rpc
 			}
 		}
 
-		void write_progress_entry(connection_ptr conn_ptr, context_t* context)
+		io_service_t& get_ios() noexcept
+		{
+			return ios_;
+		}
+
+	private:
+		void write_progress_entry(connection_ptr& conn_ptr, context_ptr& context)
 		{
 			assert(nullptr != context);
 			async_write(conn_ptr->socket(), context->get_message(), boost::bind(
@@ -139,59 +93,72 @@ namespace timax { namespace rpc
 
 		void write_progress(context_container_t delay_messages)
 		{
-			connection_ptr conn_ptr;
-			context_t* context;
-			std::tie(conn_ptr, context) = std::move(delay_messages.front());
-			delay_messages.pop_front();
-			async_write(conn_ptr->socket(), context->get_message(), boost::bind(
-				&ios_wrapper::handle_write, this, conn_ptr, context, std::move(delay_messages), boost::asio::placeholders::error));
+			auto& conn_ptr = delay_messages.front().first;
+			auto& ctx_ptr = delay_messages.front().second;
+			
+			async_write(conn_ptr->socket(), ctx_ptr->get_message(), boost::bind(
+				&ios_wrapper::handle_write, this, std::move(delay_messages), asio_error));
 		}
 
 	private:
-		void handle_write_entry(connection_ptr conn_ptr, context_t* context, boost::system::error_code error)
+		void handle_write_entry(connection_ptr conn_ptr, context_ptr context, boost::system::error_code const& error)
 		{
 			assert(nullptr != context);
 			if (!conn_ptr->socket().is_open())
 				return;
 
-			if (!error)
+			if (error)
+			{
+				conn_ptr->on_error(error);
+			}
+			else
 			{
 				// for test
-				g_succeed_count++;
+				//g_succeed_count++;
 				// for test
 
 				// call the post function
 				context->apply_post_func();
-			}
-			delete context;
-			
-			if (!error)
-			{
+
+				// release the memory as soon as possible
+				context.reset();
+
+				// continue
 				write_progress();
 			}
 		}
 
-		void handle_write(connection_ptr conn_ptr, context_t* context, context_container_t delay_messages, boost::system::error_code const& error)
+		void handle_write(context_container_t delay_messages, boost::system::error_code const& error)
 		{
+			connection_ptr conn_ptr;
+			context_ptr ctx_ptr;
+			std::tie(conn_ptr, ctx_ptr) = std::move(delay_messages.front());
+			delay_messages.pop_front();
+
 			if (!conn_ptr->socket().is_open())
 				return;
 
-			if (!error)
+			if (error)
+			{
+				conn_ptr->on_error(error);
+			}
+			else
 			{
 				// for test
-				g_succeed_count++;
+				//g_succeed_count++;
 				// for test
 
 				// call the post function
-				context->apply_post_func();
-			}
-			delete context;
+				ctx_ptr->apply_post_func();
 
-			if(!error)
-			{
+				// release the memory as soon as possible
+				ctx_ptr.reset();
+				conn_ptr.reset();
+
+				// continue
 				if (!delay_messages.empty())
 				{
-					write_progress(delay_messages);
+					write_progress(std::move(delay_messages));
 				}
 				else
 				{

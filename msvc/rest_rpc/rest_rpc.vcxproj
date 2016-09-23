@@ -41,6 +41,7 @@
     <ClInclude Include="..\..\rest_rpc\server.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\connection.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\connection_impl.hpp" />
+    <ClInclude Include="..\..\rest_rpc\server\context.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\ios_wrapper.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\router.hpp" />
     <ClInclude Include="..\..\rest_rpc\server\server.hpp" />

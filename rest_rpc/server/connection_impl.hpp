@@ -10,19 +10,10 @@ namespace timax { namespace rpc
 	{
 	}
 
-	void connection::response(message_t message, std::function<void()>&& post_func)
+	void connection::response(context_ptr& ctx)
 	{
-		ios_wrapper_.write_ok(this->shared_from_this(), std::move(message), std::move(post_func));
-	}
-
-	void connection::response(std::function<void()>&& post_func)
-	{
-		response(message_t{}, std::move(post_func));
-	}
-
-	void connection::response_error(message_t message, std::function<void()>&& post_func)
-	{
-		ios_wrapper_.write_error(this->shared_from_this(), std::move(message), std::move(post_func));
+		auto self = this->shared_from_this();
+		ios_wrapper_.write(self, ctx);
 	}
 
 	void connection::close()
@@ -115,11 +106,11 @@ namespace timax { namespace rpc
 			std::vector<char> read_buffer(head_.len, 0);
 			async_read(socket_, boost::asio::buffer(read_buffer.data(), read_buffer.size()), boost::bind(
 				&connection::handle_read_body_pages, this->shared_from_this(), std::move(read_buffer), asio_error));
-			//socket_.close();
 		}
 		else
 		{
 			socket_.close();
+			//on_error();
 		}
 	}
 

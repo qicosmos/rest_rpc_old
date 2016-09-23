@@ -7,6 +7,7 @@ namespace timax { namespace rpc
 	{
 	public:
 		using codec_policy = CodecPolicy;
+		using message_t = typename codec_policy::buffer_type;
 		using connection_ptr = std::shared_ptr<connection>;
 		using invoker_t = std::function<void(connection_ptr, char const*, size_t)>;
 		using invoker_map_t = std::map<std::string, invoker_t>;
@@ -50,14 +51,16 @@ namespace timax { namespace rpc
 			auto itr = invokers_.find(name);
 			if (invokers_.end() == itr)
 			{
-				conn->response_error(cannot_find_invoker_error);
+				auto ctx = context_t::make_error_message(conn->head_, cannot_find_invoker_error);
+				conn->response(ctx);
 			}
 			else
 			{
 				auto& invoker = itr->second;
 				if (!invoker)
 				{
-					conn->response_error(cannot_find_invoker_error);
+					auto ctx = context_t::make_error_message(conn->head_, cannot_find_invoker_error);
+					conn->response(ctx);
 				}
 
 				try
@@ -66,9 +69,11 @@ namespace timax { namespace rpc
 				}
 				catch (exception const& error)
 				{
-					// TODO response back to client
+					// response serialized exception to client
 					auto args_not_match_error = codec_policy{}.pack(error);
-					conn->response_error(std::move(args_not_match_error));
+					auto args_not_match_error_message = context_t::make_error_message(conn->head_,
+						std::move(args_not_match_error));
+					conn->response(args_not_match_error_message);
 				}
 			}
 		}
@@ -105,8 +110,8 @@ namespace timax { namespace rpc
 				codec_policy cp{};
 				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
 				call_helper(f, args_tuple, std::true_type{});
-			
-				conn->response([conn, &post] { post(conn); });
+				auto ctx = context_t::make_message(conn->head_, context_t::message_t{}, [conn, &post] { post(conn); });
+				conn->response(ctx);
 			};
 			
 			return invoker;
@@ -122,9 +127,13 @@ namespace timax { namespace rpc
 				codec_policy cp{};
 				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
 				auto result = call_helper(f, args_tuple, std::false_type{});
-			
 				auto message = cp.pack(result);
-				conn->response(std::move(message), [conn, &post, r = std::move(result)]{ post(conn, r); });
+				auto ctx = context_t::make_message(conn->head_, std::move(message),
+					[conn, &post, r = std::move(result)]
+				{
+					post(conn, r);
+				});
+				conn->response(ctx);
 			};
 			
 			return invoker;
@@ -139,11 +148,12 @@ namespace timax { namespace rpc
 			{
 				codec_policy cp{};
 				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
-
-				std::async([conn, args = std::move(args_tuple), &f, &post]
+			
+				std::async([conn, args = std::move(args_tuple), h = conn->head_, &f, &post]
 				{
 					call_helper(f, args, std::true_type{});
-					conn->response([conn, &post] { post(conn); });
+					auto ctx = context_t::make_message(h, context_t::message_t{}, [conn, &post] { post(conn); });
+					conn->response(ctx);
 				});
 			};
 
@@ -160,11 +170,16 @@ namespace timax { namespace rpc
 				codec_policy cp{};
 				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
 
-				std::async([conn, args = std::move(args_tuple), &f, &post]
+				std::async([conn, args = std::move(args_tuple), h = conn->head_, &f, &post]
 				{
 					auto result = call_helper(f, args, std::false_type{});
 					auto message = codec_policy{}.pack(result);
-					conn->response(std::move(message), [conn, &post, r = std::move(result)]{ post(conn, r); });
+					auto ctx = context_t::make_message(h, std::move(message),
+						[conn, &post, r = std::move(result)]
+					{
+						post(conn, r);
+					});
+					conn->response(ctx);
 				});
 			};
 
@@ -173,6 +188,6 @@ namespace timax { namespace rpc
 
 	private:
 		// mutable std::mutex		mutex_;
-		invoker_map_t			invokers_;
+		invoker_map_t				invokers_;
 	};
 } }

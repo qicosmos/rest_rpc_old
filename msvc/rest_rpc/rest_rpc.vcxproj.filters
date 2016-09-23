@@ -82,5 +82,8 @@
     <ClInclude Include="..\..\rest_rpc\client\sync_client.hpp">
       <Filter>client</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\context.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

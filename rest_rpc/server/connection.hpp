@@ -7,20 +7,19 @@ namespace timax { namespace rpc
 	class connection : public std::enable_shared_from_this<connection>
 	{
 	public:
-		template <typename CodecPolicy>
-		friend class server;
+		template <typename CodecPolicy> friend class server;
+		template <typename CodecPolicy> friend class router;
 		friend class ios_wrapper;
 
 		using connection_ptr = std::shared_ptr<connection>;
+		using context_ptr = std::shared_ptr<context_t>;
 		using connection_on_error_t = std::function<void(connection_ptr, boost::system::error_code const& error)>;
 		using connection_on_read_t = std::function<void(connection_ptr)>;
-		using connection_on_read_pages_t = std::function<void(connection_ptr, message_t)>;
+		using connection_on_read_pages_t = std::function<void(connection_ptr, std::vector<char>)>;
 
 	public:
 		connection(ios_wrapper& ios, duration_t time_out);
-		void response(message_t message, std::function<void()>&& post_func = nullptr);
-		void response(std::function<void()>&& post_func = nullptr);
-		void response_error(message_t message, std::function<void()>&& post_func = nullptr);
+		void response(context_ptr& ctx);
 		void close();
 
 	protected:
