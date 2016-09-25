@@ -72,23 +72,28 @@ namespace timax { namespace rpc
 				barrier->notify();
 		}
 
+		void error()
+		{
+			codec_policy cp{};
+			auto recv_error = cp.template unpack<exception>(rep.data(), rep.size());
+			err = std::move(recv_error);
+
+			post_error();
+		}
+
 		void error(error_code errcode, char const* message = nullptr)
 		{
 			err.set_code(errcode);
-			if (error_code::FAIL == errcode)
+			if (nullptr != message)
 			{
-				codec_policy cp{};
-				auto error_message = cp.template unpack<std::string>(rep.data(), rep.size());
-				err.set_message(std::move(error_message));
-			}
-			else
-			{
-				if (nullptr != message)
-				{
-					err.set_message(message);
-				}
+				err.set_message(message);
 			}
 
+			post_error();
+		}
+
+		void post_error()
+		{
 			if (on_error)
 				on_error(err);
 

@@ -158,7 +158,7 @@ namespace timax { namespace rpc
 			}
 			else
 			{
-				ctx->error(error_code::FAIL);
+				ctx->error();
 			}
 		}
 

@@ -39,23 +39,43 @@ namespace timax { namespace rpc
 
 		close();
 
-		if (on_error_)
-			on_error_(this->shared_from_this(), error);
+		decltype(auto) on_error = get_on_error();
+
+		if (on_error)
+			on_error(this->shared_from_this(), error);
 	}
 
 	void connection::set_on_error(connection_on_error_t on_error)
 	{
-		on_error_ = std::move(on_error);
+		get_on_error() = std::move(on_error);
 	}
 
 	void connection::set_on_read(connection_on_read_t on_read)
 	{
-		on_read_ = std::move(on_read);
+		get_on_read() = std::move(on_read);
 	}
 
 	void connection::set_on_read_pages(connection_on_read_pages_t on_read_pages)
 	{
-		on_read_pages_ = std::move(on_read_pages);
+		get_on_read_page() = std::move(on_read_pages);
+	}
+
+	connection::connection_on_error_t& connection::get_on_error()
+	{
+		static connection_on_error_t on_error;
+		return on_error;
+	}
+
+	connection::connection_on_read_t& connection::get_on_read()
+	{
+		static connection_on_read_t on_read;
+		return on_read;
+	}
+
+	connection::connection_on_read_pages_t& connection::get_on_read_page()
+	{
+		static connection_on_read_pages_t on_read_page;
+		return on_read_page;
 	}
 
 	blob_t connection::get_read_buffer() const
@@ -145,8 +165,9 @@ namespace timax { namespace rpc
 
 		if (!error)
 		{
-			if (on_read_)
-				on_read_(this->shared_from_this());
+			decltype(auto) on_read = get_on_read();
+			if (on_read)
+				on_read(this->shared_from_this());
 
 			read_head();
 		}
@@ -165,8 +186,10 @@ namespace timax { namespace rpc
 
 		if (!error)
 		{
-			if (on_read_pages_)
-				on_read_pages_(this->shared_from_this(), std::move(read_buffer));
+			decltype(auto) on_read_pages = get_on_read_page();
+
+			if (on_read_pages)
+				on_read_pages(this->shared_from_this(), std::move(read_buffer));
 
 			read_head();
 		}

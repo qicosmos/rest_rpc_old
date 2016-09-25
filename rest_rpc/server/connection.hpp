@@ -30,6 +30,9 @@ namespace timax { namespace rpc
 		static void set_on_error(connection_on_error_t on_error);
 		static void set_on_read(connection_on_read_t on_read);
 		static void set_on_read_pages(connection_on_read_pages_t on_read_pages);
+		static connection_on_error_t& get_on_error();
+		static connection_on_read_t& get_on_read();
+		static connection_on_read_pages_t& get_on_read_page();
 		blob_t get_read_buffer() const;
 
 	private:
@@ -51,13 +54,5 @@ namespace timax { namespace rpc
 		std::array<char, PAGE_SIZE>			usual_read_buffer_;
 		steady_timer_t						timer_;
 		duration_t							time_out_;
-
-		static connection_on_error_t		on_error_;
-		static connection_on_read_t			on_read_;
-		static connection_on_read_pages_t	on_read_pages_;
 	};
-
-	connection::connection_on_error_t connection::on_error_;
-	connection::connection_on_read_t connection::on_read_;
-	connection::connection_on_read_pages_t connection::on_read_pages_;
 } }
