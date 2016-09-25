@@ -19,12 +19,12 @@ namespace timax { namespace rpc
 
 	public:
 		connection(ios_wrapper& ios, duration_t time_out);
-		void response(context_ptr& ctx);
 		void close();
 
 	protected:
 		tcp::socket& socket();
 		void start();
+		void response(context_ptr& ctx);
 		void on_error(boost::system::error_code const& error);
 		static void set_on_error(connection_on_error_t on_error);
 		static void set_on_read(connection_on_read_t on_read);
