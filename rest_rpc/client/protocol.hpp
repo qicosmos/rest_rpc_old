@@ -44,11 +44,17 @@ namespace timax { namespace rpc
 			return name_;
 		}
 
-		template <typename Marshal, typename ... TArgs>
-		auto pack_args(Marshal const& m, TArgs&& ... args) const
+		template <typename CodecPolicy, typename ... TArgs>
+		auto pack_args(CodecPolicy const& cp, TArgs&& ... args) const
 		{
 			static_assert(is_argument_match<signature_type, TArgs...>::value, "Arguments` types don`t match the protocol!");
-			return m.pack_args(std::move(static_cast<Args>(std::forward<TArgs>(args)))...);
+			return cp.pack_args(std::move(static_cast<Args>(std::forward<TArgs>(args)))...);
+		}
+
+		template <typename CodecPolicy>
+		auto pack_topic(CodecPolicy const& cp) const
+		{
+			return cp.pack_args(name_);
 		}
 
 	private:
@@ -94,6 +100,4 @@ namespace timax { namespace rpc
 	};
 
 	TIMAX_DEFINE_PROTOCOL(sub_topic, std::string(std::string const&));
-	TIMAX_DEFINE_PROTOCOL(sub_confirm, void());
-	TIMAX_DEFINE_PROTOCOL(cancel_sub, void());
 } }

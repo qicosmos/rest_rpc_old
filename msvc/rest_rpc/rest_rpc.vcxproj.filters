@@ -15,12 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\rest_rpc\base\base64.hpp">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\base\bin_escape.h">
-      <Filter>base</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\base\codec.hpp">
       <Filter>base</Filter>
     </ClInclude>
@@ -33,9 +27,6 @@
     <ClInclude Include="..\..\rest_rpc\base\function_traits.hpp">
       <Filter>base</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\base\json_hex16.h">
-      <Filter>base</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\base\log.hpp">
       <Filter>base</Filter>
     </ClInclude>
@@ -43,12 +34,6 @@
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client\async_client.hpp">
-      <Filter>client</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\client\client_base.hpp">
-      <Filter>client</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\client\client_proxy.hpp">
       <Filter>client</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client\protocol.hpp">
@@ -60,16 +45,10 @@
     <ClInclude Include="..\..\rest_rpc\server\connection_impl.hpp">
       <Filter>server</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\server\io_service_pool.hpp">
-      <Filter>server</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\rest_rpc\server\router.hpp">
       <Filter>server</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\server\server.hpp">
-      <Filter>server</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\rest_rpc\server\token_parser.hpp">
       <Filter>server</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client.hpp" />
@@ -93,6 +72,18 @@
     </ClInclude>
     <ClInclude Include="..\..\rest_rpc\client\detail\async_rpc_session_impl.hpp">
       <Filter>client\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\ios_wrapper.hpp">
+      <Filter>server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\base\excetion.hpp">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\client\sync_client.hpp">
+      <Filter>client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\rest_rpc\server\context.hpp">
+      <Filter>server</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -27,7 +27,25 @@ namespace boost {
 
 namespace timax { namespace rpc
 {
-	using blob = msgpack::type::raw_ref;
+	struct blob_t : msgpack::type::raw_ref
+	{
+		blob_t(char const* data, size_t size)
+			: raw_ref_(data, static_cast<uint32_t>(size))
+		{
+		}
+
+		auto data() const
+		{
+			return raw_ref_.ptr;
+		}
+		
+		size_t size() const
+		{
+			return raw_ref_.size;
+		}
+
+		msgpack::type::raw_ref	raw_ref_;
+	};
 
 	struct msgpack_codec
 	{
@@ -89,8 +107,17 @@ namespace timax { namespace rpc
 		template <typename T>
 		T unpack(char const* data, size_t length)
 		{
-			msgpack::unpack(&msg_, data, length);
-			return msg_.get().as<T>();
+			try
+			{
+				msgpack::unpack(&msg_, data, length);
+				return msg_.get().as<T>();
+			}
+			catch (...)
+			{
+				using namespace std::string_literals;
+				exception error{ error_code::FAIL, "Args not match!"s };
+				throw error;
+			}
 		}
 
 	private:
@@ -166,9 +193,9 @@ namespace timax { namespace rpc
 			return assign(ss);
 		}
 
-		vector<char> assign(std::stringstream& ss) const
+		std::vector<char> assign(std::stringstream& ss) const
 		{
-			vector<char> vec;
+			std::vector<char> vec;
 			std::streampos beg = ss.tellg();
 			ss.seekg(0, std::ios_base::end);
 			std::streampos end = ss.tellg();

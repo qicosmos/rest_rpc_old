@@ -1,41 +1,65 @@
 #include <rest_rpc/client.hpp>
-#include <atomic>
+
 namespace client
 {
+	struct configure
+	{
+		std::string hostname;
+		std::string port;
+
+		META(hostname, port);
+	};
+
+	configure get_config()
+	{
+		std::ifstream in("client.cfg");
+		std::stringstream ss;
+		ss << in.rdbuf();
+
+		configure cfg = { "127.0.0.1", "9000" };
+		DeSerializer dr;
+		try
+		{
+			dr.Parse(ss.str());
+			dr.Deserialize(cfg);
+		}
+		catch (const std::exception& e)
+		{
+			timax::SPD_LOG_ERROR(e.what());
+		}
+
+		return cfg;
+	}
+
 	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
-	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
-	TIMAX_DEFINE_PROTOCOL(madoka, void(int, int));
 }
 
-using sync_client = timax::rpc::sync_client<timax::rpc::msgpack_codec>;
+using async_client_t = timax::rpc::async_client<timax::rpc::msgpack_codec>;
 
 std::atomic<bool> g_flag(false);
 int main(void)
 {
-	timax::log::get().init("rest_rpc_client.lg");
+	timax::log::get().init("sub_client.lg");
 
-	sync_client client;
-	client.connect("127.0.0.1", "9000");
+	auto config = client::get_config();
 
-//	std::thread thd([&client] {std::this_thread::sleep_for(std::chrono::seconds(3)); client.cancel_sub_topic(client::sub_add.name()); });
+	auto endpoint = timax::rpc::get_tcp_endpoint(config.hostname, 
+		boost::lexical_cast<uint16_t>(config.port));
+
+	auto async_client = std::make_shared<async_client_t>();
 
 	try
 	{
-		client.sub(client::sub_add, [](int r)
-		{
-			std::cout << r << std::endl;
-		}
+		async_client->sub(endpoint, client::sub_add, 
+			[](int r) { std::cout << r << std::endl; },
+			[](auto const& e) { std::cout << e.get_error_message() << std::endl; }
 		);
-
-		auto r = client.call(client::add, 1, 2);
-		std::cout << r << std::endl;
 	}
-	catch (timax::rpc::client_exception const& e)
+	catch (timax::rpc::exception const& e)
 	{
-		std::cout << e.what() << std::endl;
+		std::cout << e.get_error_message() << std::endl;
 	}
 
-//	thd.join();
 	getchar();
 	return 0;
 }

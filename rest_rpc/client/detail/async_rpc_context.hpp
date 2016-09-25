@@ -2,21 +2,24 @@
 
 namespace timax { namespace rpc 
 {
+	template <typename CodecPolicy>
 	struct rpc_context
 	{
+		using codec_policy = CodecPolicy;
 		using success_function_t = std::function<void(char const*, size_t)>;
-		using error_function_t = std::function<void(error_code, char const*, size_t)>;
-		using on_error_function_t = std::function<void(client_error const&)>;
+		using on_error_function_t = std::function<void(exception const&)>;
 
 		rpc_context(
-			bool is_void_return,
-			tcp::endpoint endpoint,
+			io_service_t& ios,
+			tcp::endpoint const& endpoint,
 			std::string const& name,
 			std::vector<char>&& request)
-			: is_void(is_void_return)
+			: timer(ios)
+			, timeout(duration_t::max())
 			, endpoint(endpoint)
 			, name(name)
 			, req(std::move(request))
+			, is_over(false)
 		{
 			head =
 			{
@@ -25,8 +28,9 @@ namespace timax { namespace rpc
 			};
 		}
 
-		rpc_context()
-			: is_void(true)
+		explicit rpc_context(io_service_t& ios)
+			: timer(ios)
+			, timeout(duration_t::max())
 		{
 			std::memset(&head, 0, sizeof(head_t));
 		}
@@ -62,16 +66,33 @@ namespace timax { namespace rpc
 			if (on_ok)
 				on_ok(rep.data(), rep.size());
 
+			is_over = true;
+
 			if (nullptr != barrier)
 				barrier->notify();
 		}
 
-		void error(error_code errcode)
+		void error(error_code errcode, char const* message = nullptr)
 		{
-			error_func(errcode, rep.data(), rep.size());
+			err.set_code(errcode);
+			if (error_code::FAIL == errcode)
+			{
+				codec_policy cp{};
+				auto error_message = cp.template unpack<std::string>(rep.data(), rep.size());
+				err.set_message(std::move(error_message));
+			}
+			else
+			{
+				if (nullptr != message)
+				{
+					err.set_message(message);
+				}
+			}
 
 			if (on_error)
 				on_error(err);
+
+			is_over = true;
 
 			if (nullptr != barrier)
 				barrier->notify();
@@ -89,45 +110,55 @@ namespace timax { namespace rpc
 				barrier->wait();
 		}
 
-		bool complete() const
-		{
-			return nullptr != barrier && barrier->complete();
-		}
-
-		//deadline_timer_t					timeout;	// 先不管超时
-		head_t								head;
-		bool								is_void;
+		steady_timer_t						timer;
+		steady_timer_t::duration			timeout;
 		tcp::endpoint						endpoint;
 		std::string							name;
+		head_t								head;
 		std::vector<char>					req;		// request buffer
 		std::vector<char>					rep;		// response buffer
-		client_error						err;
+		exception							err;
 		success_function_t					on_ok;
-		error_function_t					error_func;
 		on_error_function_t					on_error;
+		bool								is_over;
 		std::unique_ptr<result_barrier>		barrier;
 	};
 
+	template <typename CodecPolicy>
 	class rpc_call_container
 	{
 	public:
-		using context_t = rpc_context;
+		using codec_policy = CodecPolicy;
+		using context_t = rpc_context<codec_policy>;
 		using context_ptr = std::shared_ptr<context_t>;
 		using call_map_t = std::map<uint32_t, context_ptr>;
 		using call_list_t = std::list<context_ptr>;
 
 	public:
-		rpc_call_container()
+		explicit rpc_call_container(size_t max_size = MAX_QUEUE_SIZE)
 			: call_id_(0)
+			, max_size_(max_size)
 		{
 		}
 
-		void push_call(context_ptr ctx)
+		bool push_call(context_ptr& ctx)
 		{
-			auto call_id = ++call_id_;
-			ctx->get_head().id = call_id;
-			call_map_.emplace(call_id, ctx);
+			if (call_map_.size() >= max_size_)
+				return false;
+
+			push_call_response(ctx);
 			call_list_.push_back(ctx);
+			return true;
+		}
+
+		void push_call_response(context_ptr& ctx)
+		{
+			if (ctx->req.size() > 0)
+			{
+				auto call_id = ++call_id_;
+				ctx->get_head().id = call_id;
+				call_map_.emplace(call_id, ctx);
+			}
 		}
 
 		void task_calls_from_list(call_list_t& to_calls)
@@ -144,14 +175,18 @@ namespace timax { namespace rpc
 		{
 			auto itr = call_map_.find(call_id);
 			if (call_map_.end() != itr)
-				return itr->second;
+			{
+				context_ptr ctx = itr->second;
+				call_map_.erase(itr);
+				return ctx;
+			}
 			return nullptr;
 		}
 
 		void remove_call_from_map(uint32_t call_id)
 		{
 			auto itr = call_map_.find(call_id);
-			if (call_map_.end() != itr)
+			if(call_map_.end() != itr)
 				call_map_.erase(itr);
 		}
 
@@ -160,9 +195,20 @@ namespace timax { namespace rpc
 			call_map = std::move(call_map_);
 		}
 
+		size_t get_call_list_size() const
+		{
+			return call_list_.size();
+		}
+
+		size_t get_call_map_size() const
+		{
+			return call_map_.size();
+		}
+
 	private:
 		call_map_t				call_map_;
 		call_list_t				call_list_;
 		uint32_t				call_id_;
+		size_t					max_size_;
 	};
 } }

@@ -7,19 +7,23 @@
 #include "detail/async_rpc_session_impl.hpp"
 // for rpc in async client
 
-//#include "detail/async_sub_session.hpp"
+#include "detail/async_sub_session.hpp"
 
 namespace timax { namespace rpc
 {
-	template <typename Codec>
-	class async_client : public std::enable_shared_from_this<async_client<Codec>>
+	template <typename CodecPolicy>
+	class async_client : public std::enable_shared_from_this<async_client<CodecPolicy>>
 	{
 		using client_ptr = std::shared_ptr<async_client>;
 		using client_weak = std::weak_ptr<async_client>;
-		using codec_policy = Codec;
+		using codec_policy = CodecPolicy;
 		using lock_t = std::unique_lock<std::mutex>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
-		//using sub_session_container = std::map<std::string, std::shared_ptr<sub_session>>;
+		using context_t = rpc_context<codec_policy>;
+		using context_ptr = std::shared_ptr<context_t>;
+
+		using rpc_manager_t = rpc_manager<codec_policy>;
+		using sub_manager_t = sub_manager<codec_policy>;
 
 		/******************* wrap context with type information *********************/
 		template <typename Ret>
@@ -30,7 +34,7 @@ namespace timax { namespace rpc
 		{
 		public:
 			using result_type = Ret;
-			using context_ptr = rpc_session::context_ptr;
+			using context_ptr = typename rpc_session<codec_policy>::context_ptr;
 
 		public:
 			rpc_task_base(client_ptr client, context_ptr ctx)
@@ -38,7 +42,6 @@ namespace timax { namespace rpc
 				, ctx_(ctx)
 				, dismiss_(false)
 			{
-				set_error_function();
 			}
 
 			~rpc_task_base()
@@ -51,8 +54,7 @@ namespace timax { namespace rpc
 
 			void wait()
 			{
-				if(ctx_->complete())
-					do_call_and_wait();
+				do_call_and_wait();
 			}
 
 		private:
@@ -67,29 +69,17 @@ namespace timax { namespace rpc
 
 			void do_call_and_wait()
 			{
-				ctx_->create_barrier();
-				dismiss_ = true;
-				auto client = client_.lock();
-				if (nullptr != client)
+				if (!dismiss_)
 				{
-					client->call_impl(ctx_);
-					ctx_->wait();
-				}
-			}
-
-			void set_error_function()
-			{
-				auto ctx_ptr = ctx_.get();
-				ctx_ptr->error_func = [ctx_ptr](error_code code, char const* data, size_t size)
-				{
-					if (error_code::FAIL == code)
+					dismiss_ = true;
+					ctx_->create_barrier();
+					auto client = client_.lock();
+					if (nullptr != client)
 					{
-						codec_policy codec{};
-						ctx_ptr->err.set_message(std::move(
-							codec.template unpack<std::string>(data, size)));
+						client->call_impl(ctx_);
+						ctx_->wait();
 					}
-					ctx_ptr->err.set_code(code);
-				};
+				}
 			}
 
 		protected:
@@ -98,12 +88,13 @@ namespace timax { namespace rpc
 			bool							dismiss_;
 		};
 
-		template <typename Ret>
+		template <typename Ret, typename = void>
 		class rpc_task : public rpc_task_base<Ret>
 		{
 		public:
 			using base_type = rpc_task_base<Ret>;
 			using result_type = Ret;
+			using context_ptr = typename base_type::context_ptr;
 
 		public:
 			rpc_task(client_ptr client, context_ptr ctx)
@@ -115,15 +106,17 @@ namespace timax { namespace rpc
 			rpc_task& when_ok(F&& f)
 			{
 				if (nullptr == result_)
-					result_.reset(new result_type);
-
-				auto result = result_;
-				this->ctx_->on_ok = [f, result](char const* data, size_t size)
 				{
-					codec_policy codec{};
-					*result = codec.template unpack<result_type>(data, size);
-					f(*result);
-				};
+					//result_.reset(new result_type);
+					result_ = std::make_shared<result_type>();
+					this->ctx_->on_ok = [f, r = result_](char const* data, size_t size)
+					{
+						codec_policy codec{};
+						*r = codec.template unpack<result_type>(data, size);
+						f(*r);
+					};
+				}
+					
 				return *this;
 			}
 
@@ -134,10 +127,25 @@ namespace timax { namespace rpc
 				return *this;
 			}
 
+			rpc_task& timeout(duration_t t)
+			{
+				this->ctx_->timeout = t;
+				return *this;
+			}
+
 			result_type const& get()
 			{
-				this->wait();
+				if (nullptr == result_)
+				{
+					result_ = std::make_shared<result_type>();
+					this->ctx_->on_ok = [r = result_](char const* data, size_t size)
+					{
+						codec_policy codec{};
+						*r = codec.template unpack<result_type>(data, size);
+					};
+				}
 
+				this->wait();
 				return *result_;
 			}
 
@@ -145,17 +153,17 @@ namespace timax { namespace rpc
 			std::shared_ptr<result_type>	result_;
 		};
 
-		template <>
-		class rpc_task<void> : public rpc_task_base<void>
+		template <typename Dummy>
+		class rpc_task<void, Dummy> : public rpc_task_base<void>
 		{
 		public:
 			using base_type = rpc_task_base<void>;
 			using result_type = void;
+			using context_ptr = typename base_type::context_ptr;
 
 		public:
 			rpc_task(client_ptr client, context_ptr ctx)
 				: base_type(client, ctx)
-				, result_(new result_type{})
 			{
 			}
 
@@ -172,6 +180,12 @@ namespace timax { namespace rpc
 				this->ctx_->on_error = std::forward<F>(f);
 				return *this;
 			}
+
+			rpc_task& timeout(duration_t t)
+			{
+				this->ctx_->timeout = t;
+				return *this;
+			}
 		};
 		
 		/******************* wrap context with type information *********************/
@@ -182,6 +196,7 @@ namespace timax { namespace rpc
 			, ios_work_(std::make_unique<io_service_t::work>(ios_))
 			, ios_run_thread_(boost::bind(&io_service_t::run, &ios_))
 			, rpc_manager_(ios_)
+			, sub_manager_(ios_)
 		{
 		}
 
@@ -200,18 +215,36 @@ namespace timax { namespace rpc
 			using result_type = typename Protocol::result_type;
 			auto buffer = protocol.pack_args(codec_policy{}, std::forward<Args>(args)...);
 			
-			auto ctx = std::make_shared<rpc_context>(
-				std::is_void<result_type>::value,
+			auto ctx = std::make_shared<context_t>(
+				ios_,
 				endpoint,
 				protocol.name(),
 				std::move(buffer));
 
-			return rpc_task<result_type>{ shared_from_this(), ctx };
+			return rpc_task<result_type>{ this->shared_from_this(), ctx };
+		}
+
+		template <typename Protocol, typename Func>
+		void sub(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func)
+		{
+			sub_manager_.sub(endpoint, protocol, std::forward<Func>(func));
+		}
+
+		template <typename Protocol, typename Func, typename EFunc>
+		void sub(tcp::endpoint const& endpoint, Protocol const& protocol, Func&& func, EFunc&& efunc)
+		{
+			sub_manager_.sub(endpoint, protocol, std::forward<Func>(func), std::forward<EFunc>(efunc));
+		}
+
+		template <typename Protocol, typename Func>
+		void remove_sub(tcp::endpoint const& endpoint, Protocol const& protocol)
+		{
+			//sub_manager_.remove()
 		}
 
 	private:
 
-		void call_impl(std::shared_ptr<rpc_context> ctx)
+		void call_impl(std::shared_ptr<context_t>& ctx)
 		{
 			rpc_manager_.call(ctx);
 		}
@@ -220,6 +253,7 @@ namespace timax { namespace rpc
 		io_service_t				ios_;
 		work_ptr					ios_work_;
 		std::thread					ios_run_thread_;
-		rpc_manager					rpc_manager_;
+		rpc_manager_t				rpc_manager_;
+		sub_manager_t				sub_manager_;
 	};
 } }

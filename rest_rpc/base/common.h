@@ -34,54 +34,15 @@ namespace timax{ namespace rpc
 	{
 		OK = 0,
 		FAIL = 1,
-		EXCEPTION = 2,
-		ARGUMENT_EXCEPTION = 3
 	};
 
 	enum class error_code 
 	{
-		OK,					// rpc正确
+		UNKNOWN,			// init
 		FAIL,				// rpc调用失败
 		TIMEOUT,			// rpc超时
 		CANCEL,				// rpc主动取消
 		BADCONNECTION,		// 连接故障
-	};
-
-	class client_error
-	{
-	public:
-		client_error()
-			: client_error(error_code::OK, "")
-		{}
-
-		client_error(error_code code, std::string message)
-			: code_(code)
-			, message_(std::move(message))
-		{}
-
-		error_code get_code() const
-		{
-			return code_;
-		}
-
-		void set_code(error_code code)
-		{
-			code_ = code;
-		}
-
-		std::string const& get_message() const
-		{
-			return message_;
-		}
-
-		void set_message(std::string message)
-		{
-			message_ = std::move(message);
-		}
-
-	private:
-		error_code		code_;
-		std::string		message_;
 	};
 
 	//
@@ -98,7 +59,5 @@ namespace timax{ namespace rpc
 		JSON = 0,
 		BINARY = 1,
 	};
-
-	static std::atomic<std::uint64_t> g_succeed_count(0); //for test qps
 } }
 

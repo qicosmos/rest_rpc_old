@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(async_client)
+project(pub_sub_client)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14")
@@ -14,29 +14,36 @@ endif ()
 
 add_definitions(-DFMT_HEADER_ONLY)
 
-find_package(Boost COMPONENTS coroutine context system thread chrono REQUIRED)
+find_package(Boost 1.55 COMPONENTS coroutine context system thread chrono serialization REQUIRED)
 
-set(REST_RPC_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../)
+set(REST_RPC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
 include_directories(
 		${Boost_INCLUDE_DIRS}
-		${REST_RPC_DIRECTORY}
-		${REST_RPC_DIRECTORY}/Kapok
-		${REST_RPC_DIRECTORY}/Kapok/fmt
-		${REST_RPC_DIRECTORY}/spdlog/include
-		${REST_RPC_DIRECTORY}/msgpack/include
-        ${REST_RPC_DIRECTORY}/thread-pool-cpp/thread_pool
+		${REST_RPC_PATH}
+		${REST_RPC_PATH}/Kapok
+		${REST_RPC_PATH}/Kapok/fmt
+		${REST_RPC_PATH}/spdlog/include
+		${REST_RPC_PATH}/thread-pool-cpp/thread_pool
+		${REST_RPC_PATH}/msgpack/include
 		)
 SET(EXTRA_LIBS ${EXTRA_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 
-set(SOURCE_FILES 
-	async_client_example.cpp
+set(PUB_SOURCES 
+	pub_client_example.cpp
+	)
+	
+set(SUB_SOURCES
+    sub_client_example.cpp
 	)
 
 
-add_executable(async_client ${SOURCE_FILES})
-target_link_libraries(async_client ${EXTRA_LIBS})
+add_executable(pub_client ${PUB_SOURCES})
+target_link_libraries(pub_client ${EXTRA_LIBS})
+
+add_executable(sub_client ${SUB_SOURCES})
+target_link_libraries(sub_client ${EXTRA_LIBS})
 
 include (InstallRequiredSystemLibraries)
 set (CPACK_PACKAGE_VERSION_MAJOR "1")
