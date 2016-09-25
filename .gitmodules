@@ -4,3 +4,6 @@
 [submodule "thread-pool-cpp"]
 	path = thread-pool-cpp
 	url = https://github.com/inkooboo/thread-pool-cpp.git
+[submodule "Kapok"]
+	path = Kapok
+	url = https://github.com/qicosmos/Kapok.git
