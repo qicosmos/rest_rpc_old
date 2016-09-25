@@ -26,6 +26,19 @@ namespace timax { namespace rpc
 			return true;
 		}
 
+		template <typename Handler>
+		bool register_invoker(std::string const& name, Handler&& handler)
+		{
+			using is_void_t = std::is_void<typename function_traits<Handler>::result_type>;
+
+			if (invokers_.find(name) != invokers_.end())
+				return false;
+
+			auto invoker = get_invoker(std::forward<Handler>(handler), is_void_t{});
+			invokers_.emplace(name, std::move(invoker));
+			return true;
+		}
+
 		template <typename Handler, typename PostFunc>
 		bool async_register_invoker(std::string const& name, Handler&& handler, PostFunc&& post_func)
 		{
@@ -35,6 +48,19 @@ namespace timax { namespace rpc
 				return false;
 
 			auto invoker = get_async_invoker(std::forward<Handler>(handler), std::forward<PostFunc>(post_func), is_void_t{});
+			invokers_.emplace(name, std::move(invoker));
+			return true;
+		}
+
+		template <typename Handler>
+		bool async_register_invoker(std::string const& name, Handler&& handler)
+		{
+			using is_void_t = std::is_void<typename function_traits<Handler>::result_type>;
+
+			if (invokers_.find(name) != invokers_.end())
+				return false;
+
+			auto invoker = get_async_invoker(std::forward<Handler>(handler), is_void_t{});
 			invokers_.emplace(name, std::move(invoker));
 			return true;
 		}
@@ -139,6 +165,41 @@ namespace timax { namespace rpc
 			return invoker;
 		}
 
+		template <typename Handler>
+		static invoker_t get_invoker(Handler&& handler, std::true_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			invoker_t invoker = [f = std::move(handler)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+				call_helper(f, args_tuple, std::true_type{});
+				auto ctx = context_t::make_message(conn->head_, context_t::message_t{});
+				conn->response(ctx);
+			};
+
+			return invoker;
+		}
+
+		template <typename Handler>
+		static invoker_t get_invoker(Handler&& handler, std::false_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			invoker_t invoker = [f = std::move(handler)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+				auto result = call_helper(f, args_tuple, std::false_type{});
+				auto message = cp.pack(result);
+				auto ctx = context_t::make_message(conn->head_, std::move(message));
+				conn->response(ctx);
+			};
+
+			return invoker;
+		}
+
 		template <typename Handler, typename PostFunc>
 		static invoker_t get_async_invoker(Handler&& handler, PostFunc&& post_func, std::true_type)
 		{
@@ -179,6 +240,49 @@ namespace timax { namespace rpc
 					{
 						post(conn, r);
 					});
+					conn->response(ctx);
+				});
+			};
+
+			return invoker;
+		}
+
+		template <typename Handler>
+		static invoker_t get_async_invoker(Handler&& handler, std::true_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			invoker_t invoker = [f = std::move(handler)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+
+				std::async([conn, args = std::move(args_tuple), h = conn->head_, &f]
+				{
+					call_helper(f, args, std::false_type{});
+					auto ctx = context_t::make_message(h, context_t::message_t{});
+					conn->response(ctx);
+				});
+			};
+
+			return invoker;
+		}
+
+		template <typename Handler>
+		static invoker_t get_async_invoker(Handler&& handler, std::false_type)
+		{
+			using args_tuple_t = typename function_traits<Handler>::tuple_type;
+			invoker_t invoker = [f = std::move(handler)]
+				(connection_ptr conn, char const* data, size_t size)
+			{
+				codec_policy cp{};
+				auto args_tuple = cp.template unpack<args_tuple_t>(data, size);
+
+				std::async([conn, args = std::move(args_tuple), h = conn->head_, &f]
+				{
+					auto result = call_helper(f, args, std::false_type{});
+					auto message = codec_policy{}.pack(result);
+					auto ctx = context_t::make_message(h, std::move(message));
 					conn->response(ctx);
 				});
 			};

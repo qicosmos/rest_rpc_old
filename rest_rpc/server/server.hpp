@@ -59,6 +59,18 @@ namespace timax { namespace rpc
 			return router_.async_register_invoker(name, std::forward<Handler>(handler), std::forward<PostFunc>(post_func));
 		}
 
+		template <typename Handler>
+		bool register_handler(std::string const& name, Handler&& handler)
+		{
+			return router_.register_invoker(name, std::forward<Handler>(handler));
+		}
+
+		template <typename Handler>
+		bool async_register_handler(std::string const& name, Handler&& handler)
+		{
+			return router_.async_register_invoker(name, std::forward<Handler>(handler));
+		}
+
 		template <typename Result>
 		void pub(std::string const& topic, Result const& result, std::function<void()>&& postf = nullptr)
 		{
