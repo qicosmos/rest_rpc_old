@@ -50,8 +50,15 @@ namespace timax { namespace rpc
 				}
 			}
 
-			void wait()
+			rpc_task_base(rpc_task_base const&) = delete;
+			rpc_task_base& operator=(rpc_task_base const&) = delete;
+
+			rpc_task_base(rpc_task_base&&) = default;
+			rpc_task_base& operator=(rpc_task_base&&) = default;
+
+			void wait(duration_t duration = duration_t::max())
 			{
+				ctx_->timeout = duration;
 				do_call_and_wait();
 			}
 
@@ -93,7 +100,7 @@ namespace timax { namespace rpc
 			}
 
 			template <typename F>
-			rpc_task& on_ok(F&& f)
+			rpc_task&& on_ok(F&& f) &&
 			{
 				if (nullptr == result_)
 				{
@@ -107,23 +114,23 @@ namespace timax { namespace rpc
 					};
 				}
 					
-				return *this;
+				return std::move(*this);
 			}
 
 			template <typename F>
-			rpc_task& on_error(F&& f)
+			rpc_task&& on_error(F&& f) &&
 			{
 				this->ctx_->on_error = std::forward<F>(f);
-				return *this;
+				return std::move(*this);
 			}
 
-			rpc_task& timeout(duration_t t)
+			rpc_task&& timeout(duration_t t) &&
 			{
 				this->ctx_->timeout = t;
-				return *this;
+				return std::move(*this);
 			}
 
-			result_type const& get()
+			result_type const& get(duration_t duration = duration_t::max())
 			{
 				if (nullptr == result_)
 				{
@@ -135,7 +142,7 @@ namespace timax { namespace rpc
 					};
 				}
 
-				this->wait();
+				this->wait(duration);
 				return *result_;
 			}
 
@@ -158,23 +165,23 @@ namespace timax { namespace rpc
 			}
 
 			template <typename F>
-			rpc_task& on_ok(F&& f)
+			rpc_task&& on_ok(F&& f) &&
 			{
 				this->ctx_->on_ok = [f](char const* data, size_t size) { f(); };
-				return *this;
+				return std::move(*this);
 			}
 
 			template <typename F>
-			rpc_task& on_error(F&& f)
+			rpc_task&& on_error(F&& f) &&
 			{
 				this->ctx_->on_error = std::forward<F>(f);
-				return *this;
+				return std::move(*this);
 			}
 
-			rpc_task& timeout(duration_t t)
+			rpc_task&& timeout(duration_t t) &&
 			{
 				this->ctx_->timeout = t;
-				return *this;
+				return std::move(*this);
 			}
 		};
 		
