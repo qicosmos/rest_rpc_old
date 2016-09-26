@@ -252,17 +252,17 @@ rest_rpc是由c++14编写的，因此需要支持C++14的编译器，windwos上�
 		}
 
 ## 性能测试
-rest_rpc的性能很高，下面是用同步客户端对add RPC服务接口做的性能测试结果，因为RPC是请求-响应模式，所以实际上做的是pingpang测试。
-![](bench.png)
+rest_rpc的性能很高，下面是用同步客户端对add RPC服务接口做的性能测试结果，因为RPC是请求-响应模式，所以实际上做的是含有业务逻辑的pingpang测试，包括数据解包、业务执行、结果打包发送的过程。 
+![](https://github.com/topcpporg/rest_rpc/blob/master/bench.png)
 
 上面是在一台12核（主频2.4G）24线程的服务器上测试的，qps为46万时，cpu占用63%左右。
 
 ## 代码质量
 下面是用工具检测的代码质量图
-![](source.png)
+![](https://github.com/topcpporg/rest_rpc/blob/master/code_check.png)
 代码的可读性较好。
 
-** 如果你仅仅需要RPC的话，看到这里就可以不用往下看了**。
+<b>如果你仅仅需要RPC的话，看到这里就可以不用往下看了。</b>
 
 如果你还有更多期待，请往下看。
 
