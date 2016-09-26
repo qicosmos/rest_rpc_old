@@ -149,10 +149,46 @@ namespace timax
 		using type = typename bind_traits<index_sequence_t, typename function_traits_t::result_type, typename function_traits_t::raw_tuple_type>::type;
 	};
 
-	template <typename F, typename ... Args>
-	auto bind(F&& f, Args&& ... args)
+	template <typename F, typename Arg0,  typename ... Args>
+	auto bind(F&& f, Arg0&& arg0, Args&& ... args)
 		-> typename bind_to_function<F, Args...>::type
 	{
-		return std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+		return std::bind(std::forward<F>(f), std::forward<Arg0>(arg0), std::forward<Args>(args)...);
+	}
+
+	template <typename F>
+	auto bind(F&& f) ->
+		typename function_traits<F>::stl_function_type
+	{
+		return [func = std::forward<F>(f)](auto&& ... args){ return func(std::forward<decltype(args)>(args)...); };
+	}
+
+	template <typename Callee, typename Caller, typename CRet, typename ... CArgs, typename Arg0,  typename ... Args>
+	auto bind(CRet(Callee::*pmf)(CArgs...), Caller&& caller, Arg0&& arg0, Args&& ... args)
+		-> typename bind_to_function<CRet(Callee::*)(CArgs...), Arg0, Args...>::type
+	{
+		return std::bind(pmf, std::forward<Caller>(caller), std::forward<Arg0>(arg0), std::forward<Args>(args)...);
+	}
+
+	template <typename Callee, typename Caller, typename CRet, typename ... CArgs>
+	auto bind(CRet(Callee::*pmf)(CArgs...), Caller caller)
+		-> typename function_traits<CRet(Callee::*)(CArgs...)>::stl_function_type
+	{
+		return[pmf, caller](auto&& ... args){ return (caller->*pmf)(std::forward<decltype(args)>(args)...); };
+	}
+
+	// pointer to const non-static member function
+	template <typename Callee, typename Caller, typename CRet, typename ... CArgs, typename Arg0, typename ... Args>
+	auto bind(CRet(Callee::*pmf)(CArgs...) const, Caller&& caller, Arg0&& arg0, Args&& ... args)
+		-> typename bind_to_function<CRet(Callee::*)(CArgs...) const, Arg0, Args...>::type
+	{
+		return std::bind(pmf, std::forward<Caller>(caller), std::forward<Arg0>(arg0), std::forward<Args>(args)...);
+	}
+
+	template <typename Callee, typename Caller, typename CRet, typename ... CArgs>
+	auto bind(CRet(Callee::*pmf)(CArgs...) const, Caller caller)
+		-> typename function_traits<CRet(Callee::*)(CArgs...) const>::stl_function_type
+	{
+		return[pmf, caller](auto&& ... args) { return (caller->*pmf)(std::forward<decltype(args)>(args)...); };
 	}
 }
