@@ -59,7 +59,7 @@ namespace bench
 			int a = 0, b = 0;
 			while (true)
 			{
-				client->call(endpoint, bench::add, a, b++).when_ok([](auto)
+				client->call(endpoint, bench::add, a, b++).on_ok([](auto)
 				{
 					++count;
 				});
