@@ -25,6 +25,14 @@ namespace client
 	};
 }
 
+struct test
+{
+	void compose(int i, const std::string& str, const timax::rpc::blob_t& bl, double d)
+	{
+		std::cout << i << " " << str << " " << bl.data() << " " << bl.size() <<" "<<d<< std::endl;
+	}
+};
+
 
 template <size_t ... Is>
 void print(std::index_sequence<Is...>)
@@ -44,6 +52,9 @@ int main()
 	server.register_handler("foo_add", timax::bind(&client::foo::add, &foo));
 	
 	server.async_register_handler("time_consuming", client::some_task_takes_a_lot_of_time, [](auto conn) { std::cout << "acomplished!" << std::endl; });
+
+	test t;
+	server.register_handler("compose", timax::bind(&test::compose, &t));
 
 	server.start();
 	std::getchar();

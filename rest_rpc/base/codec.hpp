@@ -27,11 +27,24 @@ namespace boost {
 
 namespace timax { namespace rpc
 {
-	struct blob_t : msgpack::type::raw_ref
+	struct blob_t
 	{
+		blob_t() : raw_ref_() {}
 		blob_t(char const* data, size_t size)
 			: raw_ref_(data, static_cast<uint32_t>(size))
 		{
+		}
+
+		template <typename Packer>
+		void msgpack_pack(Packer& pk) const 
+		{
+			pk.pack_bin(raw_ref_.size);
+			pk.pack_bin_body(raw_ref_.ptr, raw_ref_.size);
+		}
+
+		void msgpack_unpack(msgpack::object const& o)
+		{
+			msgpack::operator>>(o, raw_ref_);
 		}
 
 		auto data() const
@@ -111,6 +124,22 @@ namespace timax { namespace rpc
 			{
 				msgpack::unpack(&msg_, data, length);
 				return msg_.get().as<T>();
+			}
+			catch (...)
+			{
+				using namespace std::string_literals;
+				exception error{ error_code::FAIL, "Args not match!"s };
+				throw error;
+			}
+		}
+
+		template <>
+		blob_t unpack(char const* data, size_t length)
+		{
+			try
+			{
+				msgpack::unpack(&msg_, data, length);
+				return *(blob_t*)&(msg_.get().as<msgpack::type::raw_ref>());
 			}
 			catch (...)
 			{

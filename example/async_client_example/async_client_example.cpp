@@ -3,6 +3,7 @@
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(add, int(int, int));
+	TIMAX_DEFINE_PROTOCOL(compose, void(int, const std::string&, timax::rpc::blob_t, double));
 	TIMAX_DEFINE_PROTOCOL(sub_add, int(int, int));
 	TIMAX_DEFINE_PROTOCOL(sub_not_exist, double(int, std::string const&));
 }
@@ -55,6 +56,14 @@ void async_client_sub_example(tcp::endpoint const& endpoint)
 	});
 }
 
+void async_compose_example(tcp::endpoint const& endpoint)
+{
+	timax::rpc::blob_t p = { "it is a test", 13 };
+	auto task = asycn_client.call(endpoint, client::compose, 1, "test", p, 2.5);
+
+	task.wait();
+}
+
 int main()
 {
 	timax::log::get().init("async_client_example.lg");
@@ -63,7 +72,7 @@ int main()
 	
 	async_client_rpc_example(endpoint);
 	async_client_sub_example(endpoint);
-
+	async_compose_example(endpoint);
 	std::getchar();
 	return 0;
 }
