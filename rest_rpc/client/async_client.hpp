@@ -12,10 +12,8 @@
 namespace timax { namespace rpc
 {
 	template <typename CodecPolicy>
-	class async_client : public std::enable_shared_from_this<async_client<CodecPolicy>>
+	class async_client
 	{
-		using client_ptr = std::shared_ptr<async_client>;
-		using client_weak = std::weak_ptr<async_client>;
 		using codec_policy = CodecPolicy;
 		using lock_t = std::unique_lock<std::mutex>;
 		using work_ptr = std::unique_ptr<io_service_t::work>;
@@ -37,7 +35,7 @@ namespace timax { namespace rpc
 			using context_ptr = typename rpc_session<codec_policy>::context_ptr;
 
 		public:
-			rpc_task_base(client_ptr client, context_ptr ctx)
+			rpc_task_base(async_client& client, context_ptr ctx)
 				: client_(client)
 				, ctx_(ctx)
 				, dismiss_(false)
@@ -60,11 +58,7 @@ namespace timax { namespace rpc
 		private:
 			void do_call_managed()
 			{
-				auto client = client_.lock();
-				if (client)
-				{
-					client->call_impl(ctx_);
-				}
+				client_.call_impl(ctx_);
 			}
 
 			void do_call_and_wait()
@@ -73,17 +67,13 @@ namespace timax { namespace rpc
 				{
 					dismiss_ = true;
 					ctx_->create_barrier();
-					auto client = client_.lock();
-					if (nullptr != client)
-					{
-						client->call_impl(ctx_);
-						ctx_->wait();
-					}
+					client_.call_impl(ctx_);
+					ctx_->wait();
 				}
 			}
 
 		protected:
-			client_weak						client_;
+			async_client&					client_;
 			context_ptr						ctx_;
 			bool							dismiss_;
 		};
@@ -97,7 +87,7 @@ namespace timax { namespace rpc
 			using context_ptr = typename base_type::context_ptr;
 
 		public:
-			rpc_task(client_ptr client, context_ptr ctx)
+			rpc_task(async_client& client, context_ptr ctx)
 				: base_type(client, ctx)
 			{
 			}
@@ -162,7 +152,7 @@ namespace timax { namespace rpc
 			using context_ptr = typename base_type::context_ptr;
 
 		public:
-			rpc_task(client_ptr client, context_ptr ctx)
+			rpc_task(async_client& client, context_ptr ctx)
 				: base_type(client, ctx)
 			{
 			}
@@ -221,7 +211,7 @@ namespace timax { namespace rpc
 				protocol.name(),
 				std::move(buffer));
 
-			return rpc_task<result_type>{ this->shared_from_this(), ctx };
+			return rpc_task<result_type>{ *this, ctx };
 		}
 
 		template <typename Protocol, typename Func>

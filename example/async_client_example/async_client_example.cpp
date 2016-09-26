@@ -11,17 +11,17 @@ using tcp = boost::asio::ip::tcp;
 using async_client_t = timax::rpc::async_client<timax::rpc::msgpack_codec>;
 
 // create the client
-auto asycn_client = std::make_shared<async_client_t>();
+async_client_t asycn_client;
 
 void async_client_rpc_example(tcp::endpoint const& endpoint)
 {
 	using namespace std::chrono_literals;
 
 	// the interface is type safe and non-connect oriented designed
-	asycn_client->call(endpoint, client::add, 1.0, 200.0f);
+	asycn_client.call(endpoint, client::add, 1.0, 200.0f);
 
 	// we can set some callbacks to process some specific eventsS
-	asycn_client->call(endpoint, client::add, 1, 2).when_ok([](auto r) 
+	asycn_client.call(endpoint, client::add, 1, 2).when_ok([](auto r) 
 	{ 
 		std::cout << r << std::endl; 
 	}).when_error([](auto const& error)
@@ -32,7 +32,7 @@ void async_client_rpc_example(tcp::endpoint const& endpoint)
 	// we can also use the asynchronized client in a synchronized way
 	try
 	{
-		auto task = asycn_client->call(endpoint, client::add, 3, 5);
+		auto task = asycn_client.call(endpoint, client::add, 3, 5);
 		auto const& result = task.get();
 		std::cout << result << std::endl;
 	}
@@ -45,7 +45,7 @@ void async_client_rpc_example(tcp::endpoint const& endpoint)
 void async_client_sub_example(tcp::endpoint const& endpoint)
 {
 	// we can use the sub interface to keep track of some topics we are interested in
-	asycn_client->sub(endpoint, client::sub_add, [](auto r)
+	asycn_client.sub(endpoint, client::sub_add, [](auto r)
 	{
 		std::cout << r << std::endl;
 	}, // interface of dealing with error is also supplied;
