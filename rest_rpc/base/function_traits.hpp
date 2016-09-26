@@ -5,6 +5,14 @@
 template <typename ReturnType, typename ClassType, typename... Args>\
 struct function_traits<ReturnType(ClassType::*)(Args...) __VA_ARGS__> : function_traits<ReturnType(Args...)>{};\
 
+namespace std
+{
+	template <int Size>
+	struct is_placeholder<boost::arg<Size>>
+		: integral_constant<int, Size>
+	{};
+}
+
 namespace timax 
 {
 	 /*

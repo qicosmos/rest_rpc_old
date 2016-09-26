@@ -20,11 +20,14 @@ int main()
 {
 	//using namespace std::placeholders;
 	client::foo foo;
-	auto bind1 = timax::bind(&client::foo::wtf, foo, std::placeholders::_1, std::placeholders::_2);
+	auto bind1_with_boost_placeholders = timax::bind(&client::foo::wtf, foo, _1, _2);
+	auto bind1_with_std_placeholders = timax::bind(&client::foo::wtf, foo,
+		std::placeholders::_1, std::placeholders::_2);
 	auto bind2 = timax::bind(client::add);
 	auto bind3 = timax::bind(&client::foo::wtf, &foo);
 
-	bind1(1, "sdfsdfsdf");
+	bind1_with_boost_placeholders(1, "boost::placeholders");
+	bind1_with_std_placeholders(2, "std::placehodlers");
 	bind2(1, 2);
 	bind3(1, "WTF");
 
