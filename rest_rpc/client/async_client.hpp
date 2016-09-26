@@ -56,7 +56,7 @@ namespace timax { namespace rpc
 			rpc_task_base(rpc_task_base&&) = default;
 			rpc_task_base& operator=(rpc_task_base&&) = default;
 
-			void wait(duration_t duration = duration_t::max())
+			void wait(duration_t duration = duration_t::max()) &
 			{
 				ctx_->timeout = duration;
 				do_call_and_wait();
@@ -130,7 +130,7 @@ namespace timax { namespace rpc
 				return std::move(*this);
 			}
 
-			result_type const& get(duration_t duration = duration_t::max())
+			result_type const& get(duration_t duration = duration_t::max()) &
 			{
 				if (nullptr == result_)
 				{
