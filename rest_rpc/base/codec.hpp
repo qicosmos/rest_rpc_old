@@ -133,22 +133,6 @@ namespace timax { namespace rpc
 			}
 		}
 
-		template <>
-		blob_t unpack(char const* data, size_t length)
-		{
-			try
-			{
-				msgpack::unpack(&msg_, data, length);
-				return *(blob_t*)&(msg_.get().as<msgpack::type::raw_ref>());
-			}
-			catch (...)
-			{
-				using namespace std::string_literals;
-				exception error{ error_code::FAIL, "Args not match!"s };
-				throw error;
-			}
-		}
-
 	private:
 		msgpack::unpacked msg_;
 	};
