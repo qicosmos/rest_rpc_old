@@ -50,14 +50,20 @@ namespace timax { namespace rpc
 				}
 			}
 
+			rpc_task_base(rpc_task_base&& other)
+				: client_(other.client_)
+				, ctx_(std::move(other.ctx_))
+				, dismiss_(other.dismiss_)
+			{
+				other.dismiss_ = true;
+			}
+
 			rpc_task_base(rpc_task_base const&) = delete;
 			rpc_task_base& operator=(rpc_task_base const&) = delete;
-
-			rpc_task_base(rpc_task_base&&) = default;
-			rpc_task_base& operator=(rpc_task_base&&) = default;
+			rpc_task_base& operator=(rpc_task_base&&) = delete;
 
 			void wait(duration_t duration = duration_t::max()) &
-			{
+			{ 
 				ctx_->timeout = duration;
 				do_call_and_wait();
 			}

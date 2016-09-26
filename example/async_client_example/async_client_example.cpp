@@ -22,7 +22,7 @@ void async_client_rpc_example(tcp::endpoint const& endpoint)
 	asycn_client.call(endpoint, client::add, 1.0, 200.0f);
 
 	// we can set some callbacks to process some specific eventsS
-	auto task = asycn_client.call(endpoint, client::add, 1, 2).on_ok([](auto r) 
+	asycn_client.call(endpoint, client::add, 1, 2).on_ok([](auto r) 
 	{ 
 		std::cout << r << std::endl; 
 	}).on_error([](auto const& error)
