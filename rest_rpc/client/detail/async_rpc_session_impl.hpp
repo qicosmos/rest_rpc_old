@@ -210,20 +210,17 @@ namespace timax { namespace rpc
 
 		to_calls_.pop_front();
 
-		if (!error)
+		if (error)
 		{
-			if (to_calls_.empty())
-			{
-				call_impl();
-			}
-			else
-			{
-				call_impl1();
-			}
+			stop_rpc_service(error_code::BADCONNECTION);
+		}
+		else if(to_calls_.empty())
+		{
+			call_impl();
 		}
 		else
 		{
-			stop_rpc_service(error_code::BADCONNECTION);
+			call_impl1();
 		}
 	}
 

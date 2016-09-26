@@ -48,17 +48,15 @@ namespace timax{ namespace rpc
 				if (on_success_)
 					on_success_();
 			}
+			else if (++retry_count_ < max_retry_count_ || 0 == max_retry_count_)
+			{
+
+				start_connect();
+			}
 			else
 			{
-				if (++retry_count_ < max_retry_count_ || 0 == max_retry_count_)
-				{
-					start_connect();
-				}
-				else
-				{
-					if (on_error_)
-						on_error_();
-				}
+				if (on_error_)
+					on_error_();
 			}
 		}
 
