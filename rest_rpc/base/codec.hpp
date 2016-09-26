@@ -27,8 +27,12 @@ namespace boost {
 
 namespace timax { namespace rpc
 {
-	struct blob_t : msgpack::type::raw_ref
+	struct blob_t
 	{
+		blob_t()
+			: blob_t(nullptr, 0)
+		{}
+
 		blob_t(char const* data, size_t size)
 			: raw_ref_(data, static_cast<uint32_t>(size))
 		{

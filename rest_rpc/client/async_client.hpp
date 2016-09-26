@@ -93,7 +93,7 @@ namespace timax { namespace rpc
 			}
 
 			template <typename F>
-			rpc_task& when_ok(F&& f)
+			rpc_task& on_ok(F&& f)
 			{
 				if (nullptr == result_)
 				{
@@ -111,7 +111,7 @@ namespace timax { namespace rpc
 			}
 
 			template <typename F>
-			rpc_task& when_error(F&& f)
+			rpc_task& on_error(F&& f)
 			{
 				this->ctx_->on_error = std::forward<F>(f);
 				return *this;
@@ -158,14 +158,14 @@ namespace timax { namespace rpc
 			}
 
 			template <typename F>
-			rpc_task& when_ok(F&& f)
+			rpc_task& on_ok(F&& f)
 			{
 				this->ctx_->on_ok = [f](char const* data, size_t size) { f(); };
 				return *this;
 			}
 
 			template <typename F>
-			rpc_task& when_error(F&& f)
+			rpc_task& on_error(F&& f)
 			{
 				this->ctx_->on_error = std::forward<F>(f);
 				return *this;

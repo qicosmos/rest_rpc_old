@@ -10,6 +10,11 @@ namespace client
 		return a + b;
 	}
 
+	void dummy()
+	{
+		std::cout << "dummy" << std::endl;
+	}
+
 	void some_task_takes_a_lot_of_time(double, int)
 	{
 		using namespace std::chrono_literals;
@@ -42,6 +47,7 @@ int main()
 	server.register_handler("add", client::add);
 	server.register_handler("sub_add", client::add, [&server](auto conn, int r) { server.pub("sub_add", r); });
 	server.register_handler("foo_add", timax::bind(&client::foo::add, &foo));
+	server.register_handler("dummy", client::dummy);
 	
 	server.async_register_handler("time_consuming", client::some_task_takes_a_lot_of_time, [](auto conn) { std::cout << "acomplished!" << std::endl; });
 
