@@ -157,46 +157,79 @@ namespace timax
 		using type = typename bind_traits<index_sequence_t, typename function_traits_t::result_type, typename function_traits_t::raw_tuple_type>::type;
 	};
 
-	template <typename F, typename Arg0,  typename ... Args>
-	auto bind(F&& f, Arg0&& arg0, Args&& ... args)
+	template <typename F, typename Arg0, typename ... Args>
+	auto bind_impl(std::false_type /*IsNoPmf*/, F&& f, Arg0&& arg, Args&& ... args)
 		-> typename bind_to_function<F, Args...>::type
 	{
 		return std::bind(std::forward<F>(f), std::forward<Arg0>(arg0), std::forward<Args>(args)...);
 	}
 
 	template <typename F>
-	auto bind(F&& f) ->
-		typename function_traits<F>::stl_function_type
+	auto bind_impl(std::false_type /*IsNoPmf*/, F&& f)
+		-> typename function_traits<F>::stl_function_type
 	{
 		return [func = std::forward<F>(f)](auto&& ... args){ return func(std::forward<decltype(args)>(args)...); };
 	}
 
-	template <typename Callee, typename Caller, typename CRet, typename ... CArgs, typename Arg0,  typename ... Args>
-	auto bind(CRet(Callee::*pmf)(CArgs...), Caller&& caller, Arg0&& arg0, Args&& ... args)
-		-> typename bind_to_function<CRet(Callee::*)(CArgs...), Arg0, Args...>::type
+	template <typename F, typename Caller, typename Arg0, typename ... Args>
+	auto bind_impl(std::true_type /*IsPmf*/, F&& pmf, Caller&& caller, Arg0&& arg0, Args&& ... args)
+		-> typename bind_to_function<typename function_traits<F>::function_type, Arg0, Args...>::type
 	{
 		return std::bind(pmf, std::forward<Caller>(caller), std::forward<Arg0>(arg0), std::forward<Args>(args)...);
 	}
 
-	template <typename Callee, typename Caller, typename CRet, typename ... CArgs>
-	auto bind(CRet(Callee::*pmf)(CArgs...), Caller caller)
-		-> typename function_traits<CRet(Callee::*)(CArgs...)>::stl_function_type
+	template <typename ...>
+	struct voider
 	{
-		return[pmf, caller](auto&& ... args){ return (caller->*pmf)(std::forward<decltype(args)>(args)...); };
+		using type = void;
+	};
+
+	template <typename ... Args>
+	using voider_t = typename voider<Args...>::type;
+
+	template <typename T, typename = void>
+	struct is_smart_pointer : std::false_type
+	{
+	};
+
+	template <typename T>
+	struct is_smart_pointer<T, 
+		voider_t<
+			decltype(std::declval<T>().operator ->()),
+			decltype(std::declval<T>().get())
+		>> : std::true_type
+	{
+	};
+
+	template <typename F, typename Caller>
+	auto bind_impl_pmf_no_placeholder(std::true_type /*is generalized pointer*/, F&& pmf, Caller&& caller)
+		-> typename function_traits<F>::stl_function_type
+	{
+		return [pmf, c = std::forward<Caller>(caller)](auto&& ... args) { return (c->*pmf)(std::forward<decltype(args)>(args)...); };
 	}
 
-	// pointer to const non-static member function
-	template <typename Callee, typename Caller, typename CRet, typename ... CArgs, typename Arg0, typename ... Args>
-	auto bind(CRet(Callee::*pmf)(CArgs...) const, Caller&& caller, Arg0&& arg0, Args&& ... args)
-		-> typename bind_to_function<CRet(Callee::*)(CArgs...) const, Arg0, Args...>::type
+	template <typename F, typename Caller>
+	auto bind_impl_pmf_no_placeholder(std::false_type /*is not generalized pointer*/, F&& pmf, Caller&& caller)
+		-> typename function_traits<F>::stl_function_type
 	{
-		return std::bind(pmf, std::forward<Caller>(caller), std::forward<Arg0>(arg0), std::forward<Args>(args)...);
+		return [pmf, c = std::forward<Caller>(caller)](auto&& ... args) { return (c.*pmf)(std::forward<decltype(args)>(args)...); };
 	}
 
-	template <typename Callee, typename Caller, typename CRet, typename ... CArgs>
-	auto bind(CRet(Callee::*pmf)(CArgs...) const, Caller caller)
-		-> typename function_traits<CRet(Callee::*)(CArgs...) const>::stl_function_type
+	template <typename F, typename Caller>
+	auto bind_impl(std::true_type /*IsPmf*/, F&& pmf, Caller&& caller)
 	{
-		return[pmf, caller](auto&& ... args) { return (caller->*pmf)(std::forward<decltype(args)>(args)...); };
+		using is_generalized_pointer =
+			std::conditional_t<std::is_pointer<Caller>::value || is_smart_pointer<Caller>::value,
+				std::true_type, std::false_type>;
+
+		return bind_impl_pmf_no_placeholder(is_generalized_pointer{}, std::forward<F>(pmf), std::forward<Caller>(caller));
+	}
+
+	template <typename F, typename ... Args>
+	auto bind(F&& f, Args&& ... args)
+	{
+		using is_pmf = typename std::is_member_function_pointer<F>::type;
+
+		return bind_impl(is_pmf{}, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 }
