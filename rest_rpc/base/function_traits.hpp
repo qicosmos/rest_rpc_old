@@ -201,15 +201,26 @@ namespace timax
 	{
 	};
 
+	struct caller_is_a_pointer {};
+	struct caller_is_a_smart_pointer {};
+	struct caller_is_a_reference {};
+
 	template <typename F, typename Caller>
-	auto bind_impl_pmf_no_placeholder(std::true_type /*is generalized pointer*/, F&& pmf, Caller&& caller)
+	auto bind_impl_pmf_no_placeholder(caller_is_a_pointer, F&& pmf, Caller&& caller)
 		-> typename function_traits<F>::stl_function_type
 	{
 		return [pmf, c = std::forward<Caller>(caller)](auto&& ... args) { return (c->*pmf)(std::forward<decltype(args)>(args)...); };
 	}
 
 	template <typename F, typename Caller>
-	auto bind_impl_pmf_no_placeholder(std::false_type /*is not generalized pointer*/, F&& pmf, Caller&& caller)
+	auto bind_impl_pmf_no_placeholder(caller_is_a_smart_pointer, F&& pmf, Caller&& caller)
+		-> typename function_traits<F>::stl_function_type
+	{
+		return[pmf, c = std::forward<Caller>(caller)](auto&& ... args) { return (c.get()->*pmf)(std::forward<decltype(args)>(args)...); };
+	}
+
+	template <typename F, typename Caller>
+	auto bind_impl_pmf_no_placeholder(caller_is_a_reference, F&& pmf, Caller&& caller)
 		-> typename function_traits<F>::stl_function_type
 	{
 		return [pmf, c = std::forward<Caller>(caller)](auto&& ... args) { return (c.*pmf)(std::forward<decltype(args)>(args)...); };
@@ -218,11 +229,11 @@ namespace timax
 	template <typename F, typename Caller>
 	auto bind_impl(std::true_type /*IsPmf*/, F&& pmf, Caller&& caller)
 	{
-		using is_generalized_pointer =
-			std::conditional_t<std::is_pointer<Caller>::value || is_smart_pointer<Caller>::value,
-				std::true_type, std::false_type>;
+		using caller_category_t = std::conditional_t<std::is_pointer<Caller>::value,
+			caller_is_a_pointer, std::conditional_t<is_smart_pointer<Caller>::value,
+				caller_is_a_smart_pointer, caller_is_a_reference >> ;
 
-		return bind_impl_pmf_no_placeholder(is_generalized_pointer{}, std::forward<F>(pmf), std::forward<Caller>(caller));
+		return bind_impl_pmf_no_placeholder(caller_category_t{}, std::forward<F>(pmf), std::forward<Caller>(caller));
 	}
 
 	template <typename F, typename ... Args>
