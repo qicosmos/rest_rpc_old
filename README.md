@@ -2,7 +2,7 @@
 modern, simple, easy to use rpc framework.
 # 真正好用的RPC框架rest_rpc
 
-[rest_rpc](https://github.com/topcpporg/rest_rpc)是由c++开源技术社区([purecpp.org](purecpp.org))创建和发起的项目，在经过多次迭代和重构之后，终于发布第一个版本了。rest_rpc是modern c++开发的一个易用、灵活、跨平台和高性能的RPC框架。和国内外一些大公司开发的RPC框架相比，rest_rpc有哪些特色呢？
+[rest_rpc](https://github.com/topcpporg/rest_rpc)是由c++开源技术社区([purecpp.org](http://purecpp.org))创建和发起的项目，在经过多次迭代和重构之后，终于发布第一个版本了。rest_rpc是modern c++开发的一个易用、灵活、跨平台和高性能的RPC框架。和国内外一些大公司开发的RPC框架相比，rest_rpc有哪些特色呢？
 
 ## rest_rpc的特点
 [rest_rpc](https://github.com/topcpporg/rest_rpc)具备下面几个特点
