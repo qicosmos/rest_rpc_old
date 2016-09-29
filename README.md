@@ -101,7 +101,7 @@ rest_rpc的最主要的特点是好用，用户只需要像本地调用那样去
 		{
 			void compose(int i, const std::string& str, blob_t bl, double d)
 			{
-				std::cout << i << " " << str << " " << bl.ptr << " " << d << std::endl;
+				std::cout << i << " " << str << " " << bl.data()<< " " << d << std::endl;
 			}
 		};
 
