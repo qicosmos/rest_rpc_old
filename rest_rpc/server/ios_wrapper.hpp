@@ -29,6 +29,7 @@ namespace timax { namespace rpc
 
 		void start()
 		{
+			// boost bind can resolve overload function
 			thread_ = std::move(std::thread{ boost::bind(&io_service_t::run, &ios_) });
 		}
 
@@ -71,7 +72,7 @@ namespace timax { namespace rpc
 		void write_progress_entry(connection_ptr& conn_ptr, context_ptr& context)
 		{
 			assert(nullptr != context);
-			async_write(conn_ptr->socket(), context->get_message(), boost::bind(
+			async_write(conn_ptr->socket(), context->get_message(), std::bind(
 				&ios_wrapper::handle_write_entry, this, conn_ptr, context, asio_error));
 		}
 
@@ -91,12 +92,12 @@ namespace timax { namespace rpc
 			}
 		}
 
-		void write_progress(context_container_t delay_messages)
+		void write_progress(context_container_t&& delay_messages)
 		{
 			auto& conn_ptr = delay_messages.front().first;
 			auto& ctx_ptr = delay_messages.front().second;
 			
-			async_write(conn_ptr->socket(), ctx_ptr->get_message(), boost::bind(
+			async_write(conn_ptr->socket(), ctx_ptr->get_message(), std::bind(
 				&ios_wrapper::handle_write, this, std::move(delay_messages), asio_error));
 		}
 
@@ -124,7 +125,7 @@ namespace timax { namespace rpc
 			}
 		}
 
-		void handle_write(context_container_t delay_messages, boost::system::error_code const& error)
+		void handle_write(context_container_t& delay_messages, boost::system::error_code const& error)
 		{
 			connection_ptr conn_ptr;
 			context_ptr ctx_ptr;
@@ -160,11 +161,11 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		io_service_t				ios_;
-		ios_work_ptr				ios_work_;
+		io_service_t					ios_;
+		ios_work_ptr					ios_work_;
 		std::thread					thread_;
 		context_container_t			delay_messages_;
-		bool						write_in_progress_;
+		bool							write_in_progress_;
 		mutable std::mutex			mutex_;
 	};
 

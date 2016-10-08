@@ -38,7 +38,7 @@ namespace timax{ namespace rpc
 	private:
 		void start_connect()
 		{
-			socket_.async_connect(endpoint_, boost::bind(&async_connection::handle_connection, this, boost::asio::placeholders::error));
+			socket_.async_connect(endpoint_, std::bind(&async_connection::handle_connection, this, asio_error));
 		}
 
 		void handle_connection(const boost::system::error_code& error)

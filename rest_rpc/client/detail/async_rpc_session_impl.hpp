@@ -103,14 +103,14 @@ namespace timax { namespace rpc
 		auto& to_call = to_calls_.front();
 
 		async_write(connection_.socket(), to_call->get_send_message(),
-			boost::bind(&rpc_session::handle_send, this->shared_from_this(), boost::asio::placeholders::error));
+			std::bind(&rpc_session::handle_send, this->shared_from_this(), asio_error));
 	}
 
 	template <typename CodecPolicy>
 	void rpc_session<CodecPolicy>::recv_head()
 	{
 		async_read(connection_.socket(), boost::asio::buffer(&head_, sizeof(head_t)),
-			boost::bind(&rpc_session::handle_recv_head, this->shared_from_this(), boost::asio::placeholders::error));
+			std::bind(&rpc_session::handle_recv_head, this->shared_from_this(), asio_error));
 	}
 
 	template <typename CodecPolicy>
@@ -136,12 +136,12 @@ namespace timax { namespace rpc
 			{
 				to_discard_message_.resize(head_.len);
 				async_read(connection_.socket(), boost::asio::buffer(to_discard_message_),
-					boost::bind(&rpc_session::handle_recv_body_discard, this->shared_from_this(), asio_error));
+					std::bind(&rpc_session::handle_recv_body_discard, this->shared_from_this(), asio_error));
 			}
 			else
 			{
-				async_read(connection_.socket(), call_ctx->get_recv_message(head_.len), boost::bind(&rpc_session::handle_recv_body,
-					this->shared_from_this(), call_ctx, boost::asio::placeholders::error));
+				async_read(connection_.socket(), call_ctx->get_recv_message(head_.len), std::bind(&rpc_session::handle_recv_body,
+					this->shared_from_this(), call_ctx, asio_error));
 			}
 		}
 	}
@@ -171,7 +171,7 @@ namespace timax { namespace rpc
 		using namespace std::chrono_literals;
 
 		hb_timer_.expires_from_now(15s);
-		hb_timer_.async_wait(boost::bind(&rpc_session::handle_heartbeat, this->shared_from_this(), boost::asio::placeholders::error));
+		hb_timer_.async_wait(std::bind(&rpc_session::handle_heartbeat, this->shared_from_this(), asio_error));
 	}
 
 	template <typename CodecPolicy>
@@ -197,7 +197,7 @@ namespace timax { namespace rpc
 		if (duration_t::max() != ctx->timeout)
 		{
 			ctx->timer.expires_from_now(ctx->timeout);
-			ctx->timer.async_wait(boost::bind(&rpc_session::handle_timeout,
+			ctx->timer.async_wait(std::bind(&rpc_session::handle_timeout,
 				this->shared_from_this(), ctx, asio_error));
 		}
 	}

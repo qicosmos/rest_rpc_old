@@ -213,7 +213,7 @@ namespace timax { namespace rpc
 	private:
 		call_map_t				call_map_;
 		call_list_t				call_list_;
-		uint32_t				call_id_;
+		uint32_t					call_id_;
 		size_t					max_size_;
 	};
 } }

@@ -45,14 +45,14 @@ namespace timax { namespace rpc
 	private:
 		void handle_read_head(boost::system::error_code const& error);
 		void handle_read_body(boost::system::error_code const& error);		
-		void handle_read_body_pages(std::vector<char> read_buffer, boost::system::error_code const& error);
+		void handle_read_body_pages(std::vector<char>& read_buffer, boost::system::error_code const& error);
 
 	private:
 		ios_wrapper&						ios_wrapper_;
-		tcp::socket							socket_;
-		head_t								head_;
-		std::array<char, PAGE_SIZE>			usual_read_buffer_;
-		steady_timer_t						timer_;
-		duration_t							time_out_;
+		tcp::socket						socket_;
+		head_t							head_;
+		std::array<char, PAGE_SIZE>		usual_read_buffer_;
+		steady_timer_t					timer_;
+		duration_t						time_out_;
 	};
 } }

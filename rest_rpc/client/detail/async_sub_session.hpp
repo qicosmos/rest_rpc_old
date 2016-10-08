@@ -92,8 +92,8 @@ namespace timax { namespace rpc
 			if (running_flag_.load())
 			{
 				auto requet_message = request_sub_message();
-				async_write(connection_.socket(), requet_message, boost::bind(&sub_session::handle_request_sub, 
-					this->shared_from_this(), boost::asio::placeholders::error));
+				async_write(connection_.socket(), requet_message, std::bind(&sub_session::handle_request_sub, 
+					this->shared_from_this(), asio_error));
 			}
 		}
 
@@ -107,13 +107,13 @@ namespace timax { namespace rpc
 		{
 			using namespace std::chrono_literals;
 			hb_timer_.expires_from_now(15s);
-			hb_timer_.async_wait(boost::bind(&sub_session::handle_heartbeat, this->shared_from_this(), boost::asio::placeholders::error));
+			hb_timer_.async_wait(std::bind(&sub_session::handle_heartbeat, this->shared_from_this(), asio_error));
 		}
 
 		void recv_sub_head()
 		{
-			async_read(connection_.socket(), boost::asio::buffer(&recv_head_, sizeof(head_t)), boost::bind(
-				&sub_session::handle_sub_head, this->shared_from_this(), boost::asio::placeholders::error));
+			async_read(connection_.socket(), boost::asio::buffer(&recv_head_, sizeof(head_t)), std::bind(
+				&sub_session::handle_sub_head, this->shared_from_this(), asio_error));
 		}
 
 		void on_error(exception const& exception)
@@ -149,8 +149,8 @@ namespace timax { namespace rpc
 
 			if (!error)
 			{
-				async_read(connection_.socket(), boost::asio::buffer(&recv_head_, sizeof(head_t)), boost::bind(
-					&sub_session::handle_response_sub_head, this->shared_from_this(), boost::asio::placeholders::error));
+				async_read(connection_.socket(), boost::asio::buffer(&recv_head_, sizeof(head_t)), std::bind(
+					&sub_session::handle_response_sub_head, this->shared_from_this(), asio_error));
 			}
 			else
 			{
@@ -168,8 +168,8 @@ namespace timax { namespace rpc
 				if (recv_head_.len > 0)
 				{
 					response_.resize(recv_head_.len);
-					async_read(connection_.socket(), boost::asio::buffer(response_), boost::bind(
-						&sub_session::handle_response_sub_body, this->shared_from_this(), boost::asio::placeholders::error));
+					async_read(connection_.socket(), boost::asio::buffer(response_), std::bind(
+						&sub_session::handle_response_sub_body, this->shared_from_this(), asio_error));
 				}
 			}
 			else
@@ -211,8 +211,8 @@ namespace timax { namespace rpc
 				{
 					// in this case, we got sub message
 					response_.resize(recv_head_.len);
-					async_read(connection_.socket(), boost::asio::buffer(response_), boost::bind(
-						&sub_session::handle_sub_body, this->shared_from_this(), boost::asio::placeholders::error));
+					async_read(connection_.socket(), boost::asio::buffer(response_), std::bind(
+						&sub_session::handle_sub_body, this->shared_from_this(), asio_error));
 				}
 				else
 				{
@@ -253,7 +253,7 @@ namespace timax { namespace rpc
 			{
 				send_head_ = { 0 };
 				async_write(connection_.socket(), boost::asio::buffer(&send_head_, sizeof(head_t)),
-					boost::bind(&sub_session::handle_send_hb, this->shared_from_this(), boost::asio::placeholders::error));
+					std::bind(&sub_session::handle_send_hb, this->shared_from_this(), asio_error));
 
 				setup_heartbeat_timer();
 			}

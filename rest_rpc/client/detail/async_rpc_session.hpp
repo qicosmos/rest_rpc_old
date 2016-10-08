@@ -50,15 +50,15 @@ namespace timax { namespace rpc
 		inline void handle_timeout(context_ptr ctx, boost::system::error_code const& error);
 
 	private:
-		rpc_manager_t&						rpc_mgr_;
-		steady_timer_t						hb_timer_;
+		rpc_manager_t&					rpc_mgr_;
+		steady_timer_t					hb_timer_;
 		async_connection					connection_;
 		rpc_call_container_t				calls_;
 		std::atomic<status_t>				status_;
 		bool								is_write_in_progress_;
-		head_t								head_;
-		mutable std::mutex					mutex_;
-		call_list_t							to_calls_;
+		head_t							head_;
+		mutable std::mutex				mutex_;
+		call_list_t						to_calls_;
 		std::vector<char>					to_discard_message_;
 	};
 	
