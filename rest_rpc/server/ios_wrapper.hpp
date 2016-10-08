@@ -209,6 +209,6 @@ namespace timax { namespace rpc
 
 	private:
 		std::list<ios_wrapper>		ios_wrappers_;
-		iterator					next_io_service_;
+		iterator						next_io_service_;
 	};
 } }

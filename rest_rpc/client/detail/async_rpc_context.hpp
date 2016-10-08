@@ -116,16 +116,16 @@ namespace timax { namespace rpc
 		}
 
 		steady_timer_t						timer;
-		steady_timer_t::duration			timeout;
-		tcp::endpoint						endpoint;
+		steady_timer_t::duration				timeout;
+		tcp::endpoint							endpoint;
 		std::string							name;
 		head_t								head;
-		std::vector<char>					req;		// request buffer
-		std::vector<char>					rep;		// response buffer
+		std::vector<char>						req;		// request buffer
+		std::vector<char>						rep;		// response buffer
 		exception							err;
 		success_function_t					on_ok;
 		on_error_function_t					on_error;
-		bool								is_over;
+		bool									is_over;
 		std::unique_ptr<result_barrier>		barrier;
 	};
 

@@ -20,7 +20,7 @@ namespace timax { namespace rpc
 		}
 
 	protected:
-		bool						is_over_ = false;
+		bool							is_over_ = false;
 		std::mutex					mutex_;
 		std::condition_variable		cond_var_;
 	};

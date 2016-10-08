@@ -88,6 +88,6 @@ namespace timax { namespace rpc
 	private:
 		io_service_t&						ios_;
 		session_map_t						sessions_;
-		mutable std::mutex					mutex_;
+		mutable std::mutex				mutex_;
 	};
 } }

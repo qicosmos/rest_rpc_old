@@ -110,26 +110,32 @@ namespace timax
 		using type = std::index_sequence<I, Is...>;
 	};
 
-	template <typename ... BindArgs>
-	struct make_bind_index_sequence;
+	template <typename ArgsTuple, typename ... BindArgs>
+	struct make_bind_index_sequence_and_args_tuple;
 
 	template <>
-	struct make_bind_index_sequence<>
+	struct make_bind_index_sequence_and_args_tuple<std::tuple<>>
 	{
-		using type = std::index_sequence<>;
+		using index_sequence_type = std::index_sequence<>;
+		using args_tuple_type = std::tuple<>;
 	};
 
-	template <typename Arg0, typename ... Args>
-	struct make_bind_index_sequence<Arg0, Args...>
+	template <typename Arg0, typename ... Args, typename BindArg0, typename ... BindArgs>
+	struct make_bind_index_sequence_and_args_tuple<std::tuple<Arg0, Args...>, BindArg0, BindArgs...>
 	{
 	private:
-		using arg0_type = std::remove_reference_t<std::remove_cv_t<Arg0>>;
-		constexpr static auto ph_value = std::is_placeholder<arg0_type>::value;
-		using rests_index_sequence_t = typename make_bind_index_sequence<Args...>::type;
+		using bind_arg0_type = std::remove_reference_t<std::remove_cv_t<BindArg0>>;
+		constexpr static auto ph_value = std::is_placeholder<bind_arg0_type>::value;
+		constexpr static bool is_not_placeholder = 0 == ph_value;
+		using rests_make_bind_type = make_bind_index_sequence_and_args_tuple<std::tuple<Args...>, BindArgs...>;
+		using rests_index_sequence_type = typename rests_make_bind_type::index_sequence_type;
+		using rests_args_tuple_type = typename rests_make_bind_type::args_tuple_type;
 		
 	public:
-		using type = std::conditional_t<0 == ph_value, rests_index_sequence_t,
-			typename push_front_to_index_sequence<ph_value - 1, rests_index_sequence_t>::type>;
+		using index_sequence_type = std::conditional_t<is_not_placeholder, rests_index_sequence_type,
+			typename push_front_to_index_sequence<ph_value - 1, rests_index_sequence_type>::type>;
+		using args_tuple_type = std::conditional_t<is_not_placeholder, rests_args_tuple_type,
+			typename push_front_to_tuple_type<Arg0, rests_args_tuple_type>::type>;
 	};
 
 	template <typename Ret, typename ... Args>
@@ -151,15 +157,18 @@ namespace timax
 	struct bind_to_function
 	{
 	private:
-		using index_sequence_t = typename make_bind_index_sequence<Args...>::type;
 		using function_traits_t = function_traits<F>;
+		using raw_args_tuple_t = typename function_traits_t::raw_tuple_type;
+		using make_bind_t = make_bind_index_sequence_and_args_tuple<raw_args_tuple_t, Args...>;
+		using index_sequence_t = typename make_bind_t::index_sequence_type;
+		using args_tuple_t = typename make_bind_t::args_tuple_type;
 	public:
-		using type = typename bind_traits<index_sequence_t, typename function_traits_t::result_type, typename function_traits_t::raw_tuple_type>::type;
+		using type = typename bind_traits<index_sequence_t, typename function_traits_t::result_type, args_tuple_t>::type;
 	};
 
 	template <typename F, typename Arg0, typename ... Args>
-	auto bind_impl(std::false_type /*IsNoPmf*/, F&& f, Arg0&& arg, Args&& ... args)
-		-> typename bind_to_function<F, Args...>::type
+	auto bind_impl(std::false_type /*IsNoPmf*/, F&& f, Arg0&& arg0, Args&& ... args)
+		-> typename bind_to_function<F, Arg0, Args...>::type
 	{
 		return std::bind(std::forward<F>(f), std::forward<Arg0>(arg0), std::forward<Args>(args)...);
 	}

@@ -181,11 +181,11 @@ namespace timax { namespace rpc
 
 	private:
 		router_t						router_;
-		io_service_pool					ios_pool_;
+		io_service_pool				ios_pool_;
 		tcp::acceptor					acceptor_;
-		duration_t						time_out_;
+		duration_t					time_out_;
 
-		mutable std::mutex				mutex_;
+		mutable std::mutex			mutex_;
 		sub_container					subscribers_;
 	};
 } }

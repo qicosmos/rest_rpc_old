@@ -87,7 +87,7 @@ namespace timax { namespace rpc
 
 		protected:
 			async_client&					client_;
-			context_ptr						ctx_;
+			context_ptr					ctx_;
 			bool							dismiss_;
 		};
 
@@ -255,7 +255,7 @@ namespace timax { namespace rpc
 	private:
 		io_service_t				ios_;
 		work_ptr					ios_work_;
-		std::thread					ios_run_thread_;
+		std::thread				ios_run_thread_;
 		rpc_manager_t				rpc_manager_;
 		sub_manager_t				sub_manager_;
 	};

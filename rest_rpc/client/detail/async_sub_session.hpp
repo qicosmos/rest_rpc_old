@@ -272,15 +272,15 @@ namespace timax { namespace rpc
 
 	private:
 		steady_timer_t						hb_timer_;
-		async_connection					connection_;
+		async_connection						connection_;
 		head_t								send_head_;
 		head_t								recv_head_;
-		std::string const					topic_string_;
+		std::string const						topic_string_;
 		std::vector<char> const				topic_;
-		std::vector<char>					response_;
+		std::vector<char>						response_;
 		function_t							function_;
-		error_function_t					error_;
-		std::atomic<bool>					running_flag_;
+		error_function_t						error_;
+		std::atomic<bool>						running_flag_;
 	};
 
 
@@ -399,7 +399,7 @@ namespace timax { namespace rpc
 		}
 
 	private:
-		io_service_t&			ios_;
+		io_service_t&				ios_;
 		endpoint_map_t			topics_;
 		std::mutex				mutex_;
 	};
