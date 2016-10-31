@@ -1,4 +1,5 @@
-# rest_rpc 在这里不再维护，迁移至https://github.com/topcpporg/rest_rpc，在topcpp组织下维护
+# rest_rpc 在这里不再维护，迁移至https://github.com/topcpporg/rest_rpc
+在topcpp组织下维护。
 modern, simple, easy to use rpc framework.
 ##Motivation
 目前传统的c++ RPC框架一般都是基于protobuf或者是thrift，都需要用专门的代码生成器来生成代码，这种方式存在以下这些问题：
